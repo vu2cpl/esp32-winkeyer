@@ -1,0 +1,25 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Secrets — real MQTT creds live here (copied from secrets.h.example)
+include/secrets.h
+
+# KiCad local/temp files (keep .kicad_pro/_sch/_pcb; ignore the rest)
+*.kicad_prl
+*.lck
+~*.lck
+*-bak
+*.kicad_pcb-bak
+*.kicad_sch-bak
+fp-info-cache
+.history/
+_autosave-*
