@@ -130,10 +130,10 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend id="legPtt" title="">PTT</legend>
-<div class="row"><label title="PTT drives GPIO32 for an amp or sequencer and stays live on BOTH backends. Sidetone is the local monitor tone. Monitor sent text sounds buffered text locally on the Flex backend, where the radio makes the actual CW and the keyer would otherwise be silent.">Line</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> monitor</label></div>
+<div class="row"><label title="The PTT line itself: GPIO32, and GPIO19 for radio 2. Unticked, PTT is never asserted at all. It stays live on both backends, for an amp or a sequencer.">PTT line</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label></div>
+<div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
 <div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
   <input type="number" id="lead" min="0" max="2000"><span class="val">ms</span></div>
 <div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
@@ -178,6 +178,8 @@ legend[title]{cursor:help}
   <span class="val" id="flexState"></span></div>
 <div class="row"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
   <input type="text" id="flexip" style="width:130px" placeholder="auto (discovery)"></div>
+<div class="row"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
 <div class="row"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
   <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="flexbind"> bind GUI</label>
@@ -280,7 +282,9 @@ async function refresh(){
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
     pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
-    fskbaud:String(s.fskbaud),radio:(s.radio==3?'both':String(s.radio)),
+    // The board sends a float, so 45.45 arrives as 45.45000076 and matches
+    // no <option value>, leaving the select blank. Round to hundredths.
+    fskbaud:String(Math.round(s.fskbaud*100)/100),radio:(s.radio==3?'both':String(s.radio)),
     flexcmd:s.flex.cmd,
     weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
