@@ -175,6 +175,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "disp") && arg) {
       bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
       setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "pecho")  && arg) { setting("pecho", arg);
     } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
@@ -257,7 +258,7 @@ void handleLine(char* line) {
       printStatus();
     } else {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
-                     "      /weight /ratio /farns /lead /tail /baud /monitor\n"
+                     "      /weight /ratio /farns /lead /tail /baud /monitor /pecho\n"
                      "      /backend /flex /wifi /paddle /net /status");
     }
     return;

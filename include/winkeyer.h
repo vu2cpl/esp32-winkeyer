@@ -39,6 +39,13 @@ bool hostOpen();
 void setMonitor(bool on);
 bool monitor();
 
+// Echo of characters sent on the PADDLE (mode register bit 6), so a logger
+// captures hand-sent text. 0 off, 1 forced on, 2 follow the host — RUMlogNG
+// never sets the bit, hence the override.
+void    setPaddleEcho(uint8_t mode);
+uint8_t paddleEcho();
+bool    paddleEchoActive();
+
 uint8_t modeRegister();
 bool    echoEnabled();
 void closeHost();     // drop host mode (transport disconnected)

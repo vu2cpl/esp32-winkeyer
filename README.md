@@ -184,6 +184,35 @@ discarded. Echo is therefore paced against the radio's own `cwx sent=`
 progress reports. Measured at 20 WPM, `TEST DE VU2CPL` echoes over 5.5 s
 with the gaps matching each character's length.
 
+### Paddle echo — capturing hand-sent text
+
+Separate from character echo, and separate in the protocol too: **mode
+register bit 6**. When active, characters you send on the paddle are echoed
+to the host so a logger can capture what was keyed by hand.
+
+RUMlogNG sets `0x07` — it asks for character echo but **not** this — so
+`auto` leaves it silent. Force it if you want hand-sent text logged:
+
+```bash
+/pecho on      # regardless of what the host asks for
+/pecho auto    # follow the mode register (default)
+/pecho off
+```
+
+The web page has the same control with a live `active`/`inactive` readout.
+
+The decode is exact rather than signal decoding: the keyer generated those
+elements itself, so it knows precisely what they were and only has to judge
+where a character ends — 2 dit-times of silence for a character, 5 for a
+word, both scaling with WPM automatically. Buffered text is excluded; the
+host already knows what it asked for.
+
+Two limits worth knowing: characters not in the Morse table decode to
+nothing and are dropped, and a prosign keyed as merged elements comes back
+as whatever single pattern it forms, not as the letters you had in mind.
+Forcing echo on when the host did not request it may also confuse a logger
+that is not expecting unsolicited characters — hence the switch.
+
 ## Connecting logging software
 
 The keyer speaks the WinKeyer protocol over a TCP socket. Loggers want a

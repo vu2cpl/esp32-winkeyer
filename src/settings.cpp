@@ -152,6 +152,7 @@ void begin() {
   Display::setController(ctl.length() ? ctl.c_str() : "sh1106");
   Display::setEnabled(loadU32("dispen", 1));
   WinKeyer::setMonitor(loadU32("monitor", 1));
+  WinKeyer::setPaddleEcho(loadU32("pecho", 2));
 }
 
 bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
@@ -261,6 +262,17 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
+  } else if (!strcasecmp(key, "pecho")) {
+    uint8_t m;
+    if      (!strcasecmp(val, "auto")) m = 2;
+    else if (truthy(val))              m = 1;
+    else if (boolish(val))             m = 0;
+    else return fail("pecho: on|off|auto");
+    WinKeyer::setPaddleEcho(m); saveU32("pecho", m);
+    snprintf(msg, msgLen, "paddle echo=%s (now %s)",
+             m == 2 ? "auto" : (m ? "on" : "off"),
+             WinKeyer::paddleEchoActive() ? "active" : "inactive");
+
   } else if (!strcasecmp(key, "monitor")) {
     if (!boolish(val)) return fail("monitor: on|off");
     bool b = truthy(val);
@@ -314,6 +326,8 @@ void toJson(JsonDocument& doc) {
   doc["baud"]    = hostBaud();
   doc["echo"]    = WinKeyer::echoEnabled();
   doc["monitor"] = WinKeyer::monitor();
+  doc["pecho"]   = WinKeyer::paddleEcho();
+  doc["pechoon"] = WinKeyer::paddleEchoActive();
   doc["modereg"] = WinKeyer::modeRegister();
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();

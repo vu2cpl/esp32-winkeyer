@@ -107,6 +107,10 @@ legend[title]{cursor:help}
 <fieldset><legend>KEYER</legend>
 <div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A WinKeyer host or the speed pot can override this; only what you set here is saved.">Speed</label>
   <input type="range" id="wpm" min="5" max="60"><span class="val" id="wpmV"></span></div>
+<div class="row"><label title="Echo of characters you send on the PADDLE, so a logger can capture hand-sent text. This is WinKeyer mode register bit 6, separate from character echo of buffered text. Auto follows what the host asks for — but RUMlogNG sets 0x07 and never requests it, so force it On if you want hand-sent text logged.">Paddle echo</label>
+  <select id="pecho"><option value="auto">Auto (follow host)</option>
+  <option value="on">On</option><option value="off">Off</option></select>
+  <span class="val" id="pechoState"></span></div>
 <div class="row"><label title="Iambic A releases both paddles to stop after the current element; iambic B sends one more. Swap exchanges dit and dah if the paddle is wired the other way round.">Mode</label>
   <select id="mode"><option value="a">Iambic A</option><option value="b">Iambic B</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="swap"> swap paddles</label></div>
@@ -208,6 +212,7 @@ async function refresh(){
       +'line on GPIO33.';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
+    pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
     weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
@@ -247,7 +252,8 @@ function bindNum(id,min,max){
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
-for(const id of ['mode','backend','dispctl','baud'])
+  $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
+for(const id of ['mode','backend','dispctl','baud','pecho'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st','monitor'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');

@@ -78,4 +78,9 @@ void setKeyEventHook(void (*fn)(bool down));
 void setHookPaddleOnly(bool on);
 bool   paddleBreakIn();    // true once if paddle press aborted a buffered send
 
+// Characters the OPERATOR sent on the paddle, decoded from the elements
+// this keyer generated (so exact, not a signal decoder). Drives WinKeyer
+// paddle echo. Returns false when nothing is waiting.
+bool   decodedRead(char& c);
+
 }  // namespace Keyer

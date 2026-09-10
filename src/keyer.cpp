@@ -47,6 +47,15 @@ static const char* morseFor(char c) {
   return nullptr;
 }
 
+// Reverse lookup for paddle echo. This is not signal decoding: the keyer
+// generated these elements itself and knows exactly what they were, so the
+// pattern is exact and the only judgement needed is where a character ends.
+static char charFor(const char* pat) {
+  for (auto& e : MORSE)
+    if (!strcmp(e.p, pat)) return e.c;
+  return '\0';
+}
+
 namespace {
 
 // ── Configuration (written from loop task, read by keyer task) ──
@@ -116,6 +125,17 @@ volatile bool dit = false, dah = false;
 bool    prevDit = false, prevDah = false;
 static const uint8_t DEBOUNCE_TICKS = 3;
 
+// ── Paddle echo decoder ───────────────────────────────────
+// Accumulates the elements the OPERATOR sends and hands back finished
+// characters, so a logger can capture hand-sent text (WinKeyer mode
+// register bit 6). Buffered text is excluded — the host already knows
+// what it asked for.
+char     decPat[8];
+uint8_t  decLen    = 0;
+uint32_t decIdleMs = 0;
+bool     decSpaceSent = true;   // suppress a leading space after silence
+QueueHandle_t decodeQ = nullptr;
+
 // Speed pot
 uint32_t potAccum = 0;
 uint16_t potTick  = 0;
@@ -167,6 +187,10 @@ void pttRelease() {
 
 // ── State machine helpers ─────────────────────────────────
 void startElement(bool isDah, bool isAuto) {
+  if (!isAuto) {                       // paddle-sent: remember the shape
+    if (decLen < sizeof(decPat) - 1) decPat[decLen++] = isDah ? '-' : '.';
+    decIdleMs = 0;
+  }
   curIsDah   = isDah;
   curIsAuto  = isAuto;
   lastWasDah = isDah;
@@ -262,6 +286,28 @@ void samplePot() {
   recalc();
 }
 
+// Called once per millisecond. A character ends after 2 dit-times of
+// silence (the element gap is 1, the inter-character gap 3), and a word
+// after 5 — comfortably inside the standard gaps at any speed, because the
+// gaps scale with WPM and so does tGapElem.
+void tickDecoder() {
+  if (decLen == 0 && decSpaceSent) return;
+  if (state == ST_KEYDOWN || state == ST_TUNE) { decIdleMs = 0; return; }
+  decIdleMs++;
+
+  if (decLen > 0 && decIdleMs >= (uint32_t)tGapElem * 2) {
+    decPat[decLen] = '\0';
+    char c = charFor(decPat);
+    decLen = 0;
+    if (c && decodeQ) xQueueSend(decodeQ, &c, 0);
+    decSpaceSent = false;
+  } else if (!decSpaceSent && decIdleMs >= (uint32_t)tGapElem * 5) {
+    char sp = ' ';
+    if (decodeQ) xQueueSend(decodeQ, &sp, 0);
+    decSpaceSent = true;
+  }
+}
+
 // ── The 1 kHz keyer task ──────────────────────────────────
 void keyerTask(void*) {
   TickType_t wake = xTaskGetTickCount();
@@ -269,6 +315,7 @@ void keyerTask(void*) {
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(1));
     samplePaddles();
     samplePot();
+    tickDecoder();
 
     // Host abort (WK "clear buffer"): stop buffered sending at once.
     if (flagClear) {
@@ -371,7 +418,8 @@ void begin() {
   analogSetPinAttenuation(PIN_SPEED_POT, ADC_11db);   // full 0–3.3 V range
 
   recalc();
-  charQ = xQueueCreate(256, sizeof(char));
+  charQ   = xQueueCreate(256, sizeof(char));
+  decodeQ = xQueueCreate(64, sizeof(char));
 
   // Priority well above loopTask (1); pinned to core 1 alongside it —
   // WiFi/BT stacks live on core 0 and never preempt element timing.
@@ -439,6 +487,10 @@ bool paddleDah()    { return dah; }
 
 void setKeyEventHook(void (*fn)(bool)) { keyHook = fn; }
 void setHookPaddleOnly(bool on) { hookPaddleOnly = on; }
+
+bool decodedRead(char& c) {
+  return decodeQ && xQueueReceive(decodeQ, &c, 0) == pdTRUE;
+}
 
 bool paddleBreakIn() {
   bool b = flagBreakIn;

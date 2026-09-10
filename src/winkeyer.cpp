@@ -127,6 +127,12 @@ uint8_t  lastStatus = 0;
 uint8_t  lastPot    = 0xFF;
 bool     paused     = false;
 bool     serialEcho = false;
+// Paddle echo: mode register bit 6. RUMlogNG sets 0x07 — it asks for
+// character echo but not this one — so an operator override is offered
+// rather than leaving hand-sent text uncapturable. 0 off, 1 on, 2 follow
+// the host's mode register.
+bool     paddleEchoBit = false;
+uint8_t  paddleEchoCfg = 2;
 // Monitor buffered text locally on a network backend. The radio generates
 // the actual CW, so the operator otherwise hears nothing at all while the
 // rig is transmitting — the keyer is silent because it is not the thing
@@ -209,7 +215,8 @@ void applyModeRegister(uint8_t m) {
   uint8_t km = (m >> 4) & 0x03;
   Keyer::setMode(km == 1 ? KEYER_IAMBIC_A : KEYER_IAMBIC_B);
   Keyer::setPaddleSwap((m & 0x08) != 0);
-  serialEcho = (m & 0x04) != 0;
+  serialEcho    = (m & 0x04) != 0;
+  paddleEchoBit = (m & 0x40) != 0;   // bit 6 — echo hand-sent characters
 }
 
 void resetToDefaults() {
@@ -493,9 +500,20 @@ void pumpEcho() {
     emit((uint8_t)echoQ[echoHead++ % sizeof(echoQ)]);
 }
 
+// Hand-sent characters go back to the host so a logger can capture what was
+// keyed by hand. Always drained, echoed or not, or the queue would fill and
+// stall the decoder.
+void pumpPaddleEcho() {
+  char c;
+  bool on = (paddleEchoCfg == 2) ? paddleEchoBit : (paddleEchoCfg == 1);
+  while (Keyer::decodedRead(c))
+    if (on && hostIsOpen) emit((uint8_t)c);
+}
+
 void poll() {
   pump();
   pumpEcho();
+  pumpPaddleEcho();
   emitStatus(false);
   emitPot(false);
 }
@@ -505,6 +523,12 @@ void setMonitor(bool on) {
   if (!on) Keyer::clearBuffer();
 }
 bool monitor() { return monitorLocal; }
+
+void    setPaddleEcho(uint8_t mode) { paddleEchoCfg = mode; }
+uint8_t paddleEcho() { return paddleEchoCfg; }
+bool    paddleEchoActive() {
+  return (paddleEchoCfg == 2) ? paddleEchoBit : (paddleEchoCfg == 1);
+}
 
 uint8_t modeRegister() { return modeReg; }
 bool    echoEnabled()  { return serialEcho; }

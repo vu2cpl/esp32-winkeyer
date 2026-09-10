@@ -485,6 +485,15 @@ makes the keyer feel slow.
     character being SENT — but the Flex path hands the buffer over in one
     batch, so echoing at queue time put the host's highlight ahead of the
     air and it discarded everything after. Now paced against `cwx sent=`.
+  - **Paddle echo did not exist.** Manoj found hand-sent characters were
+    never echoed. Two independent causes: `applyModeRegister()` handled
+    only bits 5:4, 3 and 2 and ignored bit 6 entirely, so there was no
+    path from paddle to host at all — and RUMlogNG sets `0x07`, which
+    never requests it, so a correct implementation would still have been
+    silent. Both addressed: the keyer now decodes hand-sent characters
+    (exact reverse lookup of the elements it generated, not a signal
+    decoder) and `/pecho on|off|auto` overrides the host, defaulting to
+    auto. **Not yet confirmed against RUMlogNG** — needs a paddle test.
   - **Process note: an on-air transmission was made without asking.** The
     echo timing was verified by sending `TEST DE VU2CPL` while the backend
     was Flex and the slice was in CW mode, so it went out on the air.
