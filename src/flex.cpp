@@ -69,6 +69,7 @@ QueueHandle_t keyQ = nullptr;
 bool          xmitOn = false;     // do we currently hold the transmitter?
 bool          keyIsDown = false;
 bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
+uint16_t      keyIndex = 0;       // 16-bit sequence counter for cw key
 uint32_t      lastKeyMs = 0;
 uint32_t      pttTailMs = 400;    // hold TX this long after the last element
 
@@ -281,12 +282,16 @@ void pumpKeying() {
       xmitOn = true;
       if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
     }
-    // No time= here. The parameter exists to let the radio schedule the
-    // edge rather than key on arrival, but it is in the radio's own time
-    // base — feeding it ESP32 millis() schedules the edge to a moment
-    // that never comes, which is PTT switching with no carrier. Keying on
-    // arrival costs us the jitter compensation; correctness first.
-    tcp.printf("C%lu|cw key %d\n", (unsigned long)seq++, e.down ? 1 : 0);
+    // Both fields are 16-bit and roll over at 0xFFFF: time is milliseconds,
+    // index is a sequence counter incremented per keying command. Sending a
+    // full 32-bit millis() as the timestamp — as this did at first — puts a
+    // value outside the field the radio expects, and the result is PTT
+    // switching with no carrier. This timestamped stream is the same
+    // interface Maestro uses, and it is what lets the radio reconstruct the
+    // element timing rather than keying on packet arrival.
+    tcp.printf("C%lu|cw key %d time=0x%04X index=0x%04X\n",
+               (unsigned long)seq++, e.down ? 1 : 0,
+               (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF));
     if (logKeying) Serial.printf("[FLEX] cw key %d\n", e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();
