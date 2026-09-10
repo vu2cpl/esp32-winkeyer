@@ -38,6 +38,12 @@ bool directKeying();
 void setUseXmit(bool on);
 bool useXmit();
 
+// Whether to issue "client bind" to the GUI client. Binding is documented
+// as required, but it also makes us a distinct client the radio may treat
+// as competing for the transmitter — switchable so it can be tested.
+void setBind(bool on);
+bool bindEnabled();
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm

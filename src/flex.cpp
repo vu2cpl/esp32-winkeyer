@@ -71,6 +71,7 @@ bool          xmitOn = false;     // do we currently hold the transmitter?
 bool          keyIsDown = false;
 bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
 uint16_t      keyIndex = 0;       // 16-bit sequence counter for cw key
+bool          cfgBind = true;     // issue "client bind" to the GUI client
 uint32_t      lastKeyMs = 0;
 uint32_t      pttTailMs = 400;    // hold TX this long after the last element
 
@@ -196,9 +197,14 @@ void onLine(const String& line) {
             while (he < (int)body.length() && body[he] > ' ') he++;
             guiHandle = body.substring(hs, he);
           }
-          sendCmd("client bind client_id=" + id);
-          Serial.printf("[FLEX] bound to GUI client %s (handle %s)\n",
-                        id.c_str(), guiHandle.c_str());
+          if (cfgBind) {
+            sendCmd("client bind client_id=" + id);
+            Serial.printf("[FLEX] bound to GUI client %s (handle %s)\n",
+                          id.c_str(), guiHandle.c_str());
+          } else {
+            Serial.printf("[FLEX] GUI client %s (handle %s) — not binding\n",
+                          id.c_str(), guiHandle.c_str());
+          }
         }
       }
     }
@@ -276,6 +282,13 @@ void setUseXmit(bool on) {
 }
 bool useXmit() { return cfgUseXmit; }
 
+void setBind(bool on) {
+  cfgBind = on;
+  boundClientId = "";        // force re-evaluation on the next client status
+  if (tcp.connected()) tcp.stop();
+}
+bool bindEnabled() { return cfgBind; }
+
 // Drain queued key transitions onto the socket. Called every loop pass.
 //
 // A bare "cw key" does nothing: the radio only keys for whichever client
@@ -293,14 +306,17 @@ void pumpKeying() {
       xmitOn = true;
       if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
     }
-    // Form taken from MORCONI, which keys a Flex exactly this way:
+    // Form taken from MORCONI:
     //   cw key 1 time=0xB85A index=225 client_handle=0x6A2C5ABC
-    // time is milliseconds as 16-bit hex, index a decimal counter, and
-    // client_handle is the GUI client's handle. That last one is not
-    // optional: without it the radio accepts the command and produces no
-    // RF, which is the failure this chased for hours.
-    // The timestamps are what let the radio reconstruct element timing
-    // rather than keying on packet arrival, so the fist survives the link.
+    // time is milliseconds as 16-bit hex, index a decimal counter.
+    //
+    // client_handle is the GUI client's handle, not ours: the keying is
+    // performed in that client's transmit context. (Tried our own handle
+    // too — same refusal, and the documentation is explicit that the GUI
+    // client's handle is what CWKey wants.)
+    //
+    // The timestamps let the radio reconstruct element timing rather than
+    // keying on packet arrival, so the fist survives the link.
     tcp.printf("C%lu|cw key %d time=0x%04X index=%u client_handle=%s\n",
                (unsigned long)seq++, e.down ? 1 : 0,
                (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
