@@ -14,7 +14,7 @@
 //
 //    /wpm 25   /mode a|b   /swap        /tune       /pot on|off
 //    /pot 10 35            /st 700      /st on|off  /ptt on|off
-//    /disp on|off          /disp sh1106|ssd1306
+//    /disp on|off          /disp sh1106|ssd1306      /i2c (scan the bus)
 //    /backend local|flex   /flex on|off /flex ip <addr>
 //    /wifi     /wifi portal /wifi reset  /status     /net
 //    anything else is sent as CW.
@@ -219,13 +219,15 @@ void handleLine(char* line) {
       Serial.println(sawAny ? "[PADDLE] levers detected — wiring is good"
                             : "[PADDLE] nothing seen — check tip/ring to GPIO25/26 "
                               "and sleeve to GND");
+    } else if (!strcasecmp(cmd, "i2c")) {
+      Display::scan();
     } else if (!strcasecmp(cmd, "net")) {
       printNet();
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /backend "
-                     "/flex /wifi /paddle /net /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c "
+                     "/backend /flex /wifi /paddle /net /status");
     }
     return;
   }

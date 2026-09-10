@@ -30,6 +30,11 @@ uint8_t address();       // 7-bit address it answered on, 0 if none
 void setEnabled(bool en);// blank the panel without unwiring it
 bool enabled();
 
+// Scan the whole bus and report every address that answers. Also adopts a
+// panel wired up after boot, so a display added to a running board works
+// without a reset. Returns the number of devices found.
+uint8_t scan();
+
 // "sh1106" (default) or "ssd1306". Takes effect immediately — no reflash,
 // so a mis-set panel is fixed from the CLI or the web page.
 bool        setController(const char* name);

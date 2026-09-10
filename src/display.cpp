@@ -43,26 +43,60 @@ bool          useSh1106  = true;
 U8G2*         oled       = &panelSh1106;
 
 uint8_t       i2cAddr    = 0;
+bool          taskStarted = false;
 volatile bool cfgEnabled = true;
 bool          blanked    = false;
 unsigned long splashUntil = 0;
 
+uint32_t busHz = 400000;
+
+bool answersAt(uint8_t addr, uint32_t hz) {
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, hz);
+  Wire.setClock(hz);
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
+
 // Probe both addresses the common breakouts use. A module with its
 // address jumper moved answers on 0x3D instead of 0x3C.
+//
+// Always probe at 100 kHz. Panels on breadboard leads, or relying on weak
+// on-module pull-ups, answer reliably at 100 kHz but only intermittently at
+// 400 kHz — which showed up here as a display that was found on some boots
+// and not others. Detection must not be the thing that is marginal.
 uint8_t probe() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
   const uint8_t candidates[] = {0x3C, 0x3D};
-  for (uint8_t a : candidates) {
-    Wire.beginTransmission(a);
-    if (Wire.endTransmission() == 0) return a;
-  }
+  for (uint8_t a : candidates)
+    if (answersAt(a, 100000)) return a;
   return 0;
 }
 
+// Rendering is a different question from detection: 128x64 is 1 KB per
+// frame, ~25 ms at 400 kHz but ~100 ms at 100 kHz, and that whole time is
+// spent inside a blocking I²C transaction. So try for 400 kHz, prove the
+// panel still answers there, and fall back honestly if it does not.
+void pickBusSpeed() {
+  if (answersAt(i2cAddr, 400000)) { busHz = 400000; return; }
+  busHz = 100000;
+  Wire.setClock(busHz);
+  Serial.println("[DISP] panel does not answer at 400 kHz — running the bus at "
+                 "100 kHz. Works, but add 4.7k pull-ups to 3V3 or shorten the "
+                 "leads if the panel ever goes missing at boot.");
+}
+
+void startTask();
+
+// Bring up whatever is on the bus now. Called at boot and again whenever the
+// operator hints a panel may have appeared (/i2c, /disp on) — the probe used
+// to run only once at boot, so a panel wired to a running board stayed dark
+// until the next reset with no clue as to why.
+bool tryAdopt();
+
 void startPanel() {
+  pickBusSpeed();
   oled->setI2CAddress(i2cAddr << 1);
   oled->begin();
-  oled->setBusClock(400000);
+  oled->setBusClock(busHz);
 }
 
 void drawSplash() {
@@ -152,27 +186,65 @@ void task(void*) {
   }
 }
 
+// Priority 1 (same as loopTask) on core 0: a ~25 ms I²C frame must not sit
+// in front of the keyer task on core 1, nor in front of the host link that
+// loop() services.
+void startTask() {
+  if (taskStarted) return;
+  xTaskCreatePinnedToCore(task, "display", 4096, nullptr, 1, nullptr, 0);
+  taskStarted = true;
+}
+
+bool tryAdopt() {
+  if (i2cAddr) return true;
+  i2cAddr = probe();
+  if (!i2cAddr) return false;
+  startPanel();
+  drawSplash();
+  splashUntil = millis() + 1500;
+  startTask();
+  Serial.printf("[DISP] %s at 0x%02X on I2C %d/%d @ %u kHz\n",
+                Display::controller(), i2cAddr, PIN_I2C_SDA, PIN_I2C_SCL,
+                (unsigned)(busHz / 1000));
+  return true;
+}
+
 }  // namespace
 
 namespace Display {
 
 void begin() {
-  i2cAddr = probe();
-  if (!i2cAddr) {
-    Serial.printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off\n",
+  if (!tryAdopt())
+    Serial.printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off "
+                  "(wire one and run /i2c, no reboot needed)\n",
                   PIN_I2C_SDA, PIN_I2C_SCL);
-    return;
-  }
-  startPanel();
-  drawSplash();
-  splashUntil = millis() + 1500;
-  Serial.printf("[DISP] %s at 0x%02X on I2C %d/%d\n",
-                controller(), i2cAddr, PIN_I2C_SDA, PIN_I2C_SCL);
+}
 
-  // Priority 1 (same as loopTask) on core 0: a ~25 ms I²C frame must not
-  // sit in front of the keyer task on core 1, nor in front of the host
-  // link that loop() services.
-  xTaskCreatePinnedToCore(task, "display", 4096, nullptr, 1, nullptr, 0);
+uint8_t scan() {
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 100000);
+  Wire.setClock(100000);   // scan slow so a marginal bus still shows up
+  Serial.printf("[I2C] scanning bus on SDA=%d SCL=%d @ 100 kHz\n",
+                PIN_I2C_SDA, PIN_I2C_SCL);
+  uint8_t n = 0;
+  for (uint8_t a = 1; a < 127; a++) {
+    Wire.beginTransmission(a);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("[I2C]   0x%02X responds%s\n", a,
+                    (a == 0x3C || a == 0x3D) ? "   <- OLED address" : "");
+      n++;
+    }
+  }
+  if (!n) {
+    // A dead bus is nearly always physical. Name the four things that
+    // actually cause it, in the order they are worth checking.
+    Serial.println("[I2C] nothing responded. In order of likelihood:");
+    Serial.println("[I2C]   1. SDA/SCL swapped — SDA must be GPIO21, SCL GPIO22");
+    Serial.println("[I2C]   2. no power — check 3V3 and GND at the panel itself");
+    Serial.println("[I2C]   3. missing pull-ups — 4.7k from each line to 3V3");
+    Serial.println("[I2C]   4. a broken jumper or dry joint on one of the four wires");
+  }
+  tryAdopt();   // restores the panel's own bus speed if one is found
+  return n;
 }
 
 bool setController(const char* name) {
@@ -191,7 +263,10 @@ const char* controller() { return useSh1106 ? "sh1106" : "ssd1306"; }
 
 bool    present()  { return i2cAddr != 0; }
 uint8_t address()  { return i2cAddr; }
-void    setEnabled(bool en) { cfgEnabled = en; }
+void    setEnabled(bool en) {
+  cfgEnabled = en;
+  if (en) tryAdopt();   // panel may have been wired since boot
+}
 bool    enabled()  { return cfgEnabled && i2cAddr != 0; }
 
 }  // namespace Display

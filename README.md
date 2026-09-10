@@ -19,9 +19,9 @@ as a behavioural reference; the implementation here is original.
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
-| OLED status panel (SH1106/SSD1306 128x64) | implemented, **not yet bench-tested on hardware** |
-| Settings web page at `winkeyer.local` | implemented, rendering + API verified against a stub |
-| Persisted settings (NVS) | implemented, not yet power-cycle tested |
+| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 found at 0x3C on hardware |
+| Settings web page at `winkeyer.local` | working, exercised on hardware |
+| Persisted settings (NVS) | working, verified across a hard reset |
 
 Bluetooth keyboard is considered but not built — see `HANDOVER.md`.
 
@@ -83,6 +83,17 @@ saturates near 3.1 V rather than 3.3 V. Normal ESP32 behaviour.
 carry their own pull-ups; if yours does not, add 4.7 kΩ from each line to
 3V3. The firmware probes 0x3C then 0x3D at boot and stays off if nothing
 answers, so an un-wired board is unaffected.
+
+**If the panel stays dark, run `/i2c`.** It scans the whole bus and prints
+every address that answers, so "wired wrong" and "wrong address" stop
+looking alike. It also adopts a panel wired up after boot — no reset
+needed. Detection runs at 100 kHz on purpose: a panel on breadboard leads
+answers reliably at 100 kHz but only intermittently at 400 kHz, which
+otherwise shows up as a display that works on some boots and not others.
+Rendering then moves to 400 kHz only after the panel proves it answers
+there (a 128x64 frame is 1 KB — ~25 ms at 400 kHz, ~100 ms at 100 kHz, all
+of it inside a blocking transaction). The boot line reports which speed
+won; a 100 kHz fallback is your cue to add pull-ups or shorten leads.
 
 Controller choice is a **setting, not a probe** — SH1106 and SSD1306
 answer identically on I²C. Default is `sh1106`, correct for nearly all
@@ -193,7 +204,7 @@ tells "not sent" from "reported late".
 `/wpm N` `/mode a|b` `/swap` `/tune` `/pot on|off` `/pot <min> <max>`
 `/ptt on|off` `/st N|on|off` `/disp on|off` `/disp sh1106|ssd1306`
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
-`/net` `/status`. Any other line is sent as CW.
+`/i2c` `/net` `/status`. Any other line is sent as CW.
 
 ## Settings web page
 

@@ -3,8 +3,8 @@
 
 **Created:** 2026-08-26 · **Updated:** 2026-09-10 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** feature-complete on the bench;
-OLED panel + settings web page + persisted settings written and building,
-**not yet run on hardware**; awaiting on-air testing
+OLED panel, settings web page and persisted settings all verified on
+hardware; awaiting on-air testing
 
 ---
 
@@ -417,6 +417,27 @@ makes the keyer feel slow.
   - Flash is now at **75.7%** of the 1.31 MB app partition on `esp32dev`.
     Worth watching before the OTRSP phase adds more; a bigger partition
     table is the escape hatch.
+  - **Bench-tested the same day.** Persistence verified across a hard
+    reset (wpm, mode, pot enable, pot range). Web page and API exercised
+    from the Mac across subnets. Two things found and fixed:
+    - **The I²C probe ran only at boot**, so a panel wired to a running
+      board stayed dark with no explanation. Added `/i2c` (full bus scan
+      with an ordered list of physical causes) and hot-adoption from both
+      `/i2c` and `/disp on`.
+    - **The panel was found on some boots and not others.** Detection was
+      running at 400 kHz, which this panel only manages intermittently on
+      breadboard leads. Detection now always runs at **100 kHz**;
+      rendering moves to 400 kHz only after the panel proves it answers
+      there, and the boot line reports the speed that won. A 100 kHz
+      fallback in the log means the wiring wants pull-ups.
+    - Gotcha for future sessions: **opening the CP2102 port resets the
+      board.** Serial captures during Manoj's live web-UI testing were
+      rebooting it under him, and a burst of those resets reads exactly
+      like a boot loop in the log. Use HTTP (`/api/state`) to observe a
+      running board; use serial only when a reset is acceptable.
+    - Live demo of why the pot defaults off: enabling it with nothing on
+      GPIO 34 let the floating pin drive the speed, which wandered
+      20→33 WPM on its own.
 
 ## Network placement (measured 2026-09-10)
 
