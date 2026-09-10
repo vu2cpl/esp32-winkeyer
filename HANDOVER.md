@@ -106,30 +106,49 @@ and back to the CLI on host close.
 the keyer's TCP port so logging software sees a serial device.
 
 **Verified on hardware 2026-09-10, both transports.** Host open returns
-0x17 (=23), status and pot reports arrive, `request status` answers,
-speed set works, and sending "TEST" produced exactly 6 KEYDOWN
-transitions (T·E·S·S·S·T = 1+1+3+1) before returning to idle, followed by
-a clean host close. That is correct WinKeyer host behaviour, confirmed
-over **wired serial** and over **WiFi TCP** (`wk-test.py --host …`).
+0x17 (=23) in 44 ms, status and pot reports arrive, `request status`
+answers, speed set works, and host close is clean. Element reporting is
+exact:
 
-### WiFi link quality — unresolved, needs attention
+- "TEST" → 6 KEYDOWN transitions (T·E·S·S·S·T = 1+1+3+1), BUSY held
+  1.05 s against a predicted 1.07 s at 28 WPM.
+- "CQ TEST VU2CPL" → **38 KEYDOWN transitions, which is exactly the
+  element count of that text.** Nothing dropped, nothing duplicated.
 
-Measured from the Mac on the **same subnet** (192.168.10.30 → .209),
-after disabling modem sleep and with the board in a clean state:
+Confirmed over **wired serial** and over **WiFi TCP**, by IP and by
+`winkeyer.local`.
 
-    18 ms min / 260 ms avg / 1025 ms max, stddev 299 ms, ~12% packet loss
-    RSSI -68 dBm
+**When checking status output, timestamp it.** Counting status bytes in
+fixed drain windows gave a false negative once: a delayed burst landed
+outside its window and looked like "only one element was keyed", when
+the CW had in fact gone out correctly. `scratchpad/timed_test.py`-style
+timestamping distinguishes "not sent" from "reported late" immediately —
+compare the BUSY duration against the text's expected duration.
 
-That is a bad link, and it is **not** a firmware problem — disabling
-modem sleep improved it (307 → 94 ms in one sample) but did not fix it,
-and the 18 ms minimum shows the path can be fast when a packet gets
-through. Suspect RF: weak signal at the operating position, a mesh/
-repeater hop, or channel congestion. Worth trying a different AP or
-moving the board before blaming the code.
+### Host-link responsiveness — was mostly a firmware bug, now fixed
 
-Harmless for CW itself — every element is timed on the keyer — but it
-will make a logger's BUSY tracking and abort feel sluggish, and it is
-the main thing standing between this and contest-ready.
+Symptom: the keyer appeared to stall. The version byte after host open
+took **2.7 s** to arrive, and status bytes came in delayed bursts, so a
+send that was actually correct looked like it had keyed one element.
+
+Cause was **not** the RF link, despite appearances. `PubSubClient::
+connect()` blocks, its default socket timeout is **15 s**, and it was
+being retried every 5 s against a broker that refuses the credentials.
+While it blocked, `loop()` did not run, so neither `Net::poll()` nor
+`WinKeyer::poll()` serviced the host link. A blocked MQTT reconnect was
+stalling CW status reporting.
+
+Fixed 2026-09-10 by: never attempting MQTT while `Keyer::busy()` or a WK
+host session is open, `setSocketTimeout(2)`, and exponential backoff to
+60 s while the broker keeps refusing. **Result: host open reply went
+2.7 s → 0.044 s.** Anything else added to `loop()` must respect the same
+rule — the host link is the priority, and blocking calls belong behind
+an idle check.
+
+RF is still mediocre but no longer the limiting factor: 10 ms min /
+131 ms avg / 585 ms max, 0% loss, RSSI -68 dBm. Worth improving (closer
+AP, different channel, external-antenna board) but it is no longer what
+makes the keyer feel slow.
 
 ### Diagnostic traps hit while testing — do not repeat
 
@@ -200,10 +219,9 @@ against exposing it beyond one.
    from the shack password manager). Currently the example value, so the
    broker rejects the connection with `rc=5` every 5 s. Everything else
    works; this is the only thing failing.
-2. **Chase the WiFi link quality** — ~12% packet loss and 260 ms average
-   latency on the same subnet (see above). Firmware side is done; this is
-   an RF/AP problem. Try a closer AP, a different channel, or an external
-   antenna board. This is the biggest remaining obstacle to real use.
+2. **WiFi link is mediocre but no longer limiting** — 131 ms average,
+   0% loss, RSSI -68. Improve when convenient (closer AP, different
+   channel, external-antenna board); not a blocker.
 3. **Try a real logger** — the protocol is verified against
    `tools/wk-test.py`, not yet against N1MM+/RUMlogNG through
    `tools/wk-bridge.py`. That is the last compatibility unknown.

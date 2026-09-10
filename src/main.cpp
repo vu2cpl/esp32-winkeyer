@@ -249,6 +249,7 @@ void setup() {
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
+  mqtt.setSocketTimeout(2);   // default is 15 s of blocked loop() on a bad link
 }
 
 // ── Loop ──────────────────────────────────────────────────
@@ -259,10 +260,21 @@ void loop() {
   WinKeyer::poll();
   Flex::poll();
 
+  // MQTT is the lowest-priority thing here and the only blocking call in the
+  // loop. PubSubClient::connect() waits on the socket, and while it waits the
+  // WinKeyer host link is not being serviced — a logger sees the keyer stall.
+  // So: never attempt it while CW is in flight, cap the wait, and back off
+  // when the broker keeps refusing instead of stalling every 5 s forever.
   if (WiFi.status() == WL_CONNECTED) {
     if (!mqtt.connected()) {
       static unsigned long lastTry = 0;
-      if (millis() - lastTry > 5000) { mqttConnect(); lastTry = millis(); }
+      static uint32_t      backoff = 5000;
+      bool quiet = !Keyer::busy() && !WinKeyer::hostOpen();
+      if (quiet && millis() - lastTry > backoff) {
+        lastTry = millis();
+        if (mqttConnect()) backoff = 5000;
+        else               backoff = min<uint32_t>(backoff * 2, 60000);
+      }
     }
     mqtt.loop();
   }
