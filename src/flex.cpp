@@ -45,6 +45,7 @@ String   rxLine;
 String   radioHandle;
 bool     subscribed = false;
 String   boundClientId;      // GUI client we transmit on behalf of
+String   guiHandle;          // ...and its handle, required on every cw key
 
 long     queuedIdx = 0;      // index returned by the last "cwx send"
 long     sentIdx   = 0;      // index reported by "cwx sent="
@@ -186,8 +187,18 @@ void onLine(const String& line) {
         // Skip ourselves: our own handle came back on connect.
         if (id.length() > 8 && !body.startsWith("client 0x" + radioHandle)) {
           boundClientId = id;
+          // The handle sits right after "client " and is needed verbatim on
+          // every keying command — binding alone is not enough, and without
+          // it the radio accepts cw key but produces no RF.
+          int hs = body.indexOf("0x");
+          if (hs >= 0) {
+            int he = hs;
+            while (he < (int)body.length() && body[he] > ' ') he++;
+            guiHandle = body.substring(hs, he);
+          }
           sendCmd("client bind client_id=" + id);
-          Serial.printf("[FLEX] binding to GUI client %s\n", id.c_str());
+          Serial.printf("[FLEX] bound to GUI client %s (handle %s)\n",
+                        id.c_str(), guiHandle.c_str());
         }
       }
     }
@@ -282,16 +293,18 @@ void pumpKeying() {
       xmitOn = true;
       if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
     }
-    // Both fields are 16-bit and roll over at 0xFFFF: time is milliseconds,
-    // index is a sequence counter incremented per keying command. Sending a
-    // full 32-bit millis() as the timestamp — as this did at first — puts a
-    // value outside the field the radio expects, and the result is PTT
-    // switching with no carrier. This timestamped stream is the same
-    // interface Maestro uses, and it is what lets the radio reconstruct the
-    // element timing rather than keying on packet arrival.
-    tcp.printf("C%lu|cw key %d time=0x%04X index=0x%04X\n",
+    // Form taken from MORCONI, which keys a Flex exactly this way:
+    //   cw key 1 time=0xB85A index=225 client_handle=0x6A2C5ABC
+    // time is milliseconds as 16-bit hex, index a decimal counter, and
+    // client_handle is the GUI client's handle. That last one is not
+    // optional: without it the radio accepts the command and produces no
+    // RF, which is the failure this chased for hours.
+    // The timestamps are what let the radio reconstruct element timing
+    // rather than keying on packet arrival, so the fist survives the link.
+    tcp.printf("C%lu|cw key %d time=0x%04X index=%u client_handle=%s\n",
                (unsigned long)seq++, e.down ? 1 : 0,
-               (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF));
+               (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
+               guiHandle.length() ? guiHandle.c_str() : "0x0");
     if (logKeying) Serial.printf("[FLEX] cw key %d\n", e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();
