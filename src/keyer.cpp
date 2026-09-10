@@ -8,6 +8,8 @@
 //
 //  Timing: PARIS standard — dit = 1200/WPM ms, dah = 3 dits,
 //  inter-element = 1 dit, inter-char = 3 dits, word = 7 dits.
+//  Weighting shifts the mark/space balance without changing WPM;
+//  ratio changes dah length; Farnsworth stretches only the gaps.
 //
 //  Iambic semantics (Curtis): both modes latch the opposite
 //  paddle during an element; mode B also latches during the
@@ -49,39 +51,68 @@ namespace {
 
 // ── Configuration (written from loop task, read by keyer task) ──
 volatile uint8_t   cfgWpm       = 20;
-volatile uint16_t  cfgDitMs     = 1200 / 20;
+volatile uint8_t   cfgWeight    = 50;
+volatile uint8_t   cfgRatio     = 50;
+volatile uint8_t   cfgFarns     = 0;
 volatile KeyerMode cfgMode      = KEYER_IAMBIC_B;
 volatile bool      cfgSwap      = false;
 volatile bool      cfgSidetone  = true;
 volatile uint16_t  cfgToneHz    = 600;
 volatile bool      cfgPtt       = true;
+volatile bool      cfgKeyOut    = true;
 volatile uint16_t  cfgLeadMs    = 50;
 volatile uint16_t  cfgTailMs    = 250;
 volatile bool      cfgPotEn     = false;   // off until a pot is wired — GPIO34 floats
 volatile uint8_t   cfgPotMin    = 10;
 volatile uint8_t   cfgPotRange  = 25;
 
+// ── Derived timing, recomputed whenever the above change ──
+volatile uint16_t tMarkDit = 60, tMarkDah = 180;   // key-down durations
+volatile uint16_t tGapElem = 60;                   // inter-element space
+volatile uint16_t tGapChar = 120;                  // *additional* after a character
+volatile uint16_t tGapWord = 240;                  // *additional* for a space
+
+void recalc() {
+  uint16_t unit = 1200 / (cfgWpm ? cfgWpm : 20);
+  // Weighting moves the mark/space boundary without changing overall WPM.
+  uint32_t w = cfgWeight ? cfgWeight : 50;
+  tMarkDit = (uint16_t)((unit * 2 * w) / 100);
+  tGapElem = (uint16_t)(unit * 2 - tMarkDit);
+  if (tMarkDit < 5) tMarkDit = 5;
+  if (tGapElem < 5) tGapElem = 5;
+  // Ratio: nominal 50 → dah is 3 dits.
+  tMarkDah = (uint16_t)((uint32_t)tMarkDit * 3 * (cfgRatio ? cfgRatio : 50) / 50);
+  // Farnsworth stretches only the inter-character and word gaps.
+  uint16_t gapUnit = unit;
+  if (cfgFarns >= 5 && cfgFarns < cfgWpm) gapUnit = 1200 / cfgFarns;
+  tGapChar = gapUnit * 2;
+  tGapWord = gapUnit * 4;
+}
+
 // ── Cross-task signalling ──
 QueueHandle_t  charQ;
-volatile bool  flagClear   = false;
-volatile bool  flagTune    = false;
-volatile bool  flagBreakIn = false;   // sticky until read via paddleBreakIn()
+volatile bool  flagClear    = false;
+volatile bool  flagTune     = false;
+volatile bool  flagPttHold  = false;
+volatile bool  flagBreakIn  = false;   // sticky until read via paddleBreakIn()
 
 // ── Keyer-task state ──
 enum State : uint8_t { ST_IDLE, ST_LEAD, ST_KEYDOWN, ST_GAP, ST_TUNE };
-State    state       = ST_IDLE;
+volatile State state = ST_IDLE;
 uint32_t timerMs     = 0;
 bool     curIsDah    = false;
 bool     curIsAuto   = false;   // current element from buffer (vs paddles)
 bool     lastWasDah  = false;
 bool     memDit      = false, memDah = false;
-const char* pattern  = nullptr;  // remaining elements of the char being sent
+bool     mergeNext   = false;   // suppress the gap after the next character
+const char* pattern  = nullptr; // remaining elements of the char being sent
 bool     pttOn       = false;
 uint32_t tailTimer   = 0;
+volatile bool keyDownFlag = false;
 
 // Debounced paddles
 uint8_t ditCnt = 0, dahCnt = 0;
-bool    dit = false, dah = false;
+volatile bool dit = false, dah = false;
 bool    prevDit = false, prevDah = false;
 static const uint8_t DEBOUNCE_TICKS = 3;
 
@@ -95,31 +126,44 @@ static const int SIDETONE_CH = 0;
 // ── Low-level outputs ─────────────────────────────────────
 void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
 void toneOff() { ledcWriteTone(SIDETONE_CH, 0); }
-void keyDown() { digitalWrite(PIN_KEY_OUT, HIGH); toneOn(); }
-void keyUp()   { digitalWrite(PIN_KEY_OUT, LOW);  toneOff(); }
-void pttAssert()  { if (cfgPtt) { digitalWrite(PIN_PTT_OUT, HIGH); } pttOn = true; }
-void pttRelease() { digitalWrite(PIN_PTT_OUT, LOW); pttOn = false; }
+void keyDown() {
+  if (cfgKeyOut) digitalWrite(PIN_KEY_OUT, HIGH);
+  keyDownFlag = true;
+  toneOn();
+}
+void keyUp() {
+  digitalWrite(PIN_KEY_OUT, LOW);
+  keyDownFlag = false;
+  toneOff();
+}
+void pttAssert()  { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
+void pttRelease() {
+  if (flagPttHold) return;          // host is holding PTT down explicitly
+  digitalWrite(PIN_PTT_OUT, LOW);
+  pttOn = false;
+}
 
 // ── State machine helpers ─────────────────────────────────
 void startElement(bool isDah, bool isAuto) {
-  curIsDah  = isDah;
-  curIsAuto = isAuto;
+  curIsDah   = isDah;
+  curIsAuto  = isAuto;
   lastWasDah = isDah;
   if (isDah) memDah = false; else memDit = false;
   keyDown();
   state   = ST_KEYDOWN;
-  timerMs = isDah ? 3u * cfgDitMs : cfgDitMs;
+  timerMs = isDah ? tMarkDah : tMarkDit;
 }
 
 void goIdle() {
   pattern = nullptr;
   memDit = memDah = false;
+  mergeNext = false;
   state = ST_IDLE;
   tailTimer = cfgTailMs;
 }
 
-// Decide what happens after an inter-element/char/word gap expires
-// (also entered directly from IDLE/LEAD when work appears).
+// Decide what happens after a gap expires (also entered from IDLE/LEAD
+// when work appears).
 void decideNext() {
   // Paddles first. Mode B considers latched memory; mode A only live paddles.
   bool wantDit = dit || (cfgMode == KEYER_IAMBIC_B && memDit);
@@ -130,28 +174,28 @@ void decideNext() {
 
   // Continue the character in progress.
   if (pattern && *pattern) { startElement(*pattern++ == '-', true); return; }
-  if (pattern && !*pattern) {
-    // Character finished: 1-dit gap already sent, add 2 more (inter-char = 3).
+  if (pattern) {
+    // Character finished. One element gap has already elapsed; add the rest
+    // of the inter-character space unless a merge (prosign) suppressed it.
     pattern = nullptr;
+    if (mergeNext) { mergeNext = false; decideNext(); return; }
     state = ST_GAP;
-    timerMs = 2u * cfgDitMs;
+    timerMs = tGapChar;
     return;
   }
 
-  // Pop the next buffered character.
+  // Pop the next buffered item.
   char c;
-  if (xQueueReceive(charQ, &c, 0) == pdTRUE) {
-    if (c == ' ') {                    // word gap: 3 dits sent after last char + 4 more = 7
+  while (xQueueReceive(charQ, &c, 0) == pdTRUE) {
+    if (c == KEYER_MERGE_MARK) { mergeNext = true; continue; }
+    if (c == ' ') {                    // word gap, on top of the character gap
       state = ST_GAP;
-      timerMs = 4u * cfgDitMs;
+      timerMs = tGapWord;
       return;
     }
     pattern = morseFor(c);
     if (pattern && *pattern) { startElement(*pattern++ == '-', true); return; }
     pattern = nullptr;                 // unknown char — skip it
-    state = ST_GAP;
-    timerMs = 1;
-    return;
   }
 
   goIdle();
@@ -159,12 +203,12 @@ void decideNext() {
 
 // Begin activity out of idle: honour PTT lead-in before the first element.
 void startActivity() {
-  if (cfgPtt && !pttOn) {
+  if (cfgPtt && !pttOn && cfgLeadMs) {
     pttAssert();
     state = ST_LEAD;
-    timerMs = cfgLeadMs ? cfgLeadMs : 1;
+    timerMs = cfgLeadMs;
   } else {
-    pttAssert();     // refresh pttOn even if PTT output disabled
+    pttAssert();
     decideNext();
   }
 }
@@ -190,8 +234,8 @@ void samplePot() {
   if (potLastWpm < 0) { potLastWpm = wpm; return; }   // first reading: don't stomp boot speed
   if (wpm != potLastWpm) {
     potLastWpm = wpm;
-    cfgWpm   = wpm;
-    cfgDitMs = 1200 / wpm;
+    cfgWpm = wpm;
+    recalc();
   }
 }
 
@@ -208,6 +252,7 @@ void keyerTask(void*) {
       flagClear = false;
       xQueueReset(charQ);
       pattern = nullptr;
+      mergeNext = false;
       if (curIsAuto && state == ST_KEYDOWN) { keyUp(); goIdle(); }
       else if (state == ST_GAP)             { goIdle(); }
     }
@@ -217,8 +262,9 @@ void keyerTask(void*) {
     if (paddleEdge && (pattern || uxQueueMessagesWaiting(charQ) > 0)) {
       xQueueReset(charQ);
       pattern = nullptr;
+      mergeNext = false;
       flagBreakIn = true;
-      if (curIsAuto && state == ST_KEYDOWN) { keyUp(); state = ST_GAP; timerMs = cfgDitMs; }
+      if (curIsAuto && state == ST_KEYDOWN) { keyUp(); state = ST_GAP; timerMs = tGapElem; }
     }
 
     // Tune mode overrides everything.
@@ -262,7 +308,7 @@ void keyerTask(void*) {
         if (timerMs == 0) {
           keyUp();
           state = ST_GAP;
-          timerMs = cfgDitMs;          // inter-element space
+          timerMs = tGapElem;          // inter-element space
         }
         break;
 
@@ -296,7 +342,8 @@ void begin() {
 
   analogSetPinAttenuation(PIN_SPEED_POT, ADC_11db);   // full 0–3.3 V range
 
-  charQ = xQueueCreate(128, sizeof(char));
+  recalc();
+  charQ = xQueueCreate(256, sizeof(char));
 
   // Priority well above loopTask (1); pinned to core 1 alongside it —
   // WiFi/BT stacks live on core 0 and never preempt element timing.
@@ -304,9 +351,8 @@ void begin() {
 }
 
 void setWpm(uint8_t wpm) {
-  wpm = constrain(wpm, (uint8_t)5, (uint8_t)60);
-  cfgWpm = wpm;
-  cfgDitMs = 1200 / wpm;
+  cfgWpm = constrain(wpm, (uint8_t)5, (uint8_t)60);
+  recalc();
   potLastWpm = -1;   // host speed rules until the pot moves again
 }
 uint8_t   getWpm()  { return cfgWpm; }
@@ -322,20 +368,34 @@ void      setPttLeadMs(uint16_t ms) { cfgLeadMs = ms; }
 void      setPttTailMs(uint16_t ms) { cfgTailMs = ms; }
 void      setPotEnabled(bool en) { cfgPotEn = en; potLastWpm = -1; }
 void      setPotRange(uint8_t minWpm, uint8_t range) { cfgPotMin = minWpm; cfgPotRange = range; }
+void      setKeyOutEnabled(bool en) { cfgKeyOut = en; if (!en) digitalWrite(PIN_KEY_OUT, LOW); }
+void      setWeighting(uint8_t w) { cfgWeight = constrain(w, (uint8_t)10, (uint8_t)90); recalc(); }
+void      setRatio(uint8_t r)     { cfgRatio  = constrain(r, (uint8_t)33, (uint8_t)66); recalc(); }
+void      setFarnsworth(uint8_t w){ cfgFarns  = w; recalc(); }
 
 bool sendChar(char c) {
-  c = toupper((unsigned char)c);
-  if (c != ' ' && !morseFor(c)) return true;   // silently skip unknown chars
+  if (c != KEYER_MERGE_MARK) {
+    c = toupper((unsigned char)c);
+    if (c != ' ' && !morseFor(c)) return true;   // silently skip unknown chars
+  }
   return xQueueSend(charQ, &c, 0) == pdTRUE;
 }
+
+size_t queueDepth() { return charQ ? uxQueueMessagesWaiting(charQ) : 0; }
 
 void clearBuffer() { flagClear = true; }
 void tune(bool on) { flagTune = on; }
 bool tuning()      { return flagTune; }
 
-bool busy() {
-  return state != ST_IDLE || uxQueueMessagesWaiting(charQ) > 0;
+void pttManual(bool on) {
+  flagPttHold = on;
+  if (on) { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
+  else if (state == ST_IDLE) { digitalWrite(PIN_PTT_OUT, LOW); pttOn = false; }
 }
+
+bool busy()         { return state != ST_IDLE || queueDepth() > 0; }
+bool keyIsDown()    { return keyDownFlag; }
+bool paddleActive() { return dit || dah; }
 
 bool paddleBreakIn() {
   bool b = flagBreakIn;

@@ -1,16 +1,20 @@
 // ============================================================
 //  ESP32 WinKeyer
-//  WinKeyer (K1EL WK3 protocol) clone on ESP32 — WiFi TCP bridge,
-//  iambic paddle keying, sidetone, speed pot.
+//  WinKeyer (K1EL WK protocol) clone on ESP32 — WiFi TCP bridge,
+//  FlexRadio backend, iambic paddle keying, sidetone, speed pot.
 //
-//  The keyer core (src/keyer.cpp) starts first and runs on its own
-//  high-priority task — the keyer keys even with no WiFi. WiFi
-//  onboarding is a NON-blocking WiFiManager portal; MQTT reports
-//  status to the shack broker once the network is up.
+//  Start order matters: the keyer core comes up first and runs on
+//  its own high-priority task, so the paddles work with no network
+//  at all. WiFi onboarding is a NON-blocking WiFiManager portal.
 //
-//  Serial test CLI (115200) until the WK3 engine lands:
-//    /wpm 25    /mode a|b    /swap      /tune      /pot on|off
-//    /st 700    /st on|off   /ptt on|off            /status
+//  Serial (115200) is a text CLI by default and switches itself to
+//  the WinKeyer binary protocol the moment a host-open command
+//  arrives — 0x00 is not a byte a human types, so the two uses
+//  cannot be confused. Host close returns it to the CLI.
+//
+//    /wpm 25   /mode a|b   /swap        /tune       /pot on|off
+//    /st 700   /st on|off  /ptt on|off  /status     /net
+//    /backend local|flex   /flex on|off /flex ip <addr>
 //    anything else is sent as CW.
 // ============================================================
 
@@ -22,11 +26,15 @@
 #include "config.h"
 #include "pins.h"
 #include "keyer.h"
+#include "winkeyer.h"
+#include "flex.h"
+#include "net.h"
 
 WiFiClient   net;
 PubSubClient mqtt(net);
 WiFiManager  wm;
 unsigned long lastBeat = 0;
+bool serialWkMode = false;
 
 // ── MQTT ─────────────────────────────────────────────────
 void onMqtt(char* topic, byte* payload, unsigned int len) {
@@ -49,7 +57,10 @@ bool mqttConnect() {
   return ok;
 }
 
-// ── Serial test CLI ───────────────────────────────────────
+// ── Serial as a WinKeyer transport ────────────────────────
+void serialSink(const uint8_t* data, size_t len) { Serial.write(data, len); }
+
+// ── Serial CLI ────────────────────────────────────────────
 void printStatus() {
   Serial.printf("[KEYER] wpm=%u mode=%s swap=%s sidetone=%uHz tune=%s busy=%s\n",
                 Keyer::getWpm(),
@@ -58,6 +69,22 @@ void printStatus() {
                 Keyer::getSidetoneHz(),
                 Keyer::tuning() ? "on" : "off",
                 Keyer::busy() ? "yes" : "no");
+  Serial.printf("[WK]    backend=%s host=%s\n",
+                WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
+                WinKeyer::hostOpen() ? "open" : "closed");
+  Serial.printf("[FLEX]  %s radio=%s %s\n",
+                Flex::enabled() ? "enabled" : "disabled",
+                Flex::radioIp().length() ? Flex::radioIp().c_str() : "(not found)",
+                Flex::connected() ? "connected" : "");
+}
+
+void printNet() {
+  Serial.printf("[NET]   wifi=%s ip=%s rssi=%d\n",
+                WiFi.status() == WL_CONNECTED ? "up" : "down",
+                WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
+  Serial.printf("[NET]   %s.local:%d  client=%s\n",
+                MDNS_HOSTNAME, WK_TCP_PORT,
+                Net::clientConnected() ? "connected" : "none");
 }
 
 void handleLine(char* line) {
@@ -65,6 +92,7 @@ void handleLine(char* line) {
   if (line[0] == '/') {
     char* cmd = strtok(line + 1, " ");
     char* arg = strtok(nullptr, " ");
+    char* arg2 = strtok(nullptr, " ");
     if (!cmd) return;
     if (!strcasecmp(cmd, "wpm") && arg) {
       Keyer::setWpm(atoi(arg));
@@ -89,10 +117,33 @@ void handleLine(char* line) {
       else if (!strcasecmp(arg, "off")) Keyer::setSidetone(false);
       else                              Keyer::setSidetoneHz(atoi(arg));
       Serial.printf("[KEYER] sidetone %s\n", arg);
+    } else if (!strcasecmp(cmd, "backend") && arg) {
+      bool useFlex = !strcasecmp(arg, "flex");
+      WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
+      // On the Flex path the radio keys itself; the local key line must stay
+      // idle or the rig would be keyed twice. Sidetone stays on for the op.
+      Keyer::setKeyOutEnabled(!useFlex);
+      Serial.printf("[WK] backend=%s\n", useFlex ? "flex" : "local");
+    } else if (!strcasecmp(cmd, "flex")) {
+      if (arg && !strcasecmp(arg, "on"))       { Flex::setEnabled(true);  Serial.println("[FLEX] enabled"); }
+      else if (arg && !strcasecmp(arg, "off")) { Flex::setEnabled(false); Serial.println("[FLEX] disabled"); }
+      else if (arg && !strcasecmp(arg, "ip") && arg2) {
+        Flex::setManualIp(arg2);
+        Serial.printf("[FLEX] fixed IP %s\n", arg2);
+      } else if (arg && !strcasecmp(arg, "auto")) {
+        Flex::setManualIp("");
+        Serial.println("[FLEX] using discovery");
+      } else {
+        Serial.printf("[FLEX] %s radio=%s connected=%s\n",
+                      Flex::enabled() ? "enabled" : "disabled",
+                      Flex::radioIp().c_str(), Flex::connected() ? "yes" : "no");
+      }
+    } else if (!strcasecmp(cmd, "net")) {
+      printNet();
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm N /mode a|b /swap /tune /pot on|off /ptt on|off /st N|on|off /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /net /status");
     }
     return;
   }
@@ -106,13 +157,33 @@ void pollSerial() {
   static char buf[80];
   static uint8_t len = 0;
   while (Serial.available()) {
-    char c = Serial.read();
+    int c = Serial.read();
+    if (c < 0) return;
+
+    if (serialWkMode) {
+      WinKeyer::feed((uint8_t)c, serialSink);
+      if (!WinKeyer::hostOpen()) {      // host closed — hand the port back to the CLI
+        serialWkMode = false;
+        len = 0;
+        Serial.println("\n[WK] serial host closed — CLI active");
+      }
+      continue;
+    }
+
+    // A null byte is the WinKeyer admin prefix and never valid CLI input.
+    if (c == 0x00) {
+      serialWkMode = true;
+      len = 0;
+      WinKeyer::feed(0x00, serialSink);
+      continue;
+    }
+
     if (c == '\n' || c == '\r') {
       buf[len] = '\0';
       handleLine(buf);
       len = 0;
     } else if (len < sizeof(buf) - 1) {
-      buf[len++] = c;
+      buf[len++] = (char)c;
     }
   }
 }
@@ -125,15 +196,19 @@ void setup() {
 
   // Keyer first — it must work with no WiFi at all.
   Keyer::begin();
+  WinKeyer::begin();
   Serial.printf("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
                 Keyer::getWpm(), Keyer::getSidetoneHz());
 
   // Non-blocking onboarding: portal runs in the background, loop keeps running.
-  wm.setHostname("esp32-winkeyer");
+  wm.setHostname(MDNS_HOSTNAME);
   wm.setConfigPortalTimeout(WIFI_PORTAL_TIMEOUT_S);
   wm.setConfigPortalBlocking(false);
   Serial.println("[WiFi] autoConnect (portal: vu2cpl-esp32-winkeyer-setup)");
   wm.autoConnect(WIFI_AP_NAME, WIFI_AP_PASS);
+
+  Net::begin();
+  Flex::begin();
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
@@ -143,8 +218,9 @@ void setup() {
 void loop() {
   wm.process();          // captive portal, when active
   pollSerial();
-
-  if (Keyer::paddleBreakIn()) Serial.println("[KEYER] paddle break-in — buffer cleared");
+  Net::poll();
+  WinKeyer::poll();
+  Flex::poll();
 
   if (WiFi.status() == WL_CONNECTED) {
     if (!mqtt.connected()) {
@@ -157,13 +233,17 @@ void loop() {
   if (millis() - lastBeat > 10000) {
     lastBeat = millis();
     digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
-    StaticJsonDocument<160> doc;
+    StaticJsonDocument<256> doc;
     doc["event"]    = "heartbeat";
     doc["uptime_s"] = millis() / 1000;
     doc["rssi"]     = WiFi.RSSI();
     doc["wpm"]      = Keyer::getWpm();
     doc["busy"]     = Keyer::busy();
-    char buf[160];
+    doc["backend"]  = WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
+    doc["wk_host"]  = WinKeyer::hostOpen();
+    doc["tcp"]      = Net::clientConnected();
+    if (Flex::enabled()) doc["flex"] = Flex::connected();
+    char buf[256];
     serializeJson(doc, buf);
     if (mqtt.connected()) mqtt.publish(T_STATUS, buf, true);
   }

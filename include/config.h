@@ -14,6 +14,19 @@
 #define WIFI_AP_PASS           "vu2cpl1234"
 #define WIFI_PORTAL_TIMEOUT_S  180
 
+// ── WinKeyer transport ────────────────────────────────────
+// Raw WinKeyer byte stream over TCP; the host-side bridge in tools/
+// maps it to a serial port. Advertised as _winkeyer._tcp over mDNS.
+#define MDNS_HOSTNAME   "winkeyer"
+#define WK_TCP_PORT     8088
+
+// ── FlexRadio (SmartSDR) backend ──────────────────────────
+// Command API is TCP 4992. Discovery broadcasts: VITA-49 on UDP 4991
+// (firmware > v1.1.3), legacy proprietary format on UDP 4992.
+#define FLEX_API_PORT            4992
+#define FLEX_DISCOVERY_PORT_NEW  4991
+#define FLEX_DISCOVERY_PORT_OLD  4992
+
 // ── MQTT broker (shack) ───────────────────────────────────
 // Broker requires auth (since 2026-08-21). Role account + password come from
 // secrets.h — use the account scoped to this device (iot for sensors/Tasmota,
