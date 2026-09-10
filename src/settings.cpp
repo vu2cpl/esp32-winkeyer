@@ -184,6 +184,11 @@ void begin() {
   WinKeyer::setMonitor(loadU32("monitor", 1));
   WinKeyer::setPaddleEcho(loadU32("pecho", 2));
   Keyer::setRadio(loadU32("radio", 1));
+  // Flex keying details. These were CLI-only and unpersisted, so they had
+  // to be re-entered after every reflash or board swap.
+  { String v = loadStr("flexcmd"); if (v.length()) Flex::setKeyVerb(v.c_str()); }
+  Flex::setBind(loadU32("flexbind", 1));
+  Flex::setUseXmit(loadU32("flexxmit", 1));
   Fsk::setBaud(loadU32("fskbaud", 4545) / 100.0f);
   Fsk::setInvert(loadU32("fskinv", 0));
   Fsk::setDiddle(loadU32("fskdiddle", 0));
@@ -372,6 +377,24 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     Flex::setEnabled(b);          // persists in its own NVS namespace
     snprintf(msg, msgLen, "flex=%s", b ? "enabled" : "disabled");
 
+  } else if (!strcasecmp(key, "flexcmd")) {
+    if (strcasecmp(val, "key") && strcasecmp(val, "ptt"))
+      return fail("flexcmd: key|ptt");
+    Flex::setKeyVerb(val); saveStr("flexcmd", val);
+    snprintf(msg, msgLen, "flex keying command: cw %s", Flex::keyVerb());
+
+  } else if (!strcasecmp(key, "flexbind")) {
+    if (!boolish(val)) return fail("flexbind: on|off");
+    bool b = truthy(val);
+    Flex::setBind(b); saveU32("flexbind", b);
+    snprintf(msg, msgLen, "flex client bind=%s — reconnecting", b ? "on" : "off");
+
+  } else if (!strcasecmp(key, "flexxmit")) {
+    if (!boolish(val)) return fail("flexxmit: on|off");
+    bool b = truthy(val);
+    Flex::setUseXmit(b); saveU32("flexxmit", b);
+    snprintf(msg, msgLen, "flex xmit(PTT)=%s", b ? "on" : "off");
+
   } else if (!strcasecmp(key, "flexip")) {
     Flex::setManualIp(val);       // "" = back to discovery
     snprintf(msg, msgLen, "flex ip=%s", strlen(val) ? val : "(discovery)");
@@ -424,6 +447,9 @@ void toJson(JsonDocument& doc) {
   f["connected"] = Flex::connected();
   f["ip"]        = Flex::radioIp();
   f["slice"]     = Flex::sliceReady();
+  f["cmd"]       = Flex::keyVerb();
+  f["bind"]      = Flex::bindEnabled();
+  f["xmit"]      = Flex::useXmit();
 }
 
 }  // namespace Settings

@@ -173,6 +173,15 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend>BACKEND</legend>
+<div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
+  <span class="val" id="flexState"></span></div>
+<div class="row"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
+  <input type="text" id="flexip" style="width:130px" placeholder="auto (discovery)"></div>
+<div class="row"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
+  <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
+  <label style="flex:0 0 auto"><input type="checkbox" id="flexbind"> bind GUI</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="flexxmit"> xmit</label></div>
 <div class="row"><label title="Which KEY/PTT pair the keyer drives. Radio 1 is GPIO33/32, radio 2 is GPIO18/19. Both keys them together — intended for a rig plus an amp or monitor, but it does mean two transmitters key at once.">Radio</label>
   <select id="radio"><option value="1">Radio 1</option>
   <option value="2">Radio 2</option><option value="both">Both</option></select></div>
@@ -215,7 +224,8 @@ let editing=null,pend=null;
 function note(t,err){const m=$('msg');m.textContent=t;m.className=err?'err':''}
 async function post(u){const r=await fetch(u,{method:'POST'});const t=await r.text();
   note(t,!r.ok);refresh()}
-const KEYMAP={fskbaud:'fskbaud',fskinv:'fskinv',fskdid:'fskdiddle'};
+const KEYMAP={fskbaud:'fskbaud',fskinv:'fskinv',fskdid:'fskdiddle',
+              flexbind:'flexbind',flexxmit:'flexxmit',flexcmd:'flexcmd'};
 function set(k,v){post('/api/set?k='+(KEYMAP[k]||k)+'&v='+encodeURIComponent(v))}
 function send(){const t=$('txt').value.trim();if(!t)return;
   post('/api/send?t='+encodeURIComponent(t));$('txt').value=''}
@@ -244,7 +254,12 @@ async function refresh(){
   led('l-tune',s.tune,true);led('l-pot',s.pot);
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
-  $('flexip').textContent=s.flex.enabled?(s.flex.ip||'searching'):'';
+  $('flexState').textContent = !s.flex.enabled ? 'off'
+      : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
+      : 'searching';
+  $('flex').checked=s.flex.enabled;
+  $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
+  if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
   $('legSerial').title = s.baud==1200
     ? 'Ready for a logger: 1200 8N2 is what a WinKeyer host expects.'
     : 'Console rate. A logger looking for a WinKeyer will NOT talk to the port '
@@ -259,6 +274,7 @@ async function refresh(){
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
     pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
     fskbaud:String(s.fskbaud),radio:(s.radio==3?'both':String(s.radio)),
+    flexcmd:s.flex.cmd,
     weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
@@ -305,9 +321,12 @@ bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
 $('call').onfocus=()=>editing='call';
 $('call').onblur =()=>{editing=null;post('/api/mem?call='+encodeURIComponent($('call').value))};
-for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio'])
+$('flexip').onfocus=()=>editing='flexip';
+$('flexip').onblur =()=>{editing=null;set('flexip',$('flexip').value)};
+for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio','flexcmd'])
   $(id).onchange=e=>set(id,e.target.value);
-for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid'])
+for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid',
+                 'flex','flexbind','flexxmit'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 $('fsktxt').addEventListener('keydown',e=>{if(e.key==='Enter')fsksend()});
