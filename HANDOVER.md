@@ -569,6 +569,20 @@ makes the keyer feel slow.
     deltas. Both fixes came from **soft-morconi's bridge**, which had
     already solved this; that project is now a private repo rather than
     three untracked files.
+  - **Keying is now tied to the FlexRadio enable** (2026-09-11): enabling
+    moves keying to the radio, disabling returns it to the local key line,
+    and the page drops Flex from the Keying choices while it is off. The
+    half-states were traps — keying a disabled backend sends CW nowhere
+    while the UI still claims the radio.
+  - **`tools/web-preview.py` serves the settings page from `src/web.cpp`
+    with a stubbed API.** Use it before flashing any UI change. Three
+    faults reached hardware in one session past a clean build, each
+    invisible to the compiler: a line in the wrong scope blanked the whole
+    page, `hidden` on a `.row` did nothing because `.row{display:flex}`
+    outranks it, and `hidden` on an `<option>` is ignored by Safari (but
+    honoured by Chromium, so it "verified" fine). **Check what is
+    RENDERED** — `getComputedStyle`/`offsetParent` — not what
+    `element.hidden` reports.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence

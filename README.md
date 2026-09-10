@@ -596,6 +596,34 @@ zero left it there until the next reboot.
 The web page shows the *effective* values, so while a logger is connected
 you are seeing the host's numbers, not your saved ones.
 
+### FlexRadio and where keying goes
+
+Enabling the FlexRadio backend switches keying **to the radio**; disabling
+it hands keying back to the **local key line**. Either is overridable from
+the Keying selector afterwards. The coupling exists because the two
+half-states are traps: keying a switched-off backend sends CW nowhere
+while the page still claims the radio.
+
+With Flex disabled the page hides its settings and drops it from the
+Keying choices altogether, so an unreachable backend cannot be selected.
+
+### Checking the settings page without flashing
+
+The page is a PROGMEM string inside the firmware, so it normally takes a
+flash to look at. It doesn't have to:
+
+```bash
+python3 tools/web-preview.py     # http://127.0.0.1:8791/
+```
+
+That serves the real page out of `src/web.cpp` against a stubbed API — edit
+and reload, no board involved. **Use it before flashing UI changes.** A
+clean build says nothing about whether the JavaScript runs: one session put
+three faults on hardware that a single page load would have caught — a line
+in the wrong scope that blanked the page entirely, `hidden` on a `.row`
+doing nothing because `.row{display:flex}` outranks it, and `hidden` on an
+`<option>`, which Safari ignores.
+
 ### Which settings stick
 
 The **operator's** panel settings persist in NVS: speed, mode, swap,
@@ -629,6 +657,7 @@ tools/wk-bridge.py     TCP → PTY bridge for logging software
 tools/wk-test.py       protocol test harness
 tools/wk-timing.py     timestamped status — "not sent" vs "reported late"
 tools/flex-check.py    Flex prerequisite diagnostic + keying test
+tools/web-preview.py   serve the settings page locally, before flashing
 flash.sh / monitor.sh  serial-port pickers (never pin the port)
 install.py             toolchain bootstrap, macOS/Pi branch
 ```
