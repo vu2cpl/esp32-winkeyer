@@ -15,7 +15,7 @@ as a behavioural reference; the implementation here is original.
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
-| FlexRadio backend (discovery + `cwx`) | implemented, needs a radio to verify |
+| FlexRadio backend (discovery + `cwx`) | connects + subscribes (verified); keying untested — it transmits |
 | Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
 
 Display and Bluetooth keyboard are considered but not built — see
@@ -90,10 +90,16 @@ arrives, and back to the CLI on host close.
 ## FlexRadio
 
 ```
-/flex on            # enable, then it finds the radio by discovery
-/flex ip 192.168.1.77   # or pin the address
-/backend flex       # route buffered text to the radio
+/flex on                 # enable the backend (off by default, persists in NVS)
+/flex ip 192.168.1.50   # pin the radio's address
+/flex auto               # or rely on discovery (same subnet only)
+/backend flex            # route buffered text to the radio — this transmits
 ```
+
+**Discovery only works on the radio's own subnet** — it is a raw UDP
+broadcast, unlike mDNS. If the radio is on another segment, pin the IP.
+To find it, TCP-scan for port 4992; a Flex answers immediately with
+`V<version>` / `H<handle>`.
 
 In Flex mode, buffered text goes to the radio with `cwx send` and the
 **radio** generates the CW, so network jitter never reaches the air. The

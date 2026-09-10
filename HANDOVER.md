@@ -99,6 +99,27 @@ and back to the CLI on host close.
   replacing the built-in emulation. Prior art: the WKFlex community
   project.
 
+### The radio in this shack (found 2026-09-10)
+
+**192.168.1.50, SmartSDR API 1.4.0.0.** Connection and `sub cwx all`
+verified from the keyer.
+
+- **Discovery does not reach it.** The radio is on the 192.168.1.x
+  segment, the keyer is on 192.168.10.x, and discovery is a raw UDP
+  broadcast. It will never be auto-found from where the keyer sits — set
+  it explicitly: `/flex ip 192.168.1.50`. The setting persists in NVS
+  and reconnects across reboots.
+- **`client program <name>` is rejected** by 1.4.0.0 with error
+  `10000002 unknown client program`. Removed — the subscription is what
+  matters and it succeeds.
+- Finding it: nothing broadcast, so the radio was located by TCP-scanning
+  the shack subnets for port 4992. A Flex answers immediately with
+  `V<version>` / `H<handle>`, which makes it unmistakable.
+- **Not yet tested: actually sending CW.** `cwx send` keys the
+  transmitter and puts a signal on the air under Manoj's callsign, so
+  that test needs him present and the radio set up deliberately (dummy
+  load or a clear frequency). Requires `/backend flex`.
+
 ## Testing
 
 `tools/wk-test.py` acts as a WinKeyer host over TCP or serial;
@@ -228,10 +249,11 @@ against exposing it beyond one.
 4. **On-air timing check** — testing so far is functional, not
    calibrated. Verify element timing against a scope or a known-good
    decoder.
-5. **Flex backend needs a radio** to verify: discovery parsing, `cwx`
-   round-trip, and the `pending()` busy heuristic (derived from
-   `cwx send` reply index vs `cwx sent=` status) are all untested against
-   real hardware. Note discovery will not cross network segments here.
+5. **Flex: connection verified, keying is not.** The keyer connects to
+   192.168.1.50 and subscribes. Still untested because it transmits:
+   the `cwx send` round-trip, the 0x7F space encoding, and the
+   `pending()` busy heuristic (`cwx send` reply index vs `cwx sent=`
+   status). Needs `/backend flex` and Manoj present — see above.
 6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would
    silently disable sidetone or key output. Revisit after testing with a

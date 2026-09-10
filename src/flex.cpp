@@ -193,7 +193,9 @@ void poll() {
   pollSocket();
 
   if (!subscribed && radioHandle.length()) {
-    sendCmd("client program ESP32-WinKeyer");
+    // No "client program" here: SmartSDR 1.4.0.0 rejects it with
+    // 10000002 "unknown client program", and it buys us nothing —
+    // the subscription is what actually matters.
     sendCmd("sub cwx all");
     subscribed = true;
     Serial.printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
