@@ -68,6 +68,7 @@ bool          logKeying = true;   // chatty during bring-up
 QueueHandle_t keyQ = nullptr;
 bool          xmitOn = false;     // do we currently hold the transmitter?
 bool          keyIsDown = false;
+bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
 uint32_t      lastKeyMs = 0;
 uint32_t      pttTailMs = 400;    // hold TX this long after the last element
 
@@ -254,6 +255,15 @@ void setDirectKeying(bool on) {
 }
 bool directKeying() { return cfgDirect; }
 
+void setUseXmit(bool on) {
+  cfgUseXmit = on;
+  if (!on && xmitOn && tcp.connected()) {
+    sendCmd("xmit 0");
+    xmitOn = false;
+  }
+}
+bool useXmit() { return cfgUseXmit; }
+
 // Drain queued key transitions onto the socket. Called every loop pass.
 //
 // A bare "cw key" does nothing: the radio only keys for whichever client
@@ -266,15 +276,17 @@ void pumpKeying() {
 
   KeyEvt e;
   while (xQueueReceive(keyQ, &e, 0) == pdTRUE) {
-    if (e.down && !xmitOn) {
+    if (e.down && !xmitOn && cfgUseXmit) {
       tcp.printf("C%lu|xmit 1\n", (unsigned long)seq++);
       xmitOn = true;
       if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
     }
-    // time= lets the radio schedule the edge instead of keying on arrival,
-    // which is what keeps the CW readable across a jittery link.
-    tcp.printf("C%lu|cw key %d time=0x%lX\n",
-               (unsigned long)seq++, e.down ? 1 : 0, (unsigned long)e.at);
+    // No time= here. The parameter exists to let the radio schedule the
+    // edge rather than key on arrival, but it is in the radio's own time
+    // base — feeding it ESP32 millis() schedules the edge to a moment
+    // that never comes, which is PTT switching with no carrier. Keying on
+    // arrival costs us the jitter compensation; correctness first.
+    tcp.printf("C%lu|cw key %d\n", (unsigned long)seq++, e.down ? 1 : 0);
     if (logKeying) Serial.printf("[FLEX] cw key %d\n", e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();

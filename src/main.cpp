@@ -168,6 +168,10 @@ void handleLine(char* line) {
       } else if (arg && !strcasecmp(arg, "auto")) {
         Flex::setManualIp("");
         Serial.println("[FLEX] using discovery");
+      } else if (arg && !strcasecmp(arg, "ptt") && arg2) {
+        Flex::setUseXmit(!strcasecmp(arg2, "on"));
+        Serial.printf("[FLEX] ptt(xmit) %s — with it off, break-in must "
+                      "switch T/R from the key edge\n", arg2);
       } else {
         Serial.printf("[FLEX] %s radio=%s connected=%s\n",
                       Flex::enabled() ? "enabled" : "disabled",

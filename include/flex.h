@@ -31,6 +31,13 @@ void keyEvent(bool down);
 void setDirectKeying(bool on);
 bool directKeying();
 
+// Whether to assert PTT (xmit 1) around keying. With break-in/QSK the
+// radio can switch T/R off the key edge alone, in which case asserting
+// PTT ourselves may suppress the carrier. Runtime-switchable so this can
+// be settled by ear rather than by reflashing.
+void setUseXmit(bool on);
+bool useXmit();
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm
