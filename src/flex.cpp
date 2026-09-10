@@ -44,6 +44,7 @@ uint32_t seq = 1;
 String   rxLine;
 String   radioHandle;
 bool     subscribed = false;
+String   boundClientId;      // GUI client we transmit on behalf of
 
 long     queuedIdx = 0;      // index returned by the last "cwx send"
 long     sentIdx   = 0;      // index reported by "cwx sent="
@@ -140,7 +141,7 @@ void onLine(const String& line) {
     if (v > 0) queuedIdx = v;
     return;
   }
-  if (t == 'S') {                      // status: S<handle>|cwx sent=<n> ...
+  if (t == 'S') {                      // status: S<handle>|<object> ...
     int bar = line.indexOf('|');
     if (bar < 0) return;
     String body = line.substring(bar + 1);
@@ -148,6 +149,26 @@ void onLine(const String& line) {
     if (k >= 0) sentIdx = body.substring(k + 5).toInt();
     int e = body.indexOf("erase_stop=");
     if (e >= 0) sentIdx = body.substring(e + 11).toInt();
+
+    // A non-GUI client cannot transmit in its own right — the radio only
+    // allows TX in a GUI client's context (with none connected it reports
+    // tx_allowed=0, and CWX from an unbound client is refused as though
+    // someone else held the transmitter). So bind to the first GUI client
+    // we see and send CW on its behalf.
+    if (boundClientId.length() == 0 && body.startsWith("client ")) {
+      int idPos = body.indexOf("client_id=");
+      if (idPos >= 0 && body.indexOf("connected") >= 0) {
+        int s = idPos + 10, e2 = s;
+        while (e2 < (int)body.length() && body[e2] > ' ') e2++;
+        String id = body.substring(s, e2);
+        // Skip ourselves: our own handle came back on connect.
+        if (id.length() > 8 && !body.startsWith("client 0x" + radioHandle)) {
+          boundClientId = id;
+          sendCmd("client bind client_id=" + id);
+          Serial.printf("[FLEX] binding to GUI client %s\n", id.c_str());
+        }
+      }
+    }
   }
 }
 
@@ -174,6 +195,7 @@ void tryConnect() {
   tcp.setNoDelay(true);
   rxLine = "";
   subscribed = false;
+  boundClientId = "";
   queuedIdx = sentIdx = 0;
 }
 
@@ -215,6 +237,7 @@ void poll() {
     // 10000002 "unknown client program", and it buys us nothing —
     // the subscription is what actually matters.
     sendCmd("sub cwx all");
+    sendCmd("sub client all");     // so we can find a GUI client to bind to
     subscribed = true;
     Serial.printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
   }
