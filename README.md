@@ -14,9 +14,9 @@ as a behavioural reference; the implementation here is original.
 |---|---|
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
-| WiFi TCP transport + mDNS `winkeyer.local` | implemented, needs WiFi onboarding to verify |
+| WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend (discovery + `cwx`) | implemented, needs a radio to verify |
-| Host bridge (`tools/wk-bridge.py`) | implemented, needs the TCP path up |
+| Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
 
 Display and Bluetooth keyboard are considered but not built — see
 `HANDOVER.md`.

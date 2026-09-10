@@ -105,11 +105,27 @@ and back to the CLI on host close.
 `tools/wk-bridge.py` creates a PTY (default `/tmp/winkeyer`) bridged to
 the keyer's TCP port so logging software sees a serial device.
 
-**Verified on hardware 2026-09-10** (wired serial): host open returns
+**Verified on hardware 2026-09-10, both transports.** Host open returns
 0x17 (=23), status and pot reports arrive, `request status` answers,
 speed set works, and sending "TEST" produced exactly 6 KEYDOWN
-transitions (T·E·S·S·S·T = 1+1+3+1) before returning to idle. That is
-correct WinKeyer host behaviour.
+transitions (T·E·S·S·S·T = 1+1+3+1) before returning to idle, followed by
+a clean host close. That is correct WinKeyer host behaviour, confirmed
+over **wired serial** and over **WiFi TCP** (`wk-test.py --host …`).
+
+### Diagnostic traps hit while testing — do not repeat
+
+- **Do not reset the board with manual DTR/RTS toggling** to read the boot
+  log. On this CP2102 board it produces a burst of repeated resets that
+  looks exactly like a boot loop in the log. It is an artifact. Use
+  `./monitor.sh`, or open the port and just listen.
+- **Sleep before `reset_input_buffer()`.** The CP2102 driver holds a large
+  backlog when nothing has read the port for a while; draining it
+  immediately after open replays minutes of old output at once and looks
+  like a runaway log flood. Measured with timestamps, the MQTT retry is
+  exactly the intended 5 s.
+- **macOS Sequoia cannot scan for the setup AP.** `system_profiler
+  SPAirPortDataType` no longer lists nearby networks, so its silence is
+  not evidence the AP is down. Read the board's own `/net` output.
 
 ## What changed
 
@@ -124,14 +140,32 @@ correct WinKeyer host behaviour.
   reservation off the I²C pins. Flashed and verified the protocol engine
   over serial.
 
-## Network placement
+## Network placement (measured 2026-09-10)
 
-The keyer must sit on the **same subnet/VLAN as the logging computer**,
-and as the Flex radio if that backend is used. Both `winkeyer.local`
-(mDNS) and Flex discovery are broadcast-based and do not cross subnets —
-an IoT-VLAN placement would break discovery even though the MQTT
-heartbeat would still work. The shack MQTT broker is on 192.168.1.10,
-so the shack/trusted LAN is the natural home.
+Manoj's LAN is segmented and **routed between segments**. As tested:
+keyer on `<your-ssid>` = 192.168.30.20, Mac = 192.168.10.30, MQTT broker =
+192.168.1.10 — three subnets, all mutually reachable.
+
+What this actually means, measured rather than assumed:
+
+- **mDNS does cross the segments here.** `winkeyer.local` resolved and
+  pinged from the Mac on a different subnet, so something on the network
+  is reflecting mDNS. (An earlier note in this file claimed it would not
+  — that was wrong for this LAN.)
+- **Flex discovery will not.** It is a raw UDP broadcast and is not
+  reflected the way mDNS is. If the radio ends up on another segment,
+  skip discovery and pin the address with `/flex ip <addr>`.
+- **Latency across segments is ~100 ms**, which is very high for a LAN.
+  Harmless for CW — every element is timed on the keyer — but it makes
+  the case for putting the keyer on the same segment as the operating
+  position if convenient.
+- **MQTT reaches the broker but is rejected `rc=5` (unauthorized)**, i.e.
+  `include/secrets.h` still holds the example password, not the real
+  `iot` role password. Network placement is not the problem.
+
+**The WinKeyer TCP port is unauthenticated** — anyone who can reach port
+8088 can key the transmitter. That is an argument for a trusted LAN, and
+against exposing it beyond one.
 
 **The WinKeyer TCP port is unauthenticated** — anyone who can reach port
 8088 can key the transmitter. That is an argument for a trusted LAN, and
@@ -139,36 +173,38 @@ against exposing it beyond one.
 
 ## Open items
 
-1. **WiFi onboarding is not done** — the board sits in the captive portal
-   (`vu2cpl-esp32-winkeyer-setup` / `vu2cpl1234`). Until Manoj joins it to
-   a network, the TCP transport, mDNS, MQTT and Flex paths are
-   **implemented but unverified**. This is the next step and needs a human.
-   Portal timeout was 180 s, which strands an un-onboarded board; set to
-   0 (never) on 2026-09-10. Note macOS Sequoia's `system_profiler
-   SPAirPortDataType` no longer lists nearby networks, so it cannot be
-   used to check whether the AP is broadcasting — read the board's own
-   `/net` output instead.
-2. **On-air timing check** — bench testing is functional, not calibrated.
-   Verify element timing against a scope or a known-good decoder.
-3. **Flex backend needs a radio** to verify: discovery parsing, `cwx`
+1. **Set the real MQTT password** in `include/secrets.h` (the `iot` role,
+   from the shack password manager). Currently the example value, so the
+   broker rejects the connection with `rc=5` every 5 s. Everything else
+   works; this is the only thing failing.
+2. **Decide whether to move the keyer off `<your-ssid>`.** It works there
+   (see "Network placement"), so this is a preference, not a fix.
+   `/wifi reset` clears credentials and reboots into the portal.
+3. **Try a real logger** — the protocol is verified against
+   `tools/wk-test.py`, not yet against N1MM+/RUMlogNG through
+   `tools/wk-bridge.py`. That is the last compatibility unknown.
+4. **On-air timing check** — testing so far is functional, not
+   calibrated. Verify element timing against a scope or a known-good
+   decoder.
+5. **Flex backend needs a radio** to verify: discovery parsing, `cwx`
    round-trip, and the `pending()` busy heuristic (derived from
    `cwx send` reply index vs `cwx sent=` status) are all untested against
-   real hardware.
-4. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
+   real hardware. Note discovery will not cross network segments here.
+6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would
    silently disable sidetone or key output. Revisit after testing with a
    real logger.
-5. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), speed pot,
+7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), speed pot,
    enclosure.
-6. **Sharing with Manoj's friend** — repo is private. Needs either a
+8. **Sharing with Manoj's friend** — repo is private. Needs either a
    collaborator invite or an explicit decision to publish. Not done.
-7. Considered but not built: **display** (SSD1306 on I²C 21/22 — pins now
+9. Considered but not built: **display** (SSD1306 on I²C 21/22 — pins now
    free for it) and **Bluetooth keyboard** (BT Classic HID *host* support
    is thin on ESP32 and BT/WiFi share the radio; prototype standalone
    before committing). Ordering rationale: display is low-risk, BT
    keyboard is the one with real unknowns.
-8. Future: ESP32-S3 env for a native-USB descriptor; OTRSP/SO2R phase
-   (pins reserved; SO2R docs in `~/projects/SO2R box`).
+10. Future: ESP32-S3 env for a native-USB descriptor; OTRSP/SO2R phase
+    (pins reserved; SO2R docs in `~/projects/SO2R box`).
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 
