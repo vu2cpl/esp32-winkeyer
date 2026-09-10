@@ -101,8 +101,37 @@ and back to the CLI on host close.
 
 ### The radio in this shack (found 2026-09-10)
 
-**192.168.1.50, SmartSDR API 1.4.0.0.** Connection and `sub cwx all`
-verified from the keyer.
+**Flex 6600 "6600", callsign VU2CPL, 192.168.1.50, SmartSDR API
+1.4.0.0.** Connection and `sub cwx all` verified from the keyer.
+
+#### On-air test 2026-09-10 (dummy load): blocked on the radio, twice
+
+Keying could not be proven. Both blockers are on the radio side — the
+keyer's commands reach it and are accepted at the protocol level.
+
+1. **The slice must be in CW mode.** Slice A was `mode=LSB` on
+   7.146 MHz. CWX cannot key CW on a non-CW slice: the command is
+   accepted, nothing is transmitted, and no `cwx sent=` ever arrives.
+   `slice set 0 mode=CW` works and was verified; the slice was restored
+   to LSB afterwards.
+2. **Something else holds the CW/CWX transmit path.** With the slice in
+   CW, `cwx send` is still refused:
+
+       R3|500000C2|Cannot transmit since another client is transmitting
+                   or sending a CW/CWX message
+
+   This happens from a **direct session on the Mac too**, not just from
+   the keyer, so it is not the keyer's doing — and `interlock
+   state=READY tx_allowed=1` at the same time, so the radio itself is
+   not inhibited. Prime suspect is SmartSDR (or SmartSDR CAT with its
+   WinKeyer emulation) running somewhere and owning the CW path.
+   **Next session: find out what is connected to the radio before
+   retrying.** Clearing the keyer's own CWX buffer did not help, so it
+   is not a stale buffer from the failed first attempt.
+
+Also learned: `sub interlock all` is rejected with `500000A3 Invalid
+subscription object name` — interlock status arrives unsolicited anyway,
+so do not subscribe to it.
 
 - **Discovery does not reach it.** The radio is on the 192.168.1.x
   segment, the keyer is on 192.168.10.x, and discovery is a raw UDP
@@ -249,11 +278,11 @@ against exposing it beyond one.
 4. **On-air timing check** — testing so far is functional, not
    calibrated. Verify element timing against a scope or a known-good
    decoder.
-5. **Flex: connection verified, keying is not.** The keyer connects to
-   192.168.1.50 and subscribes. Still untested because it transmits:
-   the `cwx send` round-trip, the 0x7F space encoding, and the
-   `pending()` busy heuristic (`cwx send` reply index vs `cwx sent=`
-   status). Needs `/backend flex` and Manoj present — see above.
+5. **Flex keying still unproven — blocked by the radio, not the keyer.**
+   Find what is holding the CW/CWX path (see the on-air test above),
+   put the slice in CW, then retry. Untested until then: the `cwx send`
+   round-trip, the 0x7F space encoding, and whether `cwx sent=` actually
+   tracks progress the way `pending()` assumes.
 6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would
    silently disable sidetone or key output. Revisit after testing with a

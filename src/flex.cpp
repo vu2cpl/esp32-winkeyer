@@ -47,6 +47,16 @@ bool     subscribed = false;
 
 long     queuedIdx = 0;      // index returned by the last "cwx send"
 long     sentIdx   = 0;      // index reported by "cwx sent="
+uint8_t  cfgWpm    = 20;
+uint32_t busyUntil = 0;      // backstop: see pending()
+
+// Rough time for the radio to key `n` characters, used only as an upper
+// bound. ~12 dit-units per character is generous for plain text; the
+// point is never to expire early, only to guarantee we expire at all.
+uint32_t estimateMs(size_t n) {
+  uint32_t unit = 1200 / (cfgWpm ? cfgWpm : 20);
+  return (uint32_t)n * 12 * unit;
+}
 
 // Extract "key=value" from a discovery datagram, honouring token
 // boundaries so "ip=" does not match inside "serial_ip=".
@@ -115,6 +125,14 @@ void onLine(const String& line) {
     String msg    = (p2 > 0) ? line.substring(p2 + 1) : "";
     if (strtoul(status.c_str(), nullptr, 16) != 0) {
       Serial.printf("[FLEX] command error %s (%s)\n", status.c_str(), msg.c_str());
+      // A refused command will never be acknowledged, so anything we were
+      // waiting on is never going to complete. Drop it rather than leaving
+      // the host stuck reading BUSY forever.
+      if (queuedIdx > sentIdx) {
+        Serial.println("[FLEX] send refused — clearing pending");
+        queuedIdx = sentIdx = 0;
+        busyUntil = 0;
+      }
       return;
     }
     // A successful "cwx send" answers with the buffer index it landed at.
@@ -229,22 +247,37 @@ void send(const char* text) {
   for (const char* p = text; *p; p++) out += (*p == ' ') ? (char)0x7F : *p;
   sendCmd("cwx send " + out);
   queuedIdx += strlen(text);          // provisional until the reply lands
+  busyUntil = millis() + estimateMs(strlen(text)) + 5000;
 }
 
 void clear() {
   if (!connected()) return;
   sendCmd("cwx clear");
   queuedIdx = sentIdx = 0;
+  busyUntil = 0;
 }
 
 void setWpm(uint8_t wpm) {
+  cfgWpm = wpm;
   if (!connected()) return;
   sendCmd("cwx wpm " + String(wpm));
 }
 
 int pending() {
   long d = queuedIdx - sentIdx;
-  return d > 0 ? (int)d : 0;
+  if (d <= 0) return 0;
+  // The radio reports progress with "cwx sent=", but it will not report
+  // anything if it cannot transmit at all — a slice in the wrong mode, an
+  // interlock, another client holding the transmitter. Without a backstop
+  // the host reads BUSY forever and a logger hangs waiting for the keyer.
+  if (busyUntil && (int32_t)(millis() - busyUntil) > 0) {
+    Serial.println("[FLEX] no progress from radio — clearing pending "
+                   "(slice not in CW mode? another client transmitting?)");
+    queuedIdx = sentIdx = 0;
+    busyUntil = 0;
+    return 0;
+  }
+  return (int)d;
 }
 
 }  // namespace Flex

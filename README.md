@@ -104,7 +104,14 @@ To find it, TCP-scan for port 4992; a Flex answers immediately with
 In Flex mode, buffered text goes to the radio with `cwx send` and the
 **radio** generates the CW, so network jitter never reaches the air. The
 local key output is disabled to avoid keying the rig twice; sidetone stays
-on locally. The slice must be in CW mode.
+on locally.
+
+**The slice must be in CW mode**, or CWX accepts the text and silently
+transmits nothing. And only one client may own the CW path — if another
+program (SmartSDR, SmartSDR CAT's WinKeyer emulation) holds it, the radio
+answers `500000C2 Cannot transmit since another client is transmitting or
+sending a CW/CWX message`. If the keyer reports "no progress from radio",
+one of those two is why.
 
 Paddle keying deliberately stays on the local key output — real-time
 element timing over WiFi would carry the jitter. For a Flex in the same

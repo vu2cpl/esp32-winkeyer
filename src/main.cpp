@@ -45,15 +45,21 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
 }
 
 bool mqttConnect() {
-  Serial.print("[MQTT] connecting… ");
   // LWT: broker publishes this retained if we drop off uncleanly.
   bool ok = mqtt.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS,
                          T_STATUS, 1, true, "{\"event\":\"offline\"}");
+  // Log transitions, not every retry. A broker that refuses our credentials
+  // will refuse them forever, and repeating that once a minute buries the
+  // keyer's own output on the console.
+  static int lastRc = 999;
   if (ok) {
-    Serial.println("ok");
+    Serial.println("[MQTT] connected");
     mqtt.publish(T_STATUS, "{\"event\":\"online\"}", true);
-  } else {
-    Serial.printf("failed rc=%d\n", mqtt.state());
+    lastRc = 999;
+  } else if (mqtt.state() != lastRc) {
+    lastRc = mqtt.state();
+    Serial.printf("[MQTT] connect failed rc=%d%s (further retries silent)\n",
+                  lastRc, lastRc == 5 ? " — bad credentials in secrets.h" : "");
   }
   return ok;
 }
