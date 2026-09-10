@@ -126,12 +126,30 @@ there (a 128x64 frame is 1 KB — ~25 ms at 400 kHz, ~100 ms at 100 kHz, all
 of it inside a blocking transaction). The boot line reports which speed
 won; a 100 kHz fallback is your cue to add pull-ups or shorten leads.
 
-Controller choice is a **setting, not a probe** — SH1106 and SSD1306
-answer identically on I²C. Default is `sh1106`, correct for nearly all
-1.3" panels; 0.96" panels are usually `ssd1306`. Wrong choice is obvious
-and harmless: the image sits 2 px right with a garbage sliver down the
-left edge (the SH1106 has 132 columns of RAM to the SSD1306's 128). Fix
-it with `/disp ssd1306` — no reflash.
+**Four panel types are supported, all I²C on the same two pins:**
+
+| Type | Address | Layout |
+|---|---|---|
+| OLED SH1106 128x64 (1.3") | 0x3C / 0x3D | large WPM digits, activity box |
+| OLED SSD1306 128x64 (0.96") | 0x3C / 0x3D | as above |
+| LCD 20x4 via PCF8574 backpack | 0x27 / 0x3F | four text rows |
+| LCD 16x2 via PCF8574 backpack | 0x27 / 0x3F | speed + one status row |
+
+The **family is auto-detected** — OLEDs and LCD backpacks live at different
+addresses — so one firmware runs whichever panel is plugged in. Swap the
+panel and pick **Auto-detect** on the web page (or `/disp auto`) to re-probe;
+no reflash.
+
+What *cannot* be detected, because each pair shares an address:
+
+- **SH1106 vs SSD1306** — wrong choice puts the image 2 px right with a
+  garbage sliver down the left edge (SH1106 has 132 columns of RAM to the
+  SSD1306's 128). Fix with `/disp ssd1306`.
+- **16x2 vs 20x4** — same chip, so a wrong choice just truncates or leaves
+  rows blank. Fix with `/disp lcd16x2`.
+
+A blank LCD with a lit backlight is almost always the contrast trimmer on
+the backpack, not the firmware.
 
 See `include/pins.h`.
 

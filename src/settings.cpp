@@ -264,7 +264,8 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
              Display::present() ? "" : " (no panel detected)");
 
   } else if (!strcasecmp(key, "dispctl")) {
-    if (!Display::setController(val)) return fail("dispctl: sh1106|ssd1306");
+    if (!Display::setController(val))
+      return fail("dispctl: sh1106|ssd1306|lcd16x2|lcd20x4|auto");
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 

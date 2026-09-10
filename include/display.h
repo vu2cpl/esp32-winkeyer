@@ -35,8 +35,12 @@ bool enabled();
 // without a reset. Returns the number of devices found.
 uint8_t scan();
 
-// "sh1106" (default) or "ssd1306". Takes effect immediately — no reflash,
-// so a mis-set panel is fixed from the CLI or the web page.
+// "sh1106", "ssd1306", "lcd16x2", "lcd20x4", or "auto" to re-probe the bus.
+// Takes effect immediately — no reflash — so a mis-set panel is fixed from
+// the CLI or the web page, and swapping an LCD back for the OLED is just
+// "auto". The FAMILY is detectable (OLEDs at 0x3C/0x3D, HD44780 backpacks
+// at 0x27/0x3F); the geometry of a text panel is not, since a 16x2 and a
+// 20x4 are the same chip at the same address.
 bool        setController(const char* name);
 const char* controller();
 

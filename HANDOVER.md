@@ -39,7 +39,7 @@ implemented — see "Flex backend" below.
 | PTT out | 32 | active high → PC817 opto (330 Ω) or NPN |
 | Sidetone | 4 | LEDC PWM → passive piezo |
 | Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
-| OLED SDA / SCL | 21 / 22 | SH1106 or SSD1306 128x64, optional; probed at boot |
+| Display SDA / SCL | 21 / 22 | OLED (SH1106/SSD1306 0x3C-0x3D) or HD44780 LCD backpack (16x2/20x4, 0x27-0x3F); family auto-detected |
 | Status LED | 2 | onboard |
 | KEY / PTT out 2 | 18 / 19 | radio 2; `/radio 1\|2\|both` |
 | FSK out | 27 | RTTY keying line, mark = idle, invertible |

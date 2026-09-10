@@ -24,6 +24,7 @@
 #include "flex.h"
 #include <Wire.h>
 #include <U8g2lib.h>
+#include <LiquidCrystal_I2C.h>
 #include <WiFi.h>
 
 namespace {
@@ -43,6 +44,16 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C panelSsd1306(U8G2_R0, U8X8_PIN_NONE,
 bool          useSh1106  = true;
 U8G2*         oled       = &panelSh1106;
 
+// Which family is actually fitted. OLEDs answer at 0x3C/0x3D and HD44780
+// backpacks at 0x27/0x3F, so the FAMILY is detectable — one firmware runs
+// whichever panel is plugged in. Geometry is not: a 16x2 and a 20x4 are
+// the same chip at the same address, so that stays a setting, exactly like
+// SH1106 vs SSD1306.
+enum Kind : uint8_t { KIND_NONE, KIND_OLED, KIND_LCD };
+Kind               kind    = KIND_NONE;
+LiquidCrystal_I2C* lcd     = nullptr;
+uint8_t            lcdCols = 20, lcdRows = 4;
+
 uint8_t       i2cAddr    = 0;
 bool          taskStarted = false;
 volatile bool cfgEnabled = true;
@@ -51,9 +62,19 @@ unsigned long splashUntil = 0;
 
 uint32_t busHz = 400000;
 
-bool answersAt(uint8_t addr, uint32_t hz) {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, hz);
+bool busUp = false;
+
+// Bring the bus up ONCE. Calling Wire.begin() before every probe re-inits
+// the driver mid-scan, and the results after the first are then unreliable
+// — that made the OLED at 0x3C miss and a phantom appear at 0x27, i.e. the
+// firmware confidently drove a 20x4 LCD that was not there.
+void ensureBus(uint32_t hz) {
+  if (!busUp) { Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, hz); busUp = true; }
   Wire.setClock(hz);
+}
+
+bool answersAt(uint8_t addr, uint32_t hz) {
+  ensureBus(hz);
   Wire.beginTransmission(addr);
   return Wire.endTransmission() == 0;
 }
@@ -66,9 +87,13 @@ bool answersAt(uint8_t addr, uint32_t hz) {
 // 400 kHz — which showed up here as a display that was found on some boots
 // and not others. Detection must not be the thing that is marginal.
 uint8_t probe() {
-  const uint8_t candidates[] = {0x3C, 0x3D};
-  for (uint8_t a : candidates)
-    if (answersAt(a, 100000)) return a;
+  const uint8_t oleds[] = {0x3C, 0x3D};
+  for (uint8_t a : oleds)
+    if (answersAt(a, 100000)) { kind = KIND_OLED; return a; }
+  const uint8_t lcds[] = {0x27, 0x3F};      // PCF8574 backpacks
+  for (uint8_t a : lcds)
+    if (answersAt(a, 100000)) { kind = KIND_LCD; return a; }
+  kind = KIND_NONE;
   return 0;
 }
 
@@ -94,13 +119,81 @@ void startTask();
 bool tryAdopt();
 
 void startPanel() {
+  if (kind == KIND_LCD) {
+    // HD44780 backpacks are 100 kHz parts and only push ~80 bytes a frame,
+    // so there is nothing to gain from probing for 400 kHz here.
+    busHz = 100000;
+    Wire.setClock(busHz);
+    delete lcd;
+    lcd = new LiquidCrystal_I2C(i2cAddr, lcdCols, lcdRows);
+    lcd->init();
+    lcd->backlight();
+    lcd->clear();
+    return;
+  }
   pickBusSpeed();
   oled->setI2CAddress(i2cAddr << 1);
   oled->begin();
   oled->setBusClock(busHz);
 }
 
+// Text panels get their own layout rather than a squeezed graphic one:
+// 20x4 carries speed, backend, address and activity; 16x2 has room for
+// speed and one more line, so the address shares row 2 with the activity
+// flag only when something is actually happening.
+void lcdLine(uint8_t row, const char* text) {
+  if (row >= lcdRows) return;
+  char pad[21];
+  snprintf(pad, lcdCols + 1, "%-*s", (int)lcdCols, text);
+  lcd->setCursor(0, row);
+  lcd->print(pad);
+}
+
+void drawMainLcd() {
+  char l[24];
+  const char* be = "LOCAL";
+  if (WinKeyer::getBackend() == WK_BACKEND_FLEX)
+    be = !Flex::connected() ? "FLEX?" : (Flex::sliceReady() ? "FLEX" : "FLEX!");
+  const char* act = Keyer::tuning() ? "TUNE" : (Keyer::keyIsDown() ? "KEY" : "");
+
+  if (lcdRows >= 4) {
+    snprintf(l, sizeof l, "%2u WPM %s %4s", Keyer::getWpm(),
+             Keyer::getPotEnabled() ? "POT" : "FIX", act);
+    lcdLine(0, l);
+    snprintf(l, sizeof l, "%-5s %c %s%s", be,
+             Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
+             WinKeyer::hostOpen() ? "HOST" : "----",
+             Net::clientConnected() ? "+NET" : "");
+    lcdLine(1, l);
+    if (WiFi.status() == WL_CONNECTED)
+      snprintf(l, sizeof l, "%s", WiFi.localIP().toString().c_str());
+    else
+      snprintf(l, sizeof l, "join %s", WIFI_AP_NAME);
+    lcdLine(2, l);
+    snprintf(l, sizeof l, "%ddBm  tail %ums", (int)WiFi.RSSI(),
+             Keyer::getPttTailMs());
+    lcdLine(3, l);
+  } else {
+    // 16x2: speed and backend on top, address below — replaced by the
+    // activity flag while keying, which matters more in that moment.
+    snprintf(l, sizeof l, "%2uWPM %s %s", Keyer::getWpm(),
+             Keyer::getPotEnabled() ? "POT" : "FIX", be);
+    lcdLine(0, l);
+    if (*act)                              snprintf(l, sizeof l, "%s", act);
+    else if (WiFi.status() == WL_CONNECTED) snprintf(l, sizeof l, "%s",
+                                                    WiFi.localIP().toString().c_str());
+    else                                    snprintf(l, sizeof l, "no wifi");
+    lcdLine(1, l);
+  }
+}
+
 void drawSplash() {
+  if (kind == KIND_LCD) {
+    lcd->clear();
+    lcdLine(0, "VU2CPL WinKeyer");
+    lcdLine(1, "K1EL WK3 protocol");
+    return;
+  }
   oled->clearBuffer();
   oled->setFont(u8g2_font_ncenB14_tr);
   oled->drawStr(24, 26, "VU2CPL");
@@ -112,6 +205,7 @@ void drawSplash() {
 }
 
 void drawMain() {
+  if (kind == KIND_LCD) { drawMainLcd(); return; }
   char buf[24];
   oled->clearBuffer();
 
@@ -175,13 +269,15 @@ void drawMain() {
 void task(void*) {
   for (;;) {
     if (cfgEnabled) {
-      if (blanked) { oled->setPowerSave(0); blanked = false; }
+      if (blanked) {
+        if (kind == KIND_LCD) lcd->backlight(); else oled->setPowerSave(0);
+        blanked = false;
+      }
       if (millis() >= splashUntil) drawMain();
     } else if (!blanked) {
-      oled->clearBuffer();
-      oled->sendBuffer();
-      oled->setPowerSave(1);   // stop burning the panel in when it is not wanted
-      blanked = true;
+      if (kind == KIND_LCD) { lcd->clear(); lcd->noBacklight(); }
+      else { oled->clearBuffer(); oled->sendBuffer(); oled->setPowerSave(1); }
+      blanked = true;   // stop burning the panel in when it is not wanted
     }
     vTaskDelay(pdMS_TO_TICKS(200));
   }
@@ -222,8 +318,7 @@ void begin() {
 }
 
 uint8_t scan() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 100000);
-  Wire.setClock(100000);   // scan slow so a marginal bus still shows up
+  ensureBus(100000);       // scan slow so a marginal bus still shows up
   Log::printf("[I2C] scanning bus on SDA=%d SCL=%d @ 100 kHz\n",
                 PIN_I2C_SDA, PIN_I2C_SCL);
   uint8_t n = 0;
@@ -249,18 +344,39 @@ uint8_t scan() {
 }
 
 bool setController(const char* name) {
-  bool sh;
-  if      (!strcasecmp(name, "sh1106"))  sh = true;
-  else if (!strcasecmp(name, "ssd1306")) sh = false;
-  else return false;
-  if (sh == useSh1106) return true;
-  useSh1106 = sh;
-  oled = sh ? (U8G2*)&panelSh1106 : (U8G2*)&panelSsd1306;
-  if (i2cAddr) startPanel();   // re-init the newly selected driver
-  return true;
+  // "auto" re-probes, which is how you get back to the OLED after trying an
+  // LCD (or the reverse) without a reflash — the family is detectable even
+  // though the geometry is not.
+  if (!strcasecmp(name, "auto")) {
+    i2cAddr = 0;
+    if (!tryAdopt()) {
+      Log::println("[DISP] auto: nothing on the bus");
+      return true;
+    }
+    return true;
+  }
+
+  if (!strcasecmp(name, "sh1106") || !strcasecmp(name, "ssd1306")) {
+    useSh1106 = !strcasecmp(name, "sh1106");
+    oled = useSh1106 ? (U8G2*)&panelSh1106 : (U8G2*)&panelSsd1306;
+    if (kind == KIND_OLED && i2cAddr) startPanel();
+    return true;
+  }
+
+  if (!strcasecmp(name, "lcd16x2") || !strcasecmp(name, "lcd20x4")) {
+    bool big = !strcasecmp(name, "lcd20x4");
+    lcdCols = big ? 20 : 16;
+    lcdRows = big ? 4  : 2;
+    if (kind == KIND_LCD && i2cAddr) startPanel();
+    return true;
+  }
+  return false;
 }
 
-const char* controller() { return useSh1106 ? "sh1106" : "ssd1306"; }
+const char* controller() {
+  if (kind == KIND_LCD) return lcdRows >= 4 ? "lcd20x4" : "lcd16x2";
+  return useSh1106 ? "sh1106" : "ssd1306";
+}
 
 bool    present()  { return i2cAddr != 0; }
 uint8_t address()  { return i2cAddr; }

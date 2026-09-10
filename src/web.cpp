@@ -149,10 +149,15 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend>DISPLAY</legend>
-<div class="row"><label title="Optional 128x64 OLED on I2C 21/22, probed at boot. SH1106 is nearly every 1.3 inch panel, SSD1306 nearly every 0.96 inch. They answer at the same address so this cannot be detected: if the image sits 2 px right with a garbage left edge, pick the other one. Run /i2c on the console to scan the bus.">Panel</label>
+<div class="row"><label title="Any I2C panel on 21/22, probed at boot. The FAMILY is auto-detected — OLEDs answer at 0x3C/0x3D, HD44780 LCD backpacks at 0x27/0x3F — so one firmware runs whichever is plugged in, and Auto-detect gets you back to the OLED after trying an LCD. What cannot be detected: SH1106 vs SSD1306 (same address; wrong choice shifts the image 2px right with a garbage left edge) and 16x2 vs 20x4 (same chip; wrong choice just truncates). Run /i2c to scan the bus.">Panel</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="disp"> enabled</label>
-  <select id="dispctl"><option value="sh1106">SH1106 (1.3")</option>
-  <option value="ssd1306">SSD1306 (0.96")</option></select></div>
+  <select id="dispctl">
+    <option value="auto">Auto-detect</option>
+    <option value="sh1106">OLED SH1106 (1.3")</option>
+    <option value="ssd1306">OLED SSD1306 (0.96")</option>
+    <option value="lcd20x4">LCD 20x4 (I&sup2;C)</option>
+    <option value="lcd16x2">LCD 16x2 (I&sup2;C)</option>
+  </select></div>
 </fieldset>
 
 <fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
