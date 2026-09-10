@@ -433,10 +433,16 @@ makes the keyer feel slow.
       `/i2c` and `/disp on`.
     - **The panel was found on some boots and not others.** Detection was
       running at 400 kHz, which this panel only manages intermittently on
-      breadboard leads. Detection now always runs at **100 kHz**;
-      rendering moves to 400 kHz only after the panel proves it answers
-      there, and the boot line reports the speed that won. A 100 kHz
-      fallback in the log means the wiring wants pull-ups.
+      breadboard leads. Detection now always runs at **100 kHz**.
+
+      **Rendering had the same problem and the first fix was wrong**
+      (corrected 2026-09-11): it kept 400 kHz for frames whenever the panel
+      answered its *address* at 400 kHz. That is not evidence — an address
+      probe is one byte, a frame is a thousand. The panel passed the probe
+      and drew nothing, presenting as a display the firmware reported as
+      present and enabled while the glass stayed dark, which cost a long
+      detour through imagined causes. The bus is now 100 kHz for everything
+      unless `/disp fast` opts in; the choice persists in NVS.
     - Gotcha for future sessions: **opening the CP2102 port resets the
       board.** Serial captures during Manoj's live web-UI testing were
       rebooting it under him, and a burst of those resets reads exactly

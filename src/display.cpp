@@ -61,6 +61,11 @@ bool          blanked    = false;
 unsigned long splashUntil = 0;
 
 uint32_t busHz = 400000;
+// 0 = pick automatically (try 400 kHz, fall back if the panel does not
+// answer there). Otherwise force this rate. Needed because answering the
+// address probe at 400 kHz does NOT prove a panel can take 1 KB frames at
+// that rate — marginal wiring passes detection and renders nothing.
+uint32_t busForce = 0;
 
 bool busUp = false;
 
@@ -101,13 +106,21 @@ uint8_t probe() {
 // frame, ~25 ms at 400 kHz but ~100 ms at 100 kHz, and that whole time is
 // spent inside a blocking I²C transaction. So try for 400 kHz, prove the
 // panel still answers there, and fall back honestly if it does not.
+// 100 kHz by default, deliberately.
+//
+// This used to try 400 kHz and keep it if the panel answered its address
+// there. That test proves nothing: an address probe is one byte, a frame is
+// a thousand, and a panel on breadboard leads passes the first and renders
+// nothing on the second. The symptom was a display the firmware reported as
+// present and enabled while the glass stayed dark.
+//
+// 100 kHz costs ~100 ms per frame against ~25 ms, all inside a blocking
+// transaction — but it is on its own low-priority task on core 0 and never
+// touches element timing. /disp fast opts into 400 kHz on wiring that
+// deserves it; the choice persists.
 void pickBusSpeed() {
-  if (answersAt(i2cAddr, 400000)) { busHz = 400000; return; }
-  busHz = 100000;
+  busHz = busForce ? busForce : 100000;
   Wire.setClock(busHz);
-  Log::println("[DISP] panel does not answer at 400 kHz — running the bus at "
-                 "100 kHz. Works, but add 4.7k pull-ups to 3V3 or shorten the "
-                 "leads if the panel ever goes missing at boot.");
 }
 
 void startTask();
@@ -302,7 +315,7 @@ void task(void*) {
       else { oled->clearBuffer(); oled->sendBuffer(); oled->setPowerSave(1); }
       blanked = true;   // stop burning the panel in when it is not wanted
     }
-    vTaskDelay(pdMS_TO_TICKS(200));
+    vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -383,6 +396,13 @@ bool setController(const char* name) {
     useSh1106 = !strcasecmp(name, "sh1106");
     oled = useSh1106 ? (U8G2*)&panelSh1106 : (U8G2*)&panelSsd1306;
     if (kind == KIND_OLED && i2cAddr) startPanel();
+    return true;
+  }
+
+  if (!strcasecmp(name, "slow") || !strcasecmp(name, "fast")) {
+    busForce = !strcasecmp(name, "slow") ? 100000 : 400000;
+    if (i2cAddr) startPanel();
+    Log::printf("[DISP] bus forced to %u kHz\n", (unsigned)(busForce / 1000));
     return true;
   }
 

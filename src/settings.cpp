@@ -150,6 +150,9 @@ void begin() {
   // floating input driving the speed. Once /pot on is given, it sticks.
   Keyer::setPotEnabled(loadU32("poten", 0));
 
+  // Bus rate before the panel type, so the panel is brought up at the
+  // rate the operator chose rather than re-initialised twice.
+  Display::setController(loadU32("dispfast", 0) ? "fast" : "slow");
   String ctl = loadStr("dispctl");
   Display::setController(ctl.length() ? ctl.c_str() : "sh1106");
   Display::setEnabled(loadU32("dispen", 1));
@@ -265,8 +268,13 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
 
   } else if (!strcasecmp(key, "dispctl")) {
     if (!Display::setController(val))
-      return fail("dispctl: sh1106|ssd1306|lcd16x2|lcd20x4|auto");
-    saveStr("dispctl", Display::controller());
+      return fail("dispctl: sh1106|ssd1306|lcd16x2|lcd20x4|auto|slow|fast");
+    // "slow"/"fast" set the bus rate, not the panel type, so they persist
+    // under their own key and must not overwrite the controller.
+    if (!strcasecmp(val, "slow") || !strcasecmp(val, "fast"))
+      saveU32("dispfast", !strcasecmp(val, "fast"));
+    else
+      saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
   } else if (!strcasecmp(key, "radio")) {

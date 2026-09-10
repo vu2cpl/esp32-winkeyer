@@ -115,6 +115,15 @@ carry their own pull-ups; if yours does not, add 4.7 kΩ from each line to
 3V3. The firmware probes 0x3C then 0x3D at boot and stays off if nothing
 answers, so an un-wired board is unaffected.
 
+**The I²C bus runs at 100 kHz by default**, and that is deliberate. An
+earlier version tried 400 kHz and kept it if the panel answered its address
+there — which proves nothing, because an address probe is one byte and a
+frame is a thousand. A panel on breadboard leads passes the probe and
+renders nothing, giving a display the firmware reports as present and
+enabled while the glass stays dark. `/disp fast` opts into 400 kHz on
+wiring that deserves it (~25 ms a frame against ~100 ms); the choice
+persists, and `/disp slow` goes back.
+
 **If the panel stays dark, run `/i2c`.** It scans the whole bus and prints
 every address that answers, so "wired wrong" and "wrong address" stop
 looking alike. It also adopts a panel wired up after boot — no reset
