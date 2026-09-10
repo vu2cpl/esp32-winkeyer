@@ -23,6 +23,7 @@
 
 #include "flex.h"
 #include "log.h"
+#include "keyer.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Preferences.h>
@@ -66,7 +67,7 @@ uint32_t estimateMs(size_t n) {
 // network, so it only enqueues here and poll() does the socket write.
 // This is how Maestro and MORCONI key a Flex over the network.
 bool          cfgDirect = false;
-bool          logKeying = true;   // chatty during bring-up
+bool     logKeying = false;   // chatty during bring-up
 QueueHandle_t keyQ = nullptr;
 bool          xmitOn = false;     // do we currently hold the transmitter?
 bool          keyIsDown = false;
@@ -373,6 +374,25 @@ void pumpKeying() {
     if (logKeying) Log::printf("[FLEX] cw %s %d\n", cfgKeyVerb, e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();
+  }
+
+    // Drive the LOCAL PTT line from what the radio is actually doing, not
+  // from the monitor copy running through the local keyer. xmitOn covers
+  // paddle keying; pending() is fed by the radio's own "cwx sent=" reports
+  // and so covers buffered text. Timing the line from the local keyer meant
+  // two independent CW generators drifting apart, with the gap growing over
+  // the length of a transmission.
+  {
+    static bool     pttHeld    = false;
+    static uint32_t lastBusyMs = 0;
+    bool active = xmitOn || pending() > 0;
+    if (active) lastBusyMs = millis();
+    bool want = active ||
+                (lastBusyMs && millis() - lastBusyMs < cfgTailMs);
+    if (want != pttHeld) {
+      pttHeld = want;
+      Keyer::pttManual(want);
+    }
   }
 
   // Release the transmitter once the operator has stopped sending — but

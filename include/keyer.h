@@ -68,6 +68,24 @@ bool   tuning();
 void   pttManual(bool on); // host-forced PTT (WK 0x18), independent of send activity
 bool   busy();             // element in progress or buffer non-empty
 bool   keyIsDown();        // for WK status reporting
+// Milliseconds since the key last went down, stamped at 1 kHz so no element
+// is missed. Use this for an activity indicator: sampling keyIsDown() from
+// a slower loop aliases against the element length and looks random.
+uint32_t msSinceKey();
+// Is the PTT line asserted right now? Unlike the key it is held for the
+// whole over, so it shows the lead-in and the tail either side of the
+// elements — which is what makes those two settings visible.
+bool   pttIsOn();
+
+// Play one character on the SIDETONE only — no key line, no PTT, no key
+// hook. Blocking, for a startup chirp: a boot that keys the transmitter
+// every time it powers up would be worse than no indication at all.
+void   chirp(char c);
+
+// false = the keyer stops sequencing PTT and the caller owns the line via
+// pttManual(). Set on network backends, where the radio generates the CW
+// and the local keyer's copy is only a monitor.
+void   setPttAuto(bool on);
 bool   paddleActive();     // either paddle currently closed
 bool   paddleDit();        // debounced dit lever (after any swap)
 bool   paddleDah();        // debounced dah lever (after any swap)

@@ -60,6 +60,35 @@ volatile bool cfgEnabled = true;
 bool          blanked    = false;
 unsigned long splashUntil = 0;
 
+// Everything the screen shows, folded into one value. A 128x64 frame is
+// 1 KB and ~100 ms of blocking I²C at 100 kHz, so the win is not a faster
+// bus — it is not sending a frame at all when nothing has changed. The
+// panel then tracks a knob turn within a tick instead of averaging 175 ms
+// behind it, and sits silent on the bus while idle.
+uint32_t lastSig = 0xFFFFFFFF;
+
+uint32_t stateSig() {
+  uint32_t h = 2166136261u;
+  auto mix = [&](uint32_t v) { h = (h ^ v) * 16777619u; };
+  mix(Keyer::getWpm());
+  mix(Keyer::getPotEnabled());
+  mix(Keyer::getMode());
+  mix(Keyer::msSinceKey() < 150);   // latched activity, not the live edge
+  mix(Keyer::pttIsOn());
+  mix(Keyer::tuning());
+  mix(Keyer::getRadio());
+  mix(Keyer::getPttTailMs());
+  mix(WinKeyer::getBackend());
+  mix(WinKeyer::hostOpen());
+  mix(Net::clientConnected());
+  mix(Flex::connected());
+  mix(Flex::sliceReady());
+  mix((uint32_t)WiFi.status());
+  mix((uint32_t)WiFi.localIP());
+  mix((uint32_t)((int)WiFi.RSSI() / 3));   // bucketed: RSSI jitters constantly
+  return h;
+}
+
 uint32_t busHz = 400000;
 // 0 = pick automatically (try 400 kHz, fall back if the panel does not
 // answer there). Otherwise force this rate. Needed because answering the
@@ -76,6 +105,11 @@ bool busUp = false;
 void ensureBus(uint32_t hz) {
   if (!busUp) { Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, hz); busUp = true; }
   Wire.setClock(hz);
+  // A stuck line — one loose jumper is enough — makes an I²C transaction
+  // block forever. Without this the board hung inside display init and
+  // never finished booting: no web server, no host link, a keyer taken
+  // down by an ornament. The keyer must outlive its display.
+  Wire.setTimeOut(50);
 }
 
 bool answersAt(uint8_t addr, uint32_t hz) {
@@ -106,20 +140,19 @@ uint8_t probe() {
 // frame, ~25 ms at 400 kHz but ~100 ms at 100 kHz, and that whole time is
 // spent inside a blocking I²C transaction. So try for 400 kHz, prove the
 // panel still answers there, and fall back honestly if it does not.
-// 100 kHz by default, deliberately.
+// 400 kHz for rendering by default; DETECTION still probes at 100 kHz,
+// which is a separate question and stays slow.
 //
-// This used to try 400 kHz and keep it if the panel answered its address
-// there. That test proves nothing: an address probe is one byte, a frame is
-// a thousand, and a panel on breadboard leads passes the first and renders
-// nothing on the second. The symptom was a display the firmware reported as
-// present and enabled while the glass stayed dark.
+// Note what the earlier 100 kHz default did and did not fix. Frames stopped
+// failing for a while, so it looked like the answer — but the panel later
+// went dark at 100 kHz too, and the boot then hung inside an I²C
+// transaction, which only happens when a line is held low. The real fault
+// was wiring; the bus rate was treading on the symptom. With rendering now
+// skipped unless something changed, frame cost matters far less either way.
 //
-// 100 kHz costs ~100 ms per frame against ~25 ms, all inside a blocking
-// transaction — but it is on its own low-priority task on core 0 and never
-// touches element timing. /disp fast opts into 400 kHz on wiring that
-// deserves it; the choice persists.
+// /disp slow forces 100 kHz and persists, for wiring that needs it.
 void pickBusSpeed() {
-  busHz = busForce ? busForce : 100000;
+  busHz = busForce ? busForce : 400000;
   Wire.setClock(busHz);
 }
 
@@ -132,6 +165,7 @@ void startTask();
 bool tryAdopt();
 
 void startPanel() {
+  lastSig = 0xFFFFFFFF;      // whatever was on the glass is gone
   if (kind == KIND_LCD) {
     // HD44780 backpacks are 100 kHz parts and only push ~80 bytes a frame,
     // so there is nothing to gain from probing for 400 kHz here.
@@ -179,7 +213,16 @@ void drawMainLcd() {
   const char* be = "LOCAL";
   if (WinKeyer::getBackend() == WK_BACKEND_FLEX)
     be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
-  const char* act = Keyer::tuning() ? "TUNE" : (Keyer::keyIsDown() ? "KEY" : "");
+  // PTT is held for the whole over; the key only during elements. Showing
+  // both makes the lead-in and tail visible as PTT-without-KEY either side
+  // of the sending, which is exactly what those two settings control.
+  bool tune = Keyer::tuning();
+  bool ptt  = Keyer::pttIsOn();
+  bool key  = Keyer::msSinceKey() < 150;
+  const char* act = tune ? "TUNE"
+                  : (ptt && key) ? "PTT KEY"
+                  : ptt          ? "PTT"
+                  : key          ? "KEY" : "";
 
   if (lcdRows >= 4) {
     snprintf(l, sizeof l, "%2u WPM %s %4s", Keyer::getWpm(),
@@ -262,18 +305,19 @@ void drawMain() {
   oled->drawStr(x, 36, Keyer::getPotEnabled() ? "POT" : "FIX");
 
   // ── activity: tune latches, key follows the element ──
-  if (Keyer::tuning()) {
-    oled->drawBox(96, 15, 32, 13);
-    oled->setDrawColor(0);
-    oled->drawStr(101, 25, "TUNE");
-    oled->setDrawColor(1);
-  } else if (Keyer::keyIsDown()) {
-    oled->drawBox(96, 15, 32, 13);
-    oled->setDrawColor(0);
-    oled->drawStr(105, 25, "KEY");
-    oled->setDrawColor(1);
-  } else {
-    oled->drawFrame(96, 15, 32, 13);
+  // Empty box = PTT up. Filled box with KEY = sending. Nothing when idle.
+  {
+    const bool key = Keyer::tuning() || Keyer::msSinceKey() < 150;
+    const bool ptt = Keyer::pttIsOn();
+    if (key) {
+      const char* t = Keyer::tuning() ? "TUNE" : "KEY";
+      oled->drawBox(96, 15, 32, 13);
+      oled->setDrawColor(0);
+      oled->drawStr(96 + (32 - oled->getStrWidth(t)) / 2, 25, t);
+      oled->setDrawColor(1);
+    } else if (ptt) {
+      oled->drawFrame(96, 15, 32, 13);
+    }
   }
   oled->drawHLine(0, 40, 128);
 
@@ -308,14 +352,18 @@ void task(void*) {
       if (blanked) {
         if (kind == KIND_LCD) lcd->backlight(); else oled->setPowerSave(0);
         blanked = false;
+        lastSig = 0xFFFFFFFF;
       }
-      if (millis() >= splashUntil) drawMain();
+      if (millis() >= splashUntil) {
+        uint32_t sig = stateSig();
+        if (sig != lastSig) { lastSig = sig; drawMain(); }
+      }
     } else if (!blanked) {
       if (kind == KIND_LCD) { lcd->clear(); lcd->noBacklight(); }
       else { oled->clearBuffer(); oled->sendBuffer(); oled->setPowerSave(1); }
       blanked = true;   // stop burning the panel in when it is not wanted
     }
-    vTaskDelay(pdMS_TO_TICKS(250));
+    vTaskDelay(pdMS_TO_TICKS(60));
   }
 }
 

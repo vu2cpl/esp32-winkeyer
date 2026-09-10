@@ -440,6 +440,8 @@ void setup() {
        useFlex ? "flex" : "local", Keyer::getWpm(),
        Keyer::getPotEnabled() ? "on" : "off");
 
+  Keyer::chirp('R');      // "roger" — sidetone only, the board is up
+
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
   mqtt.setSocketTimeout(2);   // default is 15 s of blocked loop() on a bad link
@@ -449,6 +451,21 @@ void setup() {
 void loop() {
   wm.process();          // captive portal, when active
   pollSerial();
+  // Keep the radio's cwx speed in step with the keyer's, whatever changed
+  // it. Flex::setWpm() used to be reachable only from a host's in-band
+  // speed escape, so a speed set from the pot, the web page, the CLI or the
+  // WK set-speed command moved the local keyer and left the radio sending
+  // at its previous rate. The two then ran at different speeds and the
+  // error grew with the length of the transmission — visible as PTT held
+  // progressively longer on long overs. Polled here rather than hooked
+  // because the pot updates from the 1 kHz task, which must not do network
+  // work.
+  if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
+    static uint8_t lastWpmToRadio = 0;
+    uint8_t w = Keyer::getWpm();
+    if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
+  }
+
   Net::poll();
   Web::poll();
   WinKeyer::poll();

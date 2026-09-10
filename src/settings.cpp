@@ -86,6 +86,9 @@ void applyBackend(bool useFlex, bool persist) {
   // On Flex, buffered text is keyed by the radio and only monitored locally,
   // so those elements must not reach the hook. Paddle elements still must.
   Keyer::setHookPaddleOnly(useFlex);
+  // On Flex the radio owns the transmission, so it owns the PTT line too.
+  Keyer::setPttAuto(!useFlex);
+  if (!useFlex) Keyer::pttManual(false);   // hand the line back cleanly
   if (persist) {
     Preferences p;
     p.begin(NS, false);
