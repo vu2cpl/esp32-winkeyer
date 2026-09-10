@@ -123,11 +123,27 @@ keyer's commands reach it and are accepted at the protocol level.
    This happens from a **direct session on the Mac too**, not just from
    the keyer, so it is not the keyer's doing — and `interlock
    state=READY tx_allowed=1` at the same time, so the radio itself is
-   not inhibited. Prime suspect is SmartSDR (or SmartSDR CAT with its
-   WinKeyer emulation) running somewhere and owning the CW path.
-   **Next session: find out what is connected to the radio before
-   retrying.** Clearing the keyer's own CWX buffer did not help, so it
-   is not a stale buffer from the failed first attempt.
+   not inhibited. Clearing the keyer's own CWX buffer did not help, so
+   it is not a stale buffer from the failed first attempt.
+
+   **Who was holding it:** SmartSDR on the PC was one client; closing it
+   was not enough, because a second client stayed connected — handle
+   `0x68A1B220`, `local_ptt=1`, owning a slice on **28.074 MHz DIGU with
+   `tx=1`**. That is FT8 on 10 m (WSJT-X / MSHV / JTDX). Whatever owns
+   the transmit slice owns the CW path, and CWX cannot have it.
+
+   **Practical consequence for real operating:** this keyer's Flex
+   backend cannot key while another client holds TX. That is a genuine
+   constraint on the design, not a bug to fix — worth weighing against
+   simply wiring the local key output to the radio's KEY jack, which has
+   none of this contention and none of the latency.
+
+#### Gotcha: slice indices are not stable
+
+`slice set 0 …` failed with `5000000D` after SmartSDR closed, because
+**slice 0 no longer existed** — the remaining client's slice was index 1.
+Slices belong to clients and come and go with them. Never assume slice 0;
+read `sub slice all` and use whatever index reports `in_use=1`.
 
 Also learned: `sub interlock all` is rejected with `500000A3 Invalid
 subscription object name` — interlock status arrives unsolicited anyway,
