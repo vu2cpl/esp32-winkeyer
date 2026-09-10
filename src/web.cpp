@@ -218,6 +218,7 @@ async function refresh(){
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
   $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
+  $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';
   $('weightV').textContent=$('weight').value+(s.weight==50?' (nominal)':'');
@@ -252,7 +253,6 @@ function bindNum(id,min,max){
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
-  $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
 for(const id of ['mode','backend','dispctl','baud','pecho'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st','monitor'])
@@ -262,7 +262,7 @@ refresh();setInterval(refresh,1000);
 </script></body></html>)HTML";
 
 void handleState() {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;
   Settings::toJson(doc);
   doc["rssi"] = (int)WiFi.RSSI();
   doc["ip"]   = WiFi.localIP().toString();
