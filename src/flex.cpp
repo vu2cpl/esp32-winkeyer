@@ -296,13 +296,22 @@ void begin() {
 void keyEvent(bool down) {
   if (!cfgDirect || !keyQ) return;
   KeyEvt e{down, millis()};
-  // Called from the keyer task (a task, not an ISR) — zero-tick send so it
-  // never blocks; drop rather than stall element timing if it backs up.
+  // Called from the keyer task, so this must never block: a zero-tick send.
+  if (xQueueSend(keyQ, &e, 0) == pdTRUE) return;
+
+  // The queue is full. A dropped key-DOWN costs one element and is
+  // survivable. A dropped key-UP is not: keyIsDown then stays true, the
+  // release below is gated on it, and the RADIO IS LEFT TRANSMITTING.
+  // So an up event always gets in, evicting the oldest entry if it must.
+  if (down) return;
+  KeyEvt discard;
+  xQueueReceive(keyQ, &discard, 0);
   xQueueSend(keyQ, &e, 0);
 }
 
 void     setPttTailMs(uint16_t ms) { cfgTailMs = ms; }
 uint16_t pttTailMs() { return cfgTailMs; }
+bool     transmitting() { return xmitOn; }
 
 void setDirectKeying(bool on) {
   cfgDirect = on;
@@ -409,10 +418,22 @@ void pumpKeying() {
   // Release the transmitter once the operator has stopped sending — but
   // never while the key is still down, or a long element (or tune) would
   // drop PTT out from under itself.
-  if (xmitOn && !keyIsDown && lastKeyMs && millis() - lastKeyMs > cfgTailMs) {
+  bool quiet = lastKeyMs && (millis() - lastKeyMs > cfgTailMs);
+  // Safety net. Everything above can be defeated by one lost key-up, and
+  // the cost of that is a transmitter left keyed for as long as nobody
+  // notices. After this long with no key event at all, release regardless
+  // of what the state machine believes.
+  bool stuck = lastKeyMs && (millis() - lastKeyMs > 5000);
+  if (xmitOn && ((quiet && !keyIsDown) || stuck)) {
     tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
     xmitOn = false;
-    if (logKeying) Log::println("[FLEX] xmit 0 (PTT release)");
+    if (stuck) {
+      keyIsDown = false;      // the state machine was wrong; correct it
+      Log::println("[FLEX] xmit 0 — FORCED, no key event for 5 s "
+                   "(a key-up was lost)");
+    } else if (logKeying) {
+      Log::println("[FLEX] xmit 0 (PTT release)");
+    }
   }
 }
 

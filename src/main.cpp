@@ -496,6 +496,10 @@ void loop() {
     if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
   }
 
+  if (Keyer::pttStuckWasCleared())
+    Log::println("[KEYER] PTT was stuck with no keying — forced off by the "
+                 "safety backstop. A transition was lost upstream.");
+
   Net::poll();
   Web::poll();
   WinKeyer::poll();

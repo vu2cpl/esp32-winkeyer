@@ -40,6 +40,10 @@ bool directKeying();
 void     setPttTailMs(uint16_t ms);
 uint16_t pttTailMs();
 
+// True while we are holding the radio's transmitter (xmit 1 sent, xmit 0
+// not yet). Distinct from the local PTT line, which is the keyer's.
+bool     transmitting();
+
 // Whether to assert PTT (xmit 1) around keying. With break-in/QSK the
 // radio can switch T/R off the key edge alone, in which case asserting
 // PTT ourselves may suppress the carrier. Runtime-switchable so this can

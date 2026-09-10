@@ -76,6 +76,9 @@ uint32_t msSinceKey();
 // whole over, so it shows the lead-in and the tail either side of the
 // elements — which is what makes those two settings visible.
 bool   pttIsOn();
+// True once if the safety backstop had to drop a PTT line that nothing
+// else released. Worth logging: it means a transition was lost upstream.
+bool   pttStuckWasCleared();
 
 // Play one character on the SIDETONE only — no key line, no PTT, no key
 // hook. Blocking, for a startup chirp: a boot that keys the transmitter

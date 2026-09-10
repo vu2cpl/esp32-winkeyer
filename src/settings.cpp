@@ -434,6 +434,7 @@ void toJson(JsonDocument& doc) {
   doc["potmax"]  = Keyer::getPotMin() + Keyer::getPotRange();
   doc["busy"]    = Keyer::busy();
   doc["key"]     = Keyer::keyIsDown();
+  doc["ptt"]     = Keyer::pttIsOn();      // the local line, GPIO32/19
   doc["tune"]    = Keyer::tuning();
   doc["backend"] = WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
   doc["host"]    = WinKeyer::hostOpen();
@@ -450,6 +451,7 @@ void toJson(JsonDocument& doc) {
   f["cmd"]       = Flex::keyVerb();
   f["bind"]      = Flex::bindEnabled();
   f["xmit"]      = Flex::useXmit();
+  f["xmiton"]    = Flex::transmitting();  // is the RADIO keyed right now
 }
 
 }  // namespace Settings

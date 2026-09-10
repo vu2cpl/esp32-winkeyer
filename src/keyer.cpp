@@ -132,6 +132,7 @@ volatile bool keyDownFlag = false;
 // sampling keyIsDown() at its own rate aliases badly — a dit at 22 WPM is
 // 55 ms — and shows a random-looking flicker instead of activity.
 volatile uint32_t lastKeyDownMs = 0;
+volatile bool     pttStuckCleared = false;
 
 // Debounced paddles
 uint8_t ditCnt = 0, dahCnt = 0;
@@ -297,6 +298,25 @@ void samplePaddles() {
 }
 
 // ── Speed pot ─────────────────────────────────────────────
+// Absolute backstop on the PTT line. Everything that sequences it —
+// the keyer's own tail, a host's manual hold, the Flex backend driving it
+// from the radio's progress — can be defeated by one lost transition, and
+// the cost is a transmitter left keyed. Nothing legitimate holds PTT with
+// no keying for this long except tune, which is excluded.
+static const uint32_t PTT_MAX_IDLE_MS = 10000;
+
+void pttSafety() {
+  if (!pttOn || flagTune) return;
+  if (keyDownFlag) { return; }
+  uint32_t since = lastKeyDownMs ? (millis() - lastKeyDownMs) : 0;
+  if (lastKeyDownMs && since > PTT_MAX_IDLE_MS) {
+    digitalWrite(PIN_PTT_OUT, LOW);
+    digitalWrite(PIN_PTT_OUT2, LOW);
+    pttOn = false;
+    pttStuckCleared = true;      // reported once from loop context
+  }
+}
+
 void samplePot() {
   if (!cfgPotEn) return;
   if (++potTick < 50) return;          // one reading per 50 ms
@@ -341,6 +361,7 @@ void keyerTask(void*) {
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(1));
     samplePaddles();
     samplePot();
+    pttSafety();
     tickDecoder();
 
     // Host abort (WK "clear buffer"): stop buffered sending at once.
@@ -523,8 +544,16 @@ bool tuning()      { return flagTune; }
 
 void pttManual(bool on) {
   flagPttHold = on;
-  if (on) { if (cfgPtt) pttAssert(); }
-  else if (state == ST_IDLE) {
+  if (on) { if (cfgPtt) pttAssert(); return; }
+
+  // Releasing was gated on the keyer being idle, which is right only while
+  // the keyer owns the line: it stops a host's PTT-off from cutting a
+  // transmission short. When something else owns it (cfgPttAuto false, as
+  // on the Flex backend) that gate is fatal — the keyer is still playing
+  // the monitor copy when the radio finishes, so the release was skipped
+  // and, with the keyer's own tail disabled, NOTHING else could drop it.
+  // The transmitter stayed keyed.
+  if (!cfgPttAuto || state == ST_IDLE) {
     digitalWrite(PIN_PTT_OUT, LOW); digitalWrite(PIN_PTT_OUT2, LOW);
     pttOn = false;
   }
@@ -533,6 +562,12 @@ void pttManual(bool on) {
 bool busy()         { return state != ST_IDLE || queueDepth() > 0; }
 bool keyIsDown()    { return keyDownFlag; }
 bool pttIsOn() { return pttOn; }
+
+bool pttStuckWasCleared() {
+  bool b = pttStuckCleared;
+  pttStuckCleared = false;
+  return b;
+}
 
 void chirp(char c) {
   const char* pat = morseFor(toupper((unsigned char)c));
