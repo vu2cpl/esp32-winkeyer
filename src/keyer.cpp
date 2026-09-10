@@ -367,11 +367,15 @@ KeyerMode getMode() { return cfgMode; }
 void      setPaddleSwap(bool s) { cfgSwap = s; }
 bool      getPaddleSwap() { return cfgSwap; }
 void      setSidetone(bool en) { cfgSidetone = en; if (!en) toneOff(); }
+bool      getSidetone() { return cfgSidetone; }
 void      setSidetoneHz(uint16_t hz) { cfgToneHz = constrain(hz, (uint16_t)300, (uint16_t)2000); }
 uint16_t  getSidetoneHz() { return cfgToneHz; }
 void      setPttEnabled(bool en) { cfgPtt = en; if (!en) digitalWrite(PIN_PTT_OUT, LOW); }
+bool      getPttEnabled() { return cfgPtt; }
 void      setPttLeadMs(uint16_t ms) { cfgLeadMs = ms; }
+uint16_t  getPttLeadMs() { return cfgLeadMs; }
 void      setPttTailMs(uint16_t ms) { cfgTailMs = ms; }
+uint16_t  getPttTailMs() { return cfgTailMs; }
 void      setPotEnabled(bool en) { cfgPotEn = en; potLastWpm = -1; }
 bool      getPotEnabled() { return cfgPotEn; }
 void      setPotRange(uint8_t minWpm, uint8_t range) { cfgPotMin = minWpm; cfgPotRange = range; potLastWpm = -1; }
@@ -379,8 +383,11 @@ uint8_t   getPotMin()   { return cfgPotMin; }
 uint8_t   getPotRange() { return cfgPotRange; }
 void      setKeyOutEnabled(bool en) { cfgKeyOut = en; if (!en) digitalWrite(PIN_KEY_OUT, LOW); }
 void      setWeighting(uint8_t w) { cfgWeight = constrain(w, (uint8_t)10, (uint8_t)90); recalc(); }
+uint8_t   getWeighting()  { return cfgWeight; }
 void      setRatio(uint8_t r)     { cfgRatio  = constrain(r, (uint8_t)33, (uint8_t)66); recalc(); }
+uint8_t   getRatio()      { return cfgRatio; }
 void      setFarnsworth(uint8_t w){ cfgFarns  = w; recalc(); }
+uint8_t   getFarnsworth() { return cfgFarns; }
 
 bool sendChar(char c) {
   if (c != KEYER_MERGE_MARK) {

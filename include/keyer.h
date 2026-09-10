@@ -29,11 +29,15 @@ KeyerMode getMode();
 void      setPaddleSwap(bool swapped);  // dit/dah exchange
 bool      getPaddleSwap();
 void      setSidetone(bool enabled);    // default on
+bool      getSidetone();
 void      setSidetoneHz(uint16_t hz);   // default 600
 uint16_t  getSidetoneHz();
 void      setPttEnabled(bool enabled);  // default on
+bool      getPttEnabled();
 void      setPttLeadMs(uint16_t ms);    // default 50
+uint16_t  getPttLeadMs();
 void      setPttTailMs(uint16_t ms);    // default 250
+uint16_t  getPttTailMs();
 void      setPotEnabled(bool enabled);  // default OFF until a pot is wired (GPIO34 floats)
 bool      getPotEnabled();
 void      setPotRange(uint8_t minWpm, uint8_t range);  // default 10 + 25 → 10..35
@@ -43,8 +47,11 @@ void      setKeyOutEnabled(bool en);    // false = sidetone only (Flex backend o
 
 // WK-style refinements. Nominal values reproduce standard timing.
 void      setWeighting(uint8_t w);      // 10..90, nominal 50 (mark/space balance)
+uint8_t   getWeighting();
 void      setRatio(uint8_t r);          // 33..66, nominal 50 (dah = 3 dits)
+uint8_t   getRatio();
 void      setFarnsworth(uint8_t wpm);   // 0 = off; else gaps stretched to this WPM
+uint8_t   getFarnsworth();
 
 // ── Sending ───────────────────────────────────────────────
 bool   sendChar(char c);   // queue ASCII (space = word gap); false if buffer full

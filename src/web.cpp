@@ -83,6 +83,7 @@ button{cursor:pointer;background:linear-gradient(180deg,#44444a,#26262a);letter-
 button:hover{border-color:var(--amber);color:var(--amber)}
 button.hot{color:var(--red);border-color:#5a2420}
 .val{color:var(--amber);min-width:56px;font-size:13px}
+.hint{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.4}
 #msg{min-height:18px;font-size:12px;color:var(--green);margin-top:4px}
 #msg.err{color:var(--red)}
 .foot{margin-top:12px;font-size:11px;color:var(--dim);text-align:center}
@@ -109,6 +110,27 @@ button.hot{color:var(--red);border-color:#5a2420}
   <label style="flex:0 0 auto"><input type="checkbox" id="swap"> swap paddles</label></div>
 <div class="row"><label>Sidetone</label>
   <input type="range" id="sthz" min="300" max="2000" step="10"><span class="val" id="sthzV"></span></div>
+</fieldset>
+
+<fieldset><legend>TIMING</legend>
+<div class="row"><label>Weight</label>
+  <input type="range" id="weight" min="10" max="90"><span class="val" id="weightV"></span></div>
+<div class="row"><label>Dah ratio</label>
+  <input type="range" id="ratio" min="33" max="66"><span class="val" id="ratioV"></span></div>
+<div class="row"><label>Farnsworth</label>
+  <input type="number" id="farns" min="0" max="60"><span class="val">WPM &mdash; 0 = off</span></div>
+<div class="hint">50 is nominal for both sliders. Weight shifts the mark/space
+balance without changing WPM; ratio changes dah length.</div>
+</fieldset>
+
+<fieldset><legend>PTT</legend>
+<div class="row"><label>Line</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled (GPIO32)</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
+<div class="row"><label>Lead-in</label>
+  <input type="number" id="lead" min="0" max="2000"><span class="val">ms before the first element</span></div>
+<div class="row"><label>Tail</label>
+  <input type="number" id="tail" min="0" max="2000"><span class="val">ms after the last</span></div>
 </fieldset>
 
 <fieldset><legend>SPEED POT</legend>
@@ -162,28 +184,33 @@ async function refresh(){
   led('l-disp',s.disp&&s.disphw);
   $('flexip').textContent=s.flex.enabled?(s.flex.ip||'searching'):'';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
-    backend:s.backend,dispctl:s.dispctl};
+    backend:s.backend,dispctl:s.dispctl,weight:s.weight,ratio:s.ratio,
+    farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
+  $('ptt').checked=s.ptt;$('st').checked=s.st;
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';
+  $('weightV').textContent=$('weight').value+(s.weight==50?' (nominal)':'');
+  $('ratioV').textContent=$('ratio').value+(s.ratio==50?' (nominal)':'');
 }
 // Sliders: track the label live, but only write on release — one NVS
 // commit per drag instead of one per pixel.
-for(const [id,lbl,suf] of [['wpm','wpmV',' WPM'],['sthz','sthzV',' Hz']]){
+for(const [id,lbl,suf] of [['wpm','wpmV',' WPM'],['sthz','sthzV',' Hz'],
+                           ['weight','weightV',''],['ratio','ratioV','']]){
   $(id).oninput=e=>{editing=id;$(lbl).textContent=e.target.value+suf};
   $(id).onchange=e=>{editing=null;set(id,e.target.value)};
 }
-for(const id of ['mode','backend','dispctl','potmin','potmax'])
+for(const id of ['mode','backend','dispctl','potmin','potmax','farns','lead','tail'])
   $(id).onchange=e=>set(id,e.target.value);
-for(const id of ['swap','pot','disp'])
+for(const id of ['swap','pot','disp','ptt','st'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 refresh();setInterval(refresh,1000);
 </script></body></html>)HTML";
 
 void handleState() {
-  StaticJsonDocument<640> doc;
+  StaticJsonDocument<1024> doc;
   Settings::toJson(doc);
   doc["rssi"] = (int)WiFi.RSSI();
   doc["ip"]   = WiFi.localIP().toString();

@@ -15,6 +15,7 @@
 //    /wpm 25   /mode a|b   /swap        /tune       /pot on|off
 //    /pot 10 35            /st 700      /st on|off  /ptt on|off
 //    /disp on|off          /disp sh1106|ssd1306      /i2c (scan the bus)
+//    /weight 50  /ratio 50  /farns 0  /lead 50  /tail 250
 //    /backend local|flex   /flex on|off /flex ip <addr>
 //    /wifi     /wifi portal /wifi reset  /status     /net
 //    anything else is sent as CW.
@@ -84,6 +85,10 @@ void printStatus() {
                 Keyer::getSidetoneHz(),
                 Keyer::tuning() ? "on" : "off",
                 Keyer::busy() ? "yes" : "no");
+  Serial.printf("[KEYER] weight=%u ratio=%u farns=%u  ptt=%s lead=%ums tail=%ums\n",
+                Keyer::getWeighting(), Keyer::getRatio(), Keyer::getFarnsworth(),
+                Keyer::getPttEnabled() ? "on" : "off",
+                Keyer::getPttLeadMs(), Keyer::getPttTailMs());
   Serial.printf("[KEYER] pot=%s (%u-%u WPM on GPIO34)  display=%s\n",
                 Keyer::getPotEnabled() ? "on" : "off",
                 Keyer::getPotMin(), Keyer::getPotMin() + Keyer::getPotRange(),
@@ -152,6 +157,11 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "disp") && arg) {
       bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
       setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
+    } else if (!strcasecmp(cmd, "ratio")  && arg) { setting("ratio", arg);
+    } else if (!strcasecmp(cmd, "farns")  && arg) { setting("farns", arg);
+    } else if (!strcasecmp(cmd, "lead")   && arg) { setting("lead", arg);
+    } else if (!strcasecmp(cmd, "tail")   && arg) { setting("tail", arg);
     } else if (!strcasecmp(cmd, "wpm")   && arg) { setting("wpm", arg);
     } else if (!strcasecmp(cmd, "mode")  && arg) { setting("mode", arg);
     } else if (!strcasecmp(cmd, "ptt")   && arg) { setting("ptt", arg);
@@ -226,8 +236,9 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c "
-                     "/backend /flex /wifi /paddle /net /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
+                     "      /weight /ratio /farns /lead /tail\n"
+                     "      /backend /flex /wifi /paddle /net /status");
     }
     return;
   }

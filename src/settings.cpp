@@ -249,7 +249,14 @@ void toJson(JsonDocument& doc) {
   doc["wpm"]     = Keyer::getWpm();
   doc["mode"]    = Keyer::getMode() == KEYER_IAMBIC_A ? "a" : "b";
   doc["swap"]    = Keyer::getPaddleSwap();
+  doc["st"]      = Keyer::getSidetone();
   doc["sthz"]    = Keyer::getSidetoneHz();
+  doc["ptt"]     = Keyer::getPttEnabled();
+  doc["lead"]    = Keyer::getPttLeadMs();
+  doc["tail"]    = Keyer::getPttTailMs();
+  doc["weight"]  = Keyer::getWeighting();
+  doc["ratio"]   = Keyer::getRatio();
+  doc["farns"]   = Keyer::getFarnsworth();
   doc["pot"]     = Keyer::getPotEnabled();
   doc["potmin"]  = Keyer::getPotMin();
   doc["potmax"]  = Keyer::getPotMin() + Keyer::getPotRange();

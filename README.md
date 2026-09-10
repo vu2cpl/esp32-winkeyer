@@ -204,15 +204,31 @@ tells "not sent" from "reported late".
 
 `/wpm N` `/mode a|b` `/swap` `/tune` `/pot on|off` `/pot <min> <max>`
 `/ptt on|off` `/st N|on|off` `/disp on|off` `/disp sh1106|ssd1306`
+`/weight N` `/ratio N` `/farns N` `/lead N` `/tail N`
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
 `/i2c` `/net` `/status`. Any other line is sent as CW.
 
 ## Settings web page
 
 `http://winkeyer.local/` (or the IP — `/net` prints it). Speed, mode,
-paddle swap, sidetone, pot enable and range, display, backend, plus a
-send box and tune/stop. Live status LEDs for host, TCP, key, tune, pot,
-Flex and OLED, polled once a second.
+paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
+tail**, pot enable and range, display, backend, plus a send box and
+tune/stop. Live status LEDs for host, TCP, key, tune, pot, Flex and OLED,
+polled once a second.
+
+Timing settings, all persisted and all validated the same way from the
+CLI and the page:
+
+| Setting | Range | Nominal | What it does |
+|---|---|---|---|
+| Weight | 10–90 | 50 | mark/space balance, **without** changing WPM |
+| Dah ratio | 33–66 | 50 | dah length (50 = the standard 3 dits) |
+| Farnsworth | 0, or 5–60 | 0 (off) | stretches only the gaps, to this WPM |
+| PTT lead-in | 0–2000 ms | 50 | delay before the first element |
+| PTT tail | 0–2000 ms | 250 | hold after the last element |
+
+Out-of-range values are refused with the accepted range and nothing is
+changed — `farns 3` answers `farnsworth: 0 (off) or 5..60`.
 
 Same trust posture as the WinKeyer TCP port: **no authentication**, so
 keep it on a trusted LAN. Visual style is borrowed from soft-MORCONI
