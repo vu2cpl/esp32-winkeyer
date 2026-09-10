@@ -67,6 +67,9 @@ display:flex;align-items:baseline;gap:12px}
 fieldset{border:1px solid #44444a;border-radius:8px;margin:0 0 12px;padding:10px 14px 14px}
 legend{color:var(--amber);font-size:11px;letter-spacing:2px;padding:0 6px}
 .row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+/* An author rule beats the hidden attribute's default display:none, so
+   .row{display:flex} kept "hidden" rows on screen. */
+.row[hidden]{display:none!important}
 .row label{flex:0 0 108px;color:var(--dim);font-size:12px}
 input,select,button{font:inherit;background:#131315;color:var(--label);
 border:1px solid #44444a;border-radius:5px;padding:5px 9px}
@@ -173,7 +176,7 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend>BACKEND</legend>
-<div class="row flexonly"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
+<div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
 <div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
@@ -223,6 +226,8 @@ legend[title]{cursor:help}
 </div><script>
 const $=i=>document.getElementById(i);
 let editing=null,pend=null;
+// Held so it can be put back once Flex is enabled again.
+const flexOpt=document.querySelector('#backend option[value="flex"]');
 function note(t,err){const m=$('msg');m.textContent=t;m.className=err?'err':''}
 async function post(u){const r=await fetch(u,{method:'POST'});const t=await r.text();
   note(t,!r.ok);refresh()}
@@ -260,12 +265,21 @@ async function refresh(){
       : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
       : 'searching';
   $('flex').checked=s.flex.enabled;
-  // Every Flex row disappears when keying is local — none of it applies.
-  // Safe to hide the enable along with the rest: the Keying selector
-  // itself always stays visible, so switching back to flex brings them
-  // all back.
+  // Gated on the ENABLE. The detail rows go when Flex is off, and the
+  // Keying selector stops offering Flex at all — so there is no way to
+  // select a backend that is not enabled, and no lockout either, because
+  // the enable checkbox itself always stays on screen.
   for (const el of document.querySelectorAll('.flexonly'))
-    el.hidden = (s.backend !== 'flex');
+    el.hidden = !s.flex.enabled;
+  // Safari ignores hidden/disabled on <option> — it still lists them — so
+  // the entry has to leave the DOM entirely. Kept if it is the CURRENT
+  // value, otherwise the select would go blank and hide the real state.
+  const sel = $('backend');
+  if (s.flex.enabled) {
+    if (!flexOpt.parentNode) sel.appendChild(flexOpt);
+  } else if (flexOpt.parentNode) {
+    flexOpt.remove();      // the firmware has already moved keying to local
+  }
   $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
   if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
   {

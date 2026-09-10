@@ -379,7 +379,15 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     if (!boolish(val)) return fail("flex: on|off");
     bool b = truthy(val);
     Flex::setEnabled(b);          // persists in its own NVS namespace
-    snprintf(msg, msgLen, "flex=%s", b ? "enabled" : "disabled");
+    // Keying follows the switch. Enabling the radio backend is only ever
+    // done in order to key the radio, and leaving keying on the wire after
+    // it would be a silent trap; disabling it must not leave keying
+    // pointed at a backend that is switched off, where the CW goes
+    // nowhere while the UI still claims the radio. Either way is
+    // overridable afterwards from the Keying selector.
+    applyBackend(b, true);
+    snprintf(msg, msgLen, "flex=%s — keying %s", b ? "enabled" : "disabled",
+             b ? "-> the radio over the network" : "-> the local key line");
 
   } else if (!strcasecmp(key, "flexcmd")) {
     if (strcasecmp(val, "key") && strcasecmp(val, "ptt"))
