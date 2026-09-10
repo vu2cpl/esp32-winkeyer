@@ -27,6 +27,8 @@
 
 #include <Arduino.h>
 #include <stdarg.h>
+#include <esp_system.h>
+#include <esp_task_wdt.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
@@ -402,6 +404,26 @@ void setup() {
   } else {
     Log::printf("\n[BOOT] ESP32 WinKeyer @ %u baud\n", (unsigned)baud);
   }
+  // Why the board restarted. Printed even when the boot log is otherwise
+  // trimmed: after a hang this is the only evidence left, and without it a
+  // panic, a watchdog bite and a clean power-up look identical.
+  {
+    const char* why;
+    switch (esp_reset_reason()) {
+      case ESP_RST_POWERON:  why = "power-on";              break;
+      case ESP_RST_EXT:      why = "external reset";        break;
+      case ESP_RST_SW:       why = "software restart";      break;
+      case ESP_RST_PANIC:    why = "PANIC / exception";     break;
+      case ESP_RST_INT_WDT:  why = "interrupt WATCHDOG";    break;
+      case ESP_RST_TASK_WDT: why = "task WATCHDOG";         break;
+      case ESP_RST_WDT:      why = "other WATCHDOG";        break;
+      case ESP_RST_BROWNOUT: why = "BROWNOUT (power)";      break;
+      case ESP_RST_DEEPSLEEP:why = "deep sleep";            break;
+      default:               why = "unknown";               break;
+    }
+    Serial.printf("[BOOT] last reset: %s\n", why);
+  }
+
   pinMode(PIN_STATUS_LED, OUTPUT);
 
   // Keyer first — it must work with no WiFi at all.
@@ -440,6 +462,13 @@ void setup() {
        useFlex ? "flex" : "local", Keyer::getWpm(),
        Keyer::getPotEnabled() ? "on" : "off");
 
+  // Watch loopTask. A hang there currently needs someone at the bench with
+  // a power cable; with this it reboots itself and, crucially, records WHY
+  // so the next boot can say so. 30 s is far longer than any legitimate
+  // blocking call here (the MQTT connect is capped at 2 s).
+  esp_task_wdt_init(30, true);      // panic-and-reset on timeout
+  esp_task_wdt_add(NULL);           // NULL = the task calling this: loopTask
+
   Keyer::chirp('R');      // "roger" — sidetone only, the board is up
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
@@ -449,6 +478,7 @@ void setup() {
 
 // ── Loop ──────────────────────────────────────────────────
 void loop() {
+  esp_task_wdt_reset();  // still alive
   wm.process();          // captive portal, when active
   pollSerial();
   // Keep the radio's cwx speed in step with the keyer's, whatever changed
