@@ -66,6 +66,7 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 | Status LED | 2 | onboard |
 | OLED SDA | 21 | 128x64 I²C panel, optional |
 | OLED SCL | 22 | |
+| FSK out | 27 | RTTY keying line, mark = idle (invertible) |
 
 Paddles need no external parts.
 
@@ -212,6 +213,40 @@ nothing and are dropped, and a prosign keyed as merged elements comes back
 as whatever single pattern it forms, not as the letters you had in mind.
 Forcing echo on when the host did not request it may also confuse a logger
 that is not expecting unsolicited characters — hence the switch.
+
+## RTTY / FSK
+
+An FSK keying line on **GPIO27** for a rig's FSK input: Baudot (ITA2) at
+45.45 baud, 1 start bit, 5 data bits LSB first, 1.5 stop bits, mark idle.
+
+```bash
+/fsk RYRY DE VU2CPL     # send
+/fsk baud 45.45         # or 50, 75
+/fsk invert on          # if the rig wants mark low
+/fsk diddle on          # LTRS while idle, keeps the far end synchronised
+/fsk stop
+/fsk                    # status
+```
+
+The web page has an FSK panel with its own send box.
+
+**Polarity is the one thing you must confirm on air.** Getting `invert`
+wrong prints reversed-case gibberish at the far end rather than nothing, so
+silence means a wiring fault and garbage means the wrong polarity.
+
+Two implementation notes that matter if you touch this code. The bit timer
+runs at the **half-bit** period, because the 1.5-bit stop is three
+half-bits and a 22 ms bit cannot be timed from the 1 ms FreeRTOS tick
+without ~4% jitter. And the far end's **LTRS/FIGS shift state is tracked
+explicitly**: `Q` and `1` are the same five bits, so losing the shift
+prints digits as letters for the rest of the over. Shift characters are
+injected only when a character actually needs the other case, and space,
+CR and LF are treated as neutral so they never force one.
+
+Verified by timing, not by scope: `RYRY DE VU2CPL` takes 2.87 s at 45.45
+baud against a theoretical 2.81 s, and 1.77 s at 75 baud against 1.70 s.
+The 14-character message occupies 17 code times, which is the two shift
+characters `2` forces.
 
 ## Connecting logging software
 

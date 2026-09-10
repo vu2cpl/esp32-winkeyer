@@ -21,6 +21,7 @@
 #include "config.h"
 #include "settings.h"
 #include "keyer.h"
+#include "fsk.h"
 #include "winkeyer.h"
 #include <WebServer.h>
 #include <ESPmDNS.h>
@@ -172,6 +173,18 @@ legend[title]{cursor:help}
   <span class="val" id="flexip"></span></div>
 </fieldset>
 
+<fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
+<div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
+  <button onclick="fsksend()">SEND</button>
+  <button class="hot" onclick="post('/api/fsk?stop=1')">STOP</button></div>
+<div class="row"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
+  <select id="fskbaud"><option value="45.45">45.45 (standard)</option>
+  <option value="50">50</option><option value="75">75</option></select>
+  <label style="flex:0 0 auto"><input type="checkbox" id="fskinv"> invert</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="fskdid"> diddle</label>
+  <span class="val" id="fskState"></span></div>
+</fieldset>
+
 <fieldset><legend title="Type text and press Enter or SEND to transmit it. TUNE keys continuously for tuning an amp; STOP ends it. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
 <div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
   <button onclick="send()">SEND</button>
@@ -187,9 +200,12 @@ let editing=null,pend=null;
 function note(t,err){const m=$('msg');m.textContent=t;m.className=err?'err':''}
 async function post(u){const r=await fetch(u,{method:'POST'});const t=await r.text();
   note(t,!r.ok);refresh()}
-function set(k,v){post('/api/set?k='+k+'&v='+encodeURIComponent(v))}
+const KEYMAP={fskbaud:'fskbaud',fskinv:'fskinv',fskdid:'fskdiddle'};
+function set(k,v){post('/api/set?k='+(KEYMAP[k]||k)+'&v='+encodeURIComponent(v))}
 function send(){const t=$('txt').value.trim();if(!t)return;
   post('/api/send?t='+encodeURIComponent(t));$('txt').value=''}
+function fsksend(){const t=$('fsktxt').value.trim();if(!t)return;
+  post('/api/fsk?t='+encodeURIComponent(t));$('fsktxt').value=''}
 function led(id,on,warn){const e=$(id);e.className='led'+(on?(warn?' warn':' on'):'')}
 async function refresh(){
   let s;try{s=await(await fetch('/api/state')).json()}catch(e){return}
@@ -213,12 +229,15 @@ async function refresh(){
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
     pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
+    fskbaud:String(s.fskbaud),
     weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
   $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
+  $('fskinv').checked=s.fskinv; $('fskdid').checked=s.fskdid;
+  $('fskState').textContent = s.fskbusy ? 'SENDING' : '';
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';
   $('weightV').textContent=$('weight').value+(s.weight==50?' (nominal)':'');
@@ -253,11 +272,12 @@ function bindNum(id,min,max){
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
-for(const id of ['mode','backend','dispctl','baud','pecho'])
+for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud'])
   $(id).onchange=e=>set(id,e.target.value);
-for(const id of ['swap','pot','disp','ptt','st','monitor'])
+for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+$('fsktxt').addEventListener('keydown',e=>{if(e.key==='Enter')fsksend()});
 refresh();setInterval(refresh,1000);
 </script></body></html>)HTML";
 
@@ -293,6 +313,22 @@ void handleSend() {
   server.send(200, "text/plain", String("sent: ") + t);
 }
 
+void handleFsk() {
+  if (server.hasArg("stop")) {
+    Fsk::abort();
+    server.send(200, "text/plain", "fsk stopped");
+    return;
+  }
+  String t = server.arg("t");
+  if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
+  if (!Fsk::send(t.c_str())) {
+    server.send(503, "text/plain", "fsk buffer full");
+    return;
+  }
+  Log::printf("[FSK] > %s\n", t.c_str());
+  server.send(200, "text/plain", String("fsk: ") + t);
+}
+
 void handleTune() {
   bool on = server.arg("v") == "on";
   Keyer::tune(on);
@@ -309,6 +345,7 @@ void begin() {
   server.on("/api/set",   HTTP_POST, handleSet);
   server.on("/api/send",  HTTP_POST, handleSend);
   server.on("/api/tune",  HTTP_POST, handleTune);
+  server.on("/api/fsk",   HTTP_POST, handleFsk);
   server.onNotFound([]() { server.send(404, "text/plain", "no such page"); });
   // Listening is deferred to poll(): WiFiManager is non-blocking, so at
   // setup() time there is usually no IP to bind to yet. Net::poll() brings

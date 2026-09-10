@@ -41,18 +41,23 @@ implemented — see "Flex backend" below.
 | Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
 | OLED SDA / SCL | 21 / 22 | SH1106 or SSD1306 128x64, optional; probed at boot |
 | Status LED | 2 | onboard |
-| Reserved OTRSP | 16,17 (UART2), 27, 14, 13, 5 | revised 2026-09-10 — see below |
+| FSK out | 27 | RTTY keying line, mark = idle, invertible |
 
-`include/pins.h` carried a **stale** reservation comment still claiming
-18/19/21/22/23 for OTRSP, contradicting the 2026-09-10 revision below.
-Corrected when the display landed.
+**The OTRSP reservation is gone (2026-09-11).** Manoj: *"there is no plan
+for so2r or otrsp"*. Six pins — 16, 17, 27, 14, 13, 5 — had been held
+since the scaffold for a phase that was never going to start, and by the
+time FSK, a second KEY/PTT pair and buttons were all wanted, that
+reservation was the thing forcing real features onto a resistor ladder.
+SO2R lives in `~/projects/SO2R box` as separate hardware.
 
-**Pin reservation revised 2026-09-10.** The original OTRSP block claimed
-GPIO 21/22, which are the standard ESP32 I²C pins. If a display is ever
-added it wants 21/22 (every OLED library assumes them), so OTRSP relay
-outputs move to 27/14/13/5 and UART2 stays on 16/17. GPIO 18/19/23 are
-free again; 35/36/39 remain available as input-only (straight-key jack,
-command button).
+Free now: **13, 14, 16, 17, 18, 19, 23**, plus 35/36/39 input-only (no
+internal pull-ups there — a button needs an external one). Avoid 5, 12
+and 15: strapping pins, pulsed at boot. 6-11 are the SPI flash.
+
+Earlier in the same session `pins.h` was also found carrying a *stale*
+reservation comment claiming 18/19/21/22/23, contradicting a 2026-09-10
+revision that had moved OTRSP off the I²C pins for the display. Both are
+now moot.
 
 ## Architecture
 
@@ -594,8 +599,18 @@ against exposing it beyond one.
    Also not built, now that a display exists to make them worth having:
    a **command button** on one of the input-only spares (35/36/39) for
    menu/message playback, and showing **decoded sent text** on the panel.
-10. Future: ESP32-S3 env for a native-USB descriptor; OTRSP/SO2R phase
-    (pins reserved; SO2R docs in `~/projects/SO2R box`).
+10. Future: ESP32-S3 env for a native-USB descriptor. **OTRSP/SO2R is not
+    planned for this box** and its pin reservation has been dropped — SO2R
+    stays in `~/projects/SO2R box`.
+11. **RTTY FSK on GPIO27** (2026-09-11): Baudot/ITA2, 45.45 baud, 1.5 stop
+    bits, LTRS/FIGS shift tracking, diddle, invertible polarity. Timing
+    verified against theory; **polarity and on-air copy are unverified** —
+    wrong `invert` prints reversed-case gibberish rather than silence.
+    Not driven by any logger yet: text comes from `/fsk`, the web page or
+    the API, so hooking RUMlogNG's RTTY output to it is the open question.
+12. Still wanted, now that pins exist: second KEY/PTT pair (18/19),
+    front-panel buttons (13/14/23 with internal pull-ups), message
+    memories, and 16x2/20x4 I²C LCD support alongside the OLED.
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 

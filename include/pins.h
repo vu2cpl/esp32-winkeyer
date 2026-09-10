@@ -22,7 +22,18 @@
 #define PIN_I2C_SDA      21
 #define PIN_I2C_SCL      22
 
-// Reserved for the future OTRSP/SO2R phase — do not assign:
-//   16, 17 (UART2 RX/TX), 27, 14, 13, 5 (relay outputs)
-// Free: 18, 19, 23. Input-only spares: 35, 36, 39 (straight-key jack,
-// command button).
+#define PIN_FSK_OUT      27   // RTTY FSK keying line; mark = idle (invertible)
+
+// The OTRSP/SO2R reservation that used to hold 16, 17, 27, 14, 13 and 5 is
+// GONE (2026-09-11): there is no SO2R plan for this box, and holding six
+// pins for work that was never going to start had begun to squeeze real
+// features onto a resistor ladder. SO2R lives in ~/projects/SO2R box.
+//
+// Free: 13, 14, 16, 17, 18, 19, 23. Input-only spares: 35, 36, 39 (no
+// internal pull-ups on those — a button there needs an external one).
+//
+// Avoid GPIO 5, 12 and 15: strapping pins, sampled at boot and pulsed on
+// reset, so they make unreliable outputs and can stop the board booting.
+// GPIO 6-11 are the SPI flash and are unusable. On a WROVER module 16/17
+// are the PSRAM lines — fine on this WROOM-based D0WD-V3 devkit, but check
+// before reusing them on a different board.

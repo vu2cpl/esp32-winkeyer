@@ -18,6 +18,7 @@
 #include "flex.h"
 #include "net.h"
 #include "display.h"
+#include "fsk.h"
 #include <Preferences.h>
 
 namespace {
@@ -153,6 +154,9 @@ void begin() {
   Display::setEnabled(loadU32("dispen", 1));
   WinKeyer::setMonitor(loadU32("monitor", 1));
   WinKeyer::setPaddleEcho(loadU32("pecho", 2));
+  Fsk::setBaud(loadU32("fskbaud", 4545) / 100.0f);
+  Fsk::setInvert(loadU32("fskinv", 0));
+  Fsk::setDiddle(loadU32("fskdiddle", 0));
 }
 
 bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
@@ -262,6 +266,24 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
+  } else if (!strcasecmp(key, "fskbaud")) {
+    float b = atof(val);
+    if (!Fsk::setBaud(b)) return fail("fsk baud: 10..300 (45.45 standard RTTY)");
+    saveU32("fskbaud", (uint32_t)(b * 100));      // hundredths: 45.45 is not an int
+    snprintf(msg, msgLen, "fsk %.2f baud", b);
+
+  } else if (!strcasecmp(key, "fskinv")) {
+    if (!boolish(val)) return fail("fskinv: on|off");
+    bool b = truthy(val);
+    Fsk::setInvert(b); saveU32("fskinv", b);
+    snprintf(msg, msgLen, "fsk mark = %s", b ? "low (inverted)" : "high");
+
+  } else if (!strcasecmp(key, "fskdiddle")) {
+    if (!boolish(val)) return fail("fskdiddle: on|off");
+    bool b = truthy(val);
+    Fsk::setDiddle(b); saveU32("fskdiddle", b);
+    snprintf(msg, msgLen, "fsk diddle=%s", b ? "on" : "off");
+
   } else if (!strcasecmp(key, "pecho")) {
     uint8_t m;
     if      (!strcasecmp(val, "auto")) m = 2;
@@ -328,6 +350,10 @@ void toJson(JsonDocument& doc) {
   doc["monitor"] = WinKeyer::monitor();
   doc["pecho"]   = WinKeyer::paddleEcho();
   doc["pechoon"] = WinKeyer::paddleEchoActive();
+  doc["fskbaud"] = Fsk::baud();
+  doc["fskinv"]  = Fsk::invert();
+  doc["fskdid"]  = Fsk::diddle();
+  doc["fskbusy"] = Fsk::busy();
   doc["modereg"] = WinKeyer::modeRegister();
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();

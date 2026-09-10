@@ -41,6 +41,7 @@
 #include "display.h"
 #include "settings.h"
 #include "web.h"
+#include "fsk.h"
 
 WiFiClient   net;
 PubSubClient mqtt(net);
@@ -147,6 +148,32 @@ void setting(const char* key, const char* val) {
 
 void handleLine(char* line) {
   if (line[0] == '\0') return;
+
+  // /fsk carries free text, so it is handled before tokenising — strtok
+  // would cut it at the first space and there is no reliable way to sew
+  // a line back together afterwards.
+  if (!strncasecmp(line, "/fsk", 4) && (line[4] == ' ' || line[4] == '\0')) {
+    char* rest = line + 4;
+    while (*rest == ' ') rest++;
+    if (!*rest) {
+      Log::printf("[FSK] %.2f baud, mark=%s, diddle=%s, %s (%u queued)\n",
+                  Fsk::baud(), Fsk::invert() ? "low" : "high",
+                  Fsk::diddle() ? "on" : "off",
+                  Fsk::busy() ? "SENDING" : "idle", (unsigned)Fsk::pending());
+    } else if (!strncasecmp(rest, "stop", 4)) {
+      Fsk::abort();
+      Log::println("[FSK] stopped");
+    } else if (!strncasecmp(rest, "baud ", 5))   { setting("fskbaud", rest + 5);
+    } else if (!strncasecmp(rest, "invert ", 7)) { setting("fskinv", rest + 7);
+    } else if (!strncasecmp(rest, "diddle ", 7)) { setting("fskdiddle", rest + 7);
+    } else if (!Fsk::send(rest)) {
+      Log::println("[FSK] buffer full");
+    } else {
+      Log::printf("[FSK] > %s\n", rest);
+    }
+    return;
+  }
+
   if (line[0] == '/') {
     char* cmd = strtok(line + 1, " ");
     char* arg = strtok(nullptr, " ");
@@ -259,6 +286,7 @@ void handleLine(char* line) {
     } else {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
                      "      /weight /ratio /farns /lead /tail /baud /monitor /pecho\n"
+                     "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
                      "      /backend /flex /wifi /paddle /net /status");
     }
     return;
@@ -346,6 +374,7 @@ void setup() {
   Keyer::begin();
   WinKeyer::begin();
   Display::begin();     // optional panel; silently absent if none is wired
+  Fsk::begin();
   boot("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
        Keyer::getWpm(), Keyer::getSidetoneHz());
 
