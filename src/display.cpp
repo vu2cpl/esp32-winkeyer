@@ -58,7 +58,13 @@ uint8_t       i2cAddr    = 0;
 bool          taskStarted = false;
 volatile bool cfgEnabled = true;
 bool          blanked    = false;
-unsigned long splashUntil = 0;
+unsigned long splashUntil  = 0;
+unsigned long lastProbeMs  = 0;
+bool          probedOnce   = false;
+// Settings::begin() runs in setup() and calls setController()/setEnabled().
+// Those must not touch I²C there — that is the hang this whole change is
+// about — so they set this and the task does the work.
+volatile bool needReinit   = false;
 
 // Everything the screen shows, folded into one value. A 128x64 frame is
 // 1 KB and ~100 ms of blocking I²C at 100 kHz, so the win is not a faster
@@ -348,7 +354,23 @@ void drawMain() {
 
 void task(void*) {
   for (;;) {
-    if (cfgEnabled) {
+    // Adoption happens HERE, not in setup(). A held-low I²C line blocks a
+    // transaction forever, and when this ran during setup() that took the
+    // whole board down — no keyer, no host link, no web page, needing a
+    // power cycle. Inside its own task a stuck bus costs the panel and
+    // nothing else. Retried every few seconds so a display wired up later
+    // is picked up without a reboot.
+    if (cfgEnabled && !i2cAddr && millis() - lastProbeMs > 3000) {
+      lastProbeMs = millis();
+      if (!tryAdopt() && !probedOnce) {
+        probedOnce = true;
+        Log::printf("[DISP] no panel on I2C %d/%d — will keep looking\n",
+                    PIN_I2C_SDA, PIN_I2C_SCL);
+      }
+    }
+    if (needReinit && i2cAddr) { needReinit = false; startPanel(); }
+
+    if (cfgEnabled && i2cAddr) {
       if (blanked) {
         if (kind == KIND_LCD) lcd->backlight(); else oled->setPowerSave(0);
         blanked = false;
@@ -358,7 +380,7 @@ void task(void*) {
         uint32_t sig = stateSig();
         if (sig != lastSig) { lastSig = sig; drawMain(); }
       }
-    } else if (!blanked) {
+    } else if (!blanked && i2cAddr) {
       if (kind == KIND_LCD) { lcd->clear(); lcd->noBacklight(); }
       else { oled->clearBuffer(); oled->sendBuffer(); oled->setPowerSave(1); }
       blanked = true;   // stop burning the panel in when it is not wanted
@@ -383,7 +405,6 @@ bool tryAdopt() {
   startPanel();
   drawSplash();
   splashUntil = millis() + 1500;
-  startTask();
   Log::printf("[DISP] %s at 0x%02X on I2C %d/%d @ %u kHz\n",
                 Display::controller(), i2cAddr, PIN_I2C_SDA, PIN_I2C_SCL,
                 (unsigned)(busHz / 1000));
@@ -400,10 +421,10 @@ void begin(bool enabled) {
     Log::println("[DISP] disabled — I2C bus not touched");
     return;
   }
-  if (!tryAdopt())
-    Log::printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off "
-                  "(wire one and run /i2c, no reboot needed)\n",
-                  PIN_I2C_SDA, PIN_I2C_SCL);
+  // Start the task and return immediately. Everything that touches I²C —
+  // probe, init, splash, rendering — happens inside it, so the boot cannot
+  // be held up by the display no matter what the bus is doing.
+  startTask();
 }
 
 uint8_t scan() {
@@ -437,24 +458,21 @@ bool setController(const char* name) {
   // LCD (or the reverse) without a reflash — the family is detectable even
   // though the geometry is not.
   if (!strcasecmp(name, "auto")) {
-    i2cAddr = 0;
-    if (!tryAdopt()) {
-      Log::println("[DISP] auto: nothing on the bus");
-      return true;
-    }
+    i2cAddr = 0;          // the task re-probes within a few seconds
+    probedOnce = false;
     return true;
   }
 
   if (!strcasecmp(name, "sh1106") || !strcasecmp(name, "ssd1306")) {
     useSh1106 = !strcasecmp(name, "sh1106");
     oled = useSh1106 ? (U8G2*)&panelSh1106 : (U8G2*)&panelSsd1306;
-    if (kind == KIND_OLED && i2cAddr) startPanel();
+    needReinit = true;
     return true;
   }
 
   if (!strcasecmp(name, "slow") || !strcasecmp(name, "fast")) {
     busForce = !strcasecmp(name, "slow") ? 100000 : 400000;
-    if (i2cAddr) startPanel();
+    needReinit = true;
     Log::printf("[DISP] bus forced to %u kHz\n", (unsigned)(busForce / 1000));
     return true;
   }
@@ -463,7 +481,7 @@ bool setController(const char* name) {
     bool big = !strcasecmp(name, "lcd20x4");
     lcdCols = big ? 20 : 16;
     lcdRows = big ? 4  : 2;
-    if (kind == KIND_LCD && i2cAddr) startPanel();
+    needReinit = true;
     return true;
   }
   return false;
@@ -477,8 +495,7 @@ const char* controller() {
 bool    present()  { return i2cAddr != 0; }
 uint8_t address()  { return i2cAddr; }
 void    setEnabled(bool en) {
-  cfgEnabled = en;
-  if (en) tryAdopt();   // panel may have been wired since boot
+  cfgEnabled = en;      // the task adopts, so this never blocks the caller
 }
 bool    enabled()  { return cfgEnabled && i2cAddr != 0; }
 

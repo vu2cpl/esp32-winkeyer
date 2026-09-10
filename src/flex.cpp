@@ -418,6 +418,18 @@ void poll() {
   handleDiscovery(udpNew);
   handleDiscovery(udpOld);
 
+  // Audible link state: C when the radio connects, D when it drops.
+  // Sidetone only — Keyer::chirp() touches neither the key line nor PTT,
+  // so this can never put the rig on the air.
+  {
+    static bool wasUp = false;
+    bool isUp = connected();
+    if (isUp != wasUp) {
+      wasUp = isUp;
+      Keyer::chirp(isUp ? 'C' : 'D');
+    }
+  }
+
   if (!tcp.connected()) { tryConnect(); return; }
 
   pollSocket();
