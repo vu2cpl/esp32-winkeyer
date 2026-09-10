@@ -143,7 +143,20 @@ buffered text.
 ./tools/wk-test.py --serial /dev/cu.usbserial-0001   # exercise the protocol
 ./tools/wk-test.py --host winkeyer.local             # ...over WiFi
 ./tools/wk-bridge.py                                 # TCP → serial port
+./tools/wk-timing.py --text "CQ TEST"                # timestamped status
+./tools/flex-check.py                                # why isn't it keying?
+./tools/flex-check.py --key                          # ...and key it (TRANSMITS)
 ```
+
+**`flex-check.py` is the first thing to run when the Flex will not key.**
+Every prerequisite fails silently — the radio reports no error for a
+missing slice, a slice in the wrong mode, or a missing GUI client — so it
+checks all of them at once.
+
+**`wk-timing.py` timestamps every status byte** and counts KEYDOWN against
+the text's actual element count. Counting status bytes in fixed windows
+gives false negatives when a delayed burst lands outside its window; this
+tells "not sent" from "reported late".
 
 ## Serial CLI
 
@@ -170,6 +183,8 @@ src/net.cpp            WinKeyer-over-TCP server + mDNS
 src/main.cpp           wiring, WiFi, MQTT, serial CLI
 tools/wk-bridge.py     TCP → PTY bridge for logging software
 tools/wk-test.py       protocol test harness
+tools/wk-timing.py     timestamped status — "not sent" vs "reported late"
+tools/flex-check.py    Flex prerequisite diagnostic + keying test
 flash.sh / monitor.sh  serial-port pickers (never pin the port)
 install.py             toolchain bootstrap, macOS/Pi branch
 ```

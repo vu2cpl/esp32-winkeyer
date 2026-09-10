@@ -281,6 +281,17 @@ so do not subscribe to it.
 `tools/wk-bridge.py` creates a PTY (default `/tmp/winkeyer`) bridged to
 the keyer's TCP port so logging software sees a serial device.
 
+**`tools/flex-check.py` — run this first when the Flex will not key.**
+It reports every silent prerequisite in one pass (slice in use, slice
+mode, GUI client, interlock, break-in) and with `--key` drives a keying
+test and watches interlock for proof of transmission. Written after a
+session lost hours to "no slice in use", which the radio never mentions.
+
+**`tools/wk-timing.py`** timestamps each status byte and counts KEYDOWN
+against the text's real element count. Fixed drain windows produce false
+negatives when a delayed burst lands outside its window — this was
+mistaken once for "only one element was keyed" when the CW was correct.
+
 **Verified on hardware 2026-09-10, both transports.** Host open returns
 0x17 (=23) in 44 ms, status and pot reports arrive, `request status`
 answers, speed set works, and host close is clean. Element reporting is
