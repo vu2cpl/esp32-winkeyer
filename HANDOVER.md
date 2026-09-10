@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-11 · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-11 (late session) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -526,6 +526,20 @@ makes the keyer feel slow.
 
     **Rule: nothing large goes on the stack in a polled handler.** If the
     state document grows again, it must stay on the heap.
+  - **PTT on the Flex backend now follows the radio, not the local
+    monitor.** Buffered text goes to the radio as `cwx send` while a copy
+    runs through the local keyer for sidetone; timing GPIO32 from that copy
+    meant two independent CW generators drifting apart, so PTT was held
+    progressively longer on longer transmissions. The line now follows
+    `xmitOn` for paddle keying and `pending()` — fed by the radio's own
+    `cwx sent=` reports — for buffered text. **Not yet confirmed by Manoj**
+    on a long over.
+  - **The radio's speed only ever followed a host's in-band escape.**
+    `Flex::setWpm()` had exactly one caller, so a speed set from the pot,
+    the web page, the CLI or the WK set-speed command moved the local
+    keyer and left the radio at its previous rate. Now polled in `loop()`
+    and pushed on change, which catches every path including the pot
+    (which updates from the 1 kHz task and must not do network work).
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
@@ -649,6 +663,33 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
+11z. **OPEN AND ACTIVE: the display hangs the board.** Confirmed
+    2026-09-11 — with the OLED enabled the board hangs during display
+    init and never reaches the web server or the host link; with it
+    disabled it boots and runs. **An overnight soak is running with the
+    display off** to confirm nothing else contributes. First thing to do
+    next session: ask how that soak went.
+
+    Evidence: the boot log stops at the display init line every time, one
+    boot, no panic, no reset loop. An I²C transaction only blocks forever
+    when SDA or SCL is held low. Detection (one byte) succeeds while
+    rendering (1 KB frames) fails; the 20x4 LCD, whose frames are ~80
+    bytes, was reliable on the same wiring.
+
+    **The fix is physical and has not been tried yet: 4.7 kΩ pull-ups from
+    SDA and SCL to 3V3**, plus fresh jumpers. The 1.3" module likely has
+    weak pull-ups or none, and the ESP32's internal ~45 kΩ cannot drive
+    long frames cleanly.
+
+    **`Wire.setTimeOut(50)` did NOT prevent it** — U8g2 does not appear to
+    go through the path that timeout covers. Do not mistake that for a
+    guard. What does work is `/disp off`, which now skips the probe and
+    init entirely so the bus is untouched from power-up.
+
+    A great deal of firmware was flashed at this before the cause was
+    clear, including a spell running the bus at 100 kHz. That treated the
+    symptom; the rate is back at 400 kHz with `/disp slow` available.
+
 11a. **Display: four panel types, family auto-detected** (2026-09-11).
     OLEDs answer at 0x3C/0x3D and HD44780 backpacks at 0x27/0x3F, so one
     firmware runs whichever is plugged in and `/disp auto` re-probes after
