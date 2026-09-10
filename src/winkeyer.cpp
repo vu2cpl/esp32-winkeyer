@@ -518,6 +518,18 @@ void poll() {
   emitPot(false);
 }
 
+void sendText(const char* text) {
+  if (!text || !*text) return;
+  if (backend == WK_BACKEND_FLEX) {
+    Flex::send(text);                       // the radio generates the CW
+    if (monitorLocal)                       // ...and we make the sidetone
+      for (const char* p = text; *p; p++) Keyer::sendChar(*p);
+  } else {
+    for (const char* p = text; *p; p++) Keyer::sendChar(*p);
+    Keyer::sendChar(' ');
+  }
+}
+
 void setMonitor(bool on) {
   monitorLocal = on;
   if (!on) Keyer::clearBuffer();

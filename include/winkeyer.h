@@ -36,6 +36,14 @@ bool hostOpen();
 // Sidetone for buffered text on a network backend, where the radio — not
 // this keyer — generates the CW. Off makes the keyer silent while the rig
 // transmits, which is what a bare "cwx send" path does.
+// Send text the way the CURRENT backend requires: to the radio on the Flex
+// path (with local sidetone if monitoring), to the keyer on the local path.
+// Anything originating text — the CLI, the web page, message memories —
+// must go through here. Pushing straight to Keyer::sendChar() makes
+// sidetone and no RF on the Flex backend, because those elements are
+// withheld from the key hook to stop the radio being keyed twice.
+void sendText(const char* text);
+
 void setMonitor(bool on);
 bool monitor();
 

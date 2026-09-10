@@ -22,6 +22,8 @@
 #define PIN_I2C_SDA      21
 #define PIN_I2C_SCL      22
 
+#define PIN_KEY_OUT2     18   // radio 2 KEY — same drive as radio 1
+#define PIN_PTT_OUT2     19   // radio 2 PTT
 #define PIN_FSK_OUT      27   // RTTY FSK keying line; mark = idle (invertible)
 
 // The OTRSP/SO2R reservation that used to hold 16, 17, 27, 14, 13 and 5 is
@@ -29,7 +31,7 @@
 // pins for work that was never going to start had begun to squeeze real
 // features onto a resistor ladder. SO2R lives in ~/projects/SO2R box.
 //
-// Free: 13, 14, 16, 17, 18, 19, 23. Input-only spares: 35, 36, 39 (no
+// Free: 13, 14, 16, 17, 23. Input-only spares: 35, 36, 39 (no
 // internal pull-ups on those — a button there needs an external one).
 //
 // Avoid GPIO 5, 12 and 15: strapping pins, sampled at boot and pulsed on

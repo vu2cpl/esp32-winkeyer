@@ -124,6 +124,7 @@ void restoreKeyer() {
   Keyer::setFarnsworth(loadU32("farns", D_FARNS));
   Keyer::setPotRange(loadU32("potmin", D_POTMIN), loadU32("potrng", D_POTRNG));
   Keyer::setPotEnabled(loadU32("poten", 0));
+  Keyer::setRadio(loadU32("radio", 1));
 }
 
 void begin() {
@@ -154,6 +155,7 @@ void begin() {
   Display::setEnabled(loadU32("dispen", 1));
   WinKeyer::setMonitor(loadU32("monitor", 1));
   WinKeyer::setPaddleEcho(loadU32("pecho", 2));
+  Keyer::setRadio(loadU32("radio", 1));
   Fsk::setBaud(loadU32("fskbaud", 4545) / 100.0f);
   Fsk::setInvert(loadU32("fskinv", 0));
   Fsk::setDiddle(loadU32("fskdiddle", 0));
@@ -266,6 +268,17 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
+  } else if (!strcasecmp(key, "radio")) {
+    uint8_t sel = 0;
+    if      (!strcasecmp(val, "1")) sel = 1;
+    else if (!strcasecmp(val, "2")) sel = 2;
+    else if (!strcasecmp(val, "both") || !strcasecmp(val, "3")) sel = 3;
+    else return fail("radio: 1|2|both");
+    Keyer::setRadio(sel); saveU32("radio", sel);
+    snprintf(msg, msgLen, "radio=%s%s",
+             sel == 3 ? "both" : (sel == 2 ? "2" : "1"),
+             sel == 3 ? " — BOTH transmitters key together" : "");
+
   } else if (!strcasecmp(key, "fskbaud")) {
     float b = atof(val);
     if (!Fsk::setBaud(b)) return fail("fsk baud: 10..300 (45.45 standard RTTY)");
@@ -350,6 +363,7 @@ void toJson(JsonDocument& doc) {
   doc["monitor"] = WinKeyer::monitor();
   doc["pecho"]   = WinKeyer::paddleEcho();
   doc["pechoon"] = WinKeyer::paddleEchoActive();
+  doc["radio"]   = Keyer::getRadio();
   doc["fskbaud"] = Fsk::baud();
   doc["fskinv"]  = Fsk::invert();
   doc["fskdid"]  = Fsk::diddle();

@@ -42,6 +42,7 @@
 #include "settings.h"
 #include "web.h"
 #include "fsk.h"
+#include "memories.h"
 
 WiFiClient   net;
 PubSubClient mqtt(net);
@@ -152,6 +153,38 @@ void handleLine(char* line) {
   // /fsk carries free text, so it is handled before tokenising — strtok
   // would cut it at the first space and there is no reliable way to sew
   // a line back together afterwards.
+  if (!strncasecmp(line, "/call", 5) && (line[5] == ' ' || line[5] == '\0')) {
+    char* c = line + 5;
+    while (*c == ' ') c++;
+    if (*c) Memories::setCall(c);
+    Log::printf("[MEM] callsign = %s\n", Memories::call().c_str());
+    return;
+  }
+
+  if (!strncasecmp(line, "/mem", 4) && (line[4] == ' ' || line[4] == '\0')) {
+    char* r = line + 4;
+    while (*r == ' ') r++;
+    if (!*r) {                                   // list them
+      for (uint8_t i = 1; i <= Memories::COUNT; i++) {
+        String m = Memories::get(i);
+        Log::printf("[MEM] %u: %s\n", i, m.length() ? m.c_str() : "(empty)");
+      }
+      return;
+    }
+    uint8_t slot = (uint8_t)atoi(r);
+    char* text = strchr(r, ' ');
+    if (text) { while (*text == ' ') text++; }
+    if (slot < 1 || slot > Memories::COUNT) {
+      Log::printf("[MEM] slot must be 1..%u\n", Memories::COUNT);
+    } else if (text && *text) {
+      Log::printf(Memories::set(slot, text) ? "[MEM] %u stored\n"
+                                            : "[MEM] %u too long\n", slot);
+    } else if (!Memories::play(slot)) {
+      Log::printf("[MEM] %u is empty\n", slot);
+    }
+    return;
+  }
+
   if (!strncasecmp(line, "/fsk", 4) && (line[4] == ' ' || line[4] == '\0')) {
     char* rest = line + 4;
     while (*rest == ' ') rest++;
@@ -202,6 +235,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "disp") && arg) {
       bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
       setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "radio")  && arg) { setting("radio", arg);
     } else if (!strcasecmp(cmd, "pecho")  && arg) { setting("pecho", arg);
     } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
@@ -287,13 +321,13 @@ void handleLine(char* line) {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
                      "      /weight /ratio /farns /lead /tail /baud /monitor /pecho\n"
                      "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
+                     "      /radio 1|2|both   /mem N [text]   /call <sign>\n"
                      "      /backend /flex /wifi /paddle /net /status");
     }
     return;
   }
   // Plain text → CW
-  for (char* p = line; *p; p++) Keyer::sendChar(*p);
-  Keyer::sendChar(' ');
+  WinKeyer::sendText(line);
   Log::printf("[CW] > %s\n", line);
 }
 
@@ -375,6 +409,7 @@ void setup() {
   WinKeyer::begin();
   Display::begin();     // optional panel; silently absent if none is wired
   Fsk::begin();
+  Memories::begin();
   boot("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
        Keyer::getWpm(), Keyer::getSidetoneHz());
 

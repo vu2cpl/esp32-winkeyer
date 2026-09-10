@@ -22,6 +22,7 @@
 #include "settings.h"
 #include "keyer.h"
 #include "fsk.h"
+#include "memories.h"
 #include "winkeyer.h"
 #include <WebServer.h>
 #include <ESPmDNS.h>
@@ -167,10 +168,19 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend>BACKEND</legend>
+<div class="row"><label title="Which KEY/PTT pair the keyer drives. Radio 1 is GPIO33/32, radio 2 is GPIO18/19. Both keys them together — intended for a rig plus an amp or monitor, but it does mean two transmitters key at once.">Radio</label>
+  <select id="radio"><option value="1">Radio 1</option>
+  <option value="2">Radio 2</option><option value="both">Both</option></select></div>
 <div class="row"><label title="Local keys the wire: KEY on GPIO33, PTT on GPIO32. FlexRadio keys the radio over the network instead and leaves GPIO33 idle so the rig is not keyed twice — it needs a slice in use and in CW mode or the radio transmits nothing and reports no error.">Keying</label>
   <select id="backend"><option value="local">Local key line</option>
   <option value="flex">FlexRadio (network)</option></select>
   <span class="val" id="flexip"></span></div>
+</fieldset>
+
+<fieldset><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
+<div class="row"><label title="Expands wherever %C appears in a memory.">Callsign</label>
+  <input type="text" id="call" style="width:120px" placeholder="VU2CPL"></div>
+<div id="mems"></div>
 </fieldset>
 
 <fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
@@ -206,6 +216,20 @@ function send(){const t=$('txt').value.trim();if(!t)return;
   post('/api/send?t='+encodeURIComponent(t));$('txt').value=''}
 function fsksend(){const t=$('fsktxt').value.trim();if(!t)return;
   post('/api/fsk?t='+encodeURIComponent(t));$('fsktxt').value=''}
+function memPlay(n){post('/api/mem?play='+n)}
+function memSave(n){post('/api/mem?n='+n+'&t='+encodeURIComponent($('m'+n).value))}
+let memsBuilt=false;
+function buildMems(list){
+  if(memsBuilt)return; memsBuilt=true;
+  // NB: the returned string starts on the same line as `return` — a line
+  // break there and automatic semicolon insertion silently returns undefined.
+  $('mems').innerHTML=list.map((t,i)=>{const n=i+1;
+    return '<div class="row"><label style="flex:0 0 108px">F'+n+'</label>'
+      +'<input type="text" id="m'+n+'" style="flex:1;width:auto">'
+      +'<button onclick="memSave('+n+')">SAVE</button>'
+      +'<button onclick="memPlay('+n+')">PLAY</button></div>';}).join('');
+  list.forEach((t,i)=>$('m'+(i+1)).value=t);
+}
 function led(id,on,warn){const e=$(id);e.className='led'+(on?(warn?' warn':' on'):'')}
 async function refresh(){
   let s;try{s=await(await fetch('/api/state')).json()}catch(e){return}
@@ -229,13 +253,15 @@ async function refresh(){
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
     pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
-    fskbaud:String(s.fskbaud),
+    fskbaud:String(s.fskbaud),radio:(s.radio==3?'both':String(s.radio)),
     weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
   $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
+  buildMems(s.mems||[]);
+  if(editing!=='call') $('call').value=s.call||'';
   $('fskinv').checked=s.fskinv; $('fskdid').checked=s.fskdid;
   $('fskState').textContent = s.fskbusy ? 'SENDING' : '';
   $('wpmV').textContent=$('wpm').value+' WPM';
@@ -272,7 +298,9 @@ function bindNum(id,min,max){
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
-for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud'])
+$('call').onfocus=()=>editing='call';
+$('call').onblur =()=>{editing=null;post('/api/mem?call='+encodeURIComponent($('call').value))};
+for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
@@ -282,8 +310,11 @@ refresh();setInterval(refresh,1000);
 </script></body></html>)HTML";
 
 void handleState() {
-  StaticJsonDocument<1536> doc;
+  StaticJsonDocument<2560> doc;
   Settings::toJson(doc);
+  JsonArray mems = doc.createNestedArray("mems");
+  for (uint8_t i = 1; i <= Memories::COUNT; i++) mems.add(Memories::get(i));
+  doc["call"] = Memories::call();
   doc["rssi"] = (int)WiFi.RSSI();
   doc["ip"]   = WiFi.localIP().toString();
   String out;
@@ -307,10 +338,30 @@ void handleSet() {
 void handleSend() {
   String t = server.arg("t");
   if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
-  for (size_t i = 0; i < t.length(); i++) Keyer::sendChar(t[i]);
-  Keyer::sendChar(' ');
+  WinKeyer::sendText(t.c_str());
   Log::printf("[WEB] > %s\n", t.c_str());
   server.send(200, "text/plain", String("sent: ") + t);
+}
+
+void handleMem() {
+  if (server.hasArg("call")) {
+    Memories::setCall(server.arg("call").c_str());
+    server.send(200, "text/plain", "callsign saved");
+    return;
+  }
+  if (server.hasArg("play")) {
+    uint8_t n = (uint8_t)server.arg("play").toInt();
+    bool ok = Memories::play(n);
+    server.send(ok ? 200 : 400, "text/plain",
+                ok ? String("playing memory ") + n : String("memory is empty"));
+    return;
+  }
+  uint8_t n = (uint8_t)server.arg("n").toInt();
+  if (!Memories::set(n, server.arg("t").c_str())) {
+    server.send(400, "text/plain", "bad slot, or over 100 characters");
+    return;
+  }
+  server.send(200, "text/plain", String("memory ") + n + " saved");
 }
 
 void handleFsk() {
@@ -346,6 +397,7 @@ void begin() {
   server.on("/api/send",  HTTP_POST, handleSend);
   server.on("/api/tune",  HTTP_POST, handleTune);
   server.on("/api/fsk",   HTTP_POST, handleFsk);
+  server.on("/api/mem",   HTTP_POST, handleMem);
   server.onNotFound([]() { server.send(404, "text/plain", "no such page"); });
   // Listening is deferred to poll(): WiFiManager is non-blocking, so at
   // setup() time there is usually no IP to bind to yet. Net::poll() brings

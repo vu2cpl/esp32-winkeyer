@@ -66,6 +66,8 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 | Status LED | 2 | onboard |
 | OLED SDA | 21 | 128x64 I²C panel, optional |
 | OLED SCL | 22 | |
+| KEY out 2 | 18 | radio 2 KEY, same drive as radio 1 |
+| PTT out 2 | 19 | radio 2 PTT |
 | FSK out | 27 | RTTY keying line, mark = idle (invertible) |
 
 Paddles need no external parts.
@@ -213,6 +215,35 @@ nothing and are dropped, and a prosign keyed as merged elements comes back
 as whatever single pattern it forms, not as the letters you had in mind.
 Forcing echo on when the host did not request it may also confuse a logger
 that is not expecting unsolicited characters — hence the switch.
+
+## Two radios
+
+`/radio 1|2|both` selects which KEY/PTT pair the keyer drives — radio 1 on
+GPIO33/32, radio 2 on GPIO18/19 — and persists. `both` is deliberate, for a
+rig plus an amp or monitor, but it keys two transmitters at once so it is
+never the default. Switching radios drops every line first, so a
+transmission can never strand the outgoing radio keyed.
+
+## Message memories
+
+Six slots of canned text in flash, played through whichever backend is
+current. `%C` expands to your callsign, so a memory survives a contest call
+change.
+
+```bash
+/call VU2CPL
+/mem 1 CQ TEST %C %C K
+/mem 1              # play it
+/mem                # list all six
+```
+
+The web page has a MEMORIES panel with SAVE and PLAY per slot. No GPIO
+cost — front-panel buttons can be wired to these later.
+
+**Anything that originates text must go through `WinKeyer::sendText()`**,
+not `Keyer::sendChar()`. On the Flex backend the radio generates the CW and
+those local elements are deliberately withheld from the key hook, so a
+direct send produces sidetone and no RF.
 
 ## RTTY / FSK
 

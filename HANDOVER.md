@@ -41,6 +41,7 @@ implemented — see "Flex backend" below.
 | Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
 | OLED SDA / SCL | 21 / 22 | SH1106 or SSD1306 128x64, optional; probed at boot |
 | Status LED | 2 | onboard |
+| KEY / PTT out 2 | 18 / 19 | radio 2; `/radio 1\|2\|both` |
 | FSK out | 27 | RTTY keying line, mark = idle, invertible |
 
 **The OTRSP reservation is gone (2026-09-11).** Manoj: *"there is no plan
@@ -608,9 +609,25 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
-12. Still wanted, now that pins exist: second KEY/PTT pair (18/19),
-    front-panel buttons (13/14/23 with internal pull-ups), message
-    memories, and 16x2/20x4 I²C LCD support alongside the OLED.
+12. **Done 2026-09-11:** second KEY/PTT pair on 18/19 with `/radio`, and
+    six message memories with `%C` callsign expansion. Still wanted:
+    front-panel buttons (13/14/23 have internal pull-ups), and LCD
+    support alongside the OLED.
+
+    **Pins left: 13, 14, 16, 17, 23** plus 35/36/39 input-only.
+
+    Two traps found doing this, both worth remembering:
+    - **`Keyer::sendChar()` is not how you send text.** The monitor
+      feature withholds buffered elements from the key hook, so on the
+      Flex backend a direct send makes sidetone and no RF. The web SEND
+      box was silently broken this way until memories needed the same
+      path. Everything now goes through `WinKeyer::sendText()`.
+    - **A failing `nvs_open` takes ~630 ms.** Memories were read from NVS
+      on every `/api/state`, which is polled once a second: seven opens
+      of a namespace that did not exist yet made the endpoint take four
+      seconds and the web server stopped responding entirely. Memories
+      are cached in RAM and written through; the namespace is created
+      read-write at boot.
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 

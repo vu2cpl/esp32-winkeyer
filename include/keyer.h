@@ -45,6 +45,12 @@ uint8_t   getPotMin();
 uint8_t   getPotRange();
 void      setKeyOutEnabled(bool en);    // false = sidetone only (Flex backend owns the rig)
 
+// Which radio the KEY/PTT lines drive: 1 = radio 1 (GPIO33/32), 2 = radio 2
+// (GPIO18/19), 3 = both. Both is deliberate — a rig plus an amp or monitor —
+// but it can key two transmitters at once, so it is never the default.
+void      setRadio(uint8_t sel);
+uint8_t   getRadio();
+
 // WK-style refinements. Nominal values reproduce standard timing.
 void      setWeighting(uint8_t w);      // 10..90, nominal 50 (mark/space balance)
 uint8_t   getWeighting();

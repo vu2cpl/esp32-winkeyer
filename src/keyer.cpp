@@ -69,6 +69,11 @@ volatile bool      cfgSidetone  = true;
 volatile uint16_t  cfgToneHz    = 600;
 volatile bool      cfgPtt       = true;
 volatile bool      cfgKeyOut    = true;
+// Which radio the key and PTT lines drive: bit 0 = radio 1, bit 1 = radio 2.
+// Both at once is allowed on purpose — it is how you drive a rig plus an
+// amp, monitor or second receiver — but it does mean two transmitters can
+// be keyed together, so it is never the default.
+volatile uint8_t   cfgRadio     = 1;
 volatile uint16_t  cfgLeadMs    = 50;
 volatile uint16_t  cfgTailMs    = 250;
 volatile bool      cfgPotEn     = false;   // off until a pot is wired — GPIO34 floats
@@ -165,23 +170,34 @@ inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
 void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
 void toneOff() { ledcWriteTone(SIDETONE_CH, 0); }
 void keyDown() {
-  if (cfgKeyOut) digitalWrite(PIN_KEY_OUT, HIGH);
+  if (cfgKeyOut) {
+    if (cfgRadio & 1) digitalWrite(PIN_KEY_OUT,  HIGH);
+    if (cfgRadio & 2) digitalWrite(PIN_KEY_OUT2, HIGH);
+  }
   bool was = keyDownFlag;
   keyDownFlag = true;
   toneOn();
   if (!was && hookWanted()) keyHook(true);
 }
 void keyUp() {
-  digitalWrite(PIN_KEY_OUT, LOW);
+  digitalWrite(PIN_KEY_OUT,  LOW);   // drop both regardless of selection:
+  digitalWrite(PIN_KEY_OUT2, LOW);   // a line must never be left keyed
   bool was = keyDownFlag;
   keyDownFlag = false;
   toneOff();
   if (was && hookWanted()) keyHook(false);
 }
-void pttAssert()  { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
+void pttAssert() {
+  if (cfgPtt) {
+    if (cfgRadio & 1) digitalWrite(PIN_PTT_OUT,  HIGH);
+    if (cfgRadio & 2) digitalWrite(PIN_PTT_OUT2, HIGH);
+  }
+  pttOn = true;
+}
 void pttRelease() {
   if (flagPttHold) return;          // host is holding PTT down explicitly
-  digitalWrite(PIN_PTT_OUT, LOW);
+  digitalWrite(PIN_PTT_OUT,  LOW);
+  digitalWrite(PIN_PTT_OUT2, LOW);
   pttOn = false;
 }
 
@@ -408,8 +424,10 @@ namespace Keyer {
 void begin() {
   pinMode(PIN_PADDLE_DIT, INPUT_PULLUP);
   pinMode(PIN_PADDLE_DAH, INPUT_PULLUP);
-  pinMode(PIN_KEY_OUT, OUTPUT);  digitalWrite(PIN_KEY_OUT, LOW);
-  pinMode(PIN_PTT_OUT, OUTPUT);  digitalWrite(PIN_PTT_OUT, LOW);
+  pinMode(PIN_KEY_OUT, OUTPUT);  digitalWrite(PIN_KEY_OUT,  LOW);   // drop both regardless of selection:
+  digitalWrite(PIN_KEY_OUT2, LOW);   // a line must never be left keyed
+  pinMode(PIN_PTT_OUT, OUTPUT);  digitalWrite(PIN_PTT_OUT,  LOW);
+  digitalWrite(PIN_PTT_OUT2, LOW);
 
   ledcSetup(SIDETONE_CH, cfgToneHz, 10);
   ledcAttachPin(PIN_SIDETONE, SIDETONE_CH);
@@ -440,7 +458,10 @@ void      setSidetone(bool en) { cfgSidetone = en; if (!en) toneOff(); }
 bool      getSidetone() { return cfgSidetone; }
 void      setSidetoneHz(uint16_t hz) { cfgToneHz = constrain(hz, (uint16_t)300, (uint16_t)2000); }
 uint16_t  getSidetoneHz() { return cfgToneHz; }
-void      setPttEnabled(bool en) { cfgPtt = en; if (!en) digitalWrite(PIN_PTT_OUT, LOW); }
+void      setPttEnabled(bool en) {
+  cfgPtt = en;
+  if (!en) { digitalWrite(PIN_PTT_OUT, LOW); digitalWrite(PIN_PTT_OUT2, LOW); }
+}
 bool      getPttEnabled() { return cfgPtt; }
 void      setPttLeadMs(uint16_t ms) { cfgLeadMs = ms; }
 uint16_t  getPttLeadMs() { return cfgLeadMs; }
@@ -451,7 +472,22 @@ bool      getPotEnabled() { return cfgPotEn; }
 void      setPotRange(uint8_t minWpm, uint8_t range) { cfgPotMin = minWpm; cfgPotRange = range; potLastWpm = -1; }
 uint8_t   getPotMin()   { return cfgPotMin; }
 uint8_t   getPotRange() { return cfgPotRange; }
-void      setKeyOutEnabled(bool en) { cfgKeyOut = en; if (!en) digitalWrite(PIN_KEY_OUT, LOW); }
+void      setKeyOutEnabled(bool en) {
+  cfgKeyOut = en;
+  if (!en) { digitalWrite(PIN_KEY_OUT, LOW); digitalWrite(PIN_KEY_OUT2, LOW); }
+}
+
+// Switching radios mid-transmission would strand the outgoing one keyed,
+// so everything drops first and the new selection picks up on the next
+// element.
+void setRadio(uint8_t sel) {
+  if (!(sel & 3)) return;
+  digitalWrite(PIN_KEY_OUT,  LOW); digitalWrite(PIN_KEY_OUT2, LOW);
+  digitalWrite(PIN_PTT_OUT,  LOW); digitalWrite(PIN_PTT_OUT2, LOW);
+  pttOn = false;
+  cfgRadio = sel & 3;
+}
+uint8_t getRadio() { return cfgRadio; }
 void      setWeighting(uint8_t w) { cfgWeight = constrain(w, (uint8_t)10, (uint8_t)90); recalc(); }
 uint8_t   getWeighting()  { return cfgWeight; }
 void      setRatio(uint8_t r)     { cfgRatio  = constrain(r, (uint8_t)33, (uint8_t)66); recalc(); }
@@ -475,8 +511,11 @@ bool tuning()      { return flagTune; }
 
 void pttManual(bool on) {
   flagPttHold = on;
-  if (on) { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
-  else if (state == ST_IDLE) { digitalWrite(PIN_PTT_OUT, LOW); pttOn = false; }
+  if (on) { if (cfgPtt) pttAssert(); }
+  else if (state == ST_IDLE) {
+    digitalWrite(PIN_PTT_OUT, LOW); digitalWrite(PIN_PTT_OUT2, LOW);
+    pttOn = false;
+  }
 }
 
 bool busy()         { return state != ST_IDLE || queueDepth() > 0; }
