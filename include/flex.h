@@ -49,6 +49,10 @@ bool bindEnabled();
 void        setKeyVerb(const char* verb);
 const char* keyVerb();
 
+// True when the radio has a slice in use and in CW mode. Without both the
+// radio transmits nothing and reports no error at all.
+bool sliceReady();
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm

@@ -112,6 +112,12 @@ void printStatus() {
                 Flex::enabled() ? "enabled" : "disabled",
                 Flex::radioIp().length() ? Flex::radioIp().c_str() : "(not found)",
                 Flex::connected() ? "connected" : "");
+  if (Flex::connected())
+    Serial.printf("[FLEX]  keying: cw %s, slice %s — %s\n",
+                  Flex::keyVerb(),
+                  Flex::sliceReady() ? "CW/in use" : "NOT ready",
+                  Flex::sliceReady() ? "ready to key"
+                                     : "SmartSDR needs a slice in CW mode");
 }
 
 void printNet() {

@@ -72,7 +72,13 @@ bool          keyIsDown = false;
 bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
 uint16_t      keyIndex = 0;       // 16-bit sequence counter for cw key
 bool          cfgBind = true;     // issue "client bind" to the GUI client
-const char*   cfgKeyVerb = "ptt"; // "ptt" per the FlexRadio wiki, or "key"
+// "key" is what actually produces RF on a 6600 running SmartSDR 4.2.20.
+// The FlexRadio wiki documents "cw ptt" for keying and the radio accepts
+// it without error, but it did not key here. Switchable via /flex cmd.
+const char*   cfgKeyVerb = "key";
+bool          sliceInUse = false;
+bool          sliceIsCw  = false;
+uint32_t      lastWarnMs = 0;
 uint32_t      lastKeyMs = 0;
 uint32_t      pttTailMs = 400;    // hold TX this long after the last element
 
@@ -174,6 +180,23 @@ void onLine(const String& line) {
     if (k >= 0) sentIdx = body.substring(k + 5).toInt();
     int e = body.indexOf("erase_stop=");
     if (e >= 0) sentIdx = body.substring(e + 11).toInt();
+
+    // Track whether there is a slice to key on at all. A radio with no
+    // slice in use transmits nothing and reports no error, which is an
+    // hour of debugging if the keyer stays silent about it.
+    if (body.startsWith("slice ")) {
+      if (body.indexOf("in_use=0") >= 0) {
+        sliceInUse = false;
+      } else if (body.indexOf("in_use=1") >= 0) {
+        sliceInUse = true;
+      }
+      int m = body.indexOf("mode=");
+      if (m >= 0) {
+        int me = m + 5;
+        while (me < (int)body.length() && body[me] > ' ') me++;
+        sliceIsCw = body.substring(m + 5, me) == "CW";
+      }
+    }
 
     // A non-GUI client cannot transmit in its own right — the radio only
     // allows TX in a GUI client's context (with none connected it reports
@@ -286,7 +309,8 @@ bool useXmit() { return cfgUseXmit; }
 void setKeyVerb(const char* verb) {
   cfgKeyVerb = (verb && !strcasecmp(verb, "key")) ? "key" : "ptt";
 }
-const char* keyVerb() { return cfgKeyVerb; }
+const char* keyVerb()  { return cfgKeyVerb; }
+bool        sliceReady() { return sliceInUse && sliceIsCw; }
 
 void setBind(bool on) {
   cfgBind = on;
@@ -307,6 +331,15 @@ void pumpKeying() {
 
   KeyEvt e;
   while (xQueueReceive(keyQ, &e, 0) == pdTRUE) {
+    // Say why nothing will happen, rather than keying into the void. The
+    // radio reports no error for either of these — it simply transmits
+    // nothing, which is indistinguishable from a broken keyer.
+    if (e.down && (!sliceInUse || !sliceIsCw) && millis() - lastWarnMs > 5000) {
+      lastWarnMs = millis();
+      Serial.printf("[FLEX] warning: %s — the radio will not transmit\n",
+                    !sliceInUse ? "no slice in use in SmartSDR"
+                                : "the slice is not in CW mode");
+    }
     if (e.down && !xmitOn && cfgUseXmit) {
       tcp.printf("C%lu|xmit 1\n", (unsigned long)seq++);
       xmitOn = true;
@@ -371,6 +404,7 @@ void poll() {
     // the subscription is what actually matters.
     sendCmd("sub cwx all");
     sendCmd("sub client all");     // so we can find a GUI client to bind to
+    sendCmd("sub slice all");      // to warn when there is nothing to key on
     subscribed = true;
     Serial.printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
   }
