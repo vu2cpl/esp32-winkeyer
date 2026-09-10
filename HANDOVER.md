@@ -112,6 +112,25 @@ transitions (T·E·S·S·S·T = 1+1+3+1) before returning to idle, followed by
 a clean host close. That is correct WinKeyer host behaviour, confirmed
 over **wired serial** and over **WiFi TCP** (`wk-test.py --host …`).
 
+### WiFi link quality — unresolved, needs attention
+
+Measured from the Mac on the **same subnet** (192.168.10.30 → .209),
+after disabling modem sleep and with the board in a clean state:
+
+    18 ms min / 260 ms avg / 1025 ms max, stddev 299 ms, ~12% packet loss
+    RSSI -68 dBm
+
+That is a bad link, and it is **not** a firmware problem — disabling
+modem sleep improved it (307 → 94 ms in one sample) but did not fix it,
+and the 18 ms minimum shows the path can be fast when a packet gets
+through. Suspect RF: weak signal at the operating position, a mesh/
+repeater hop, or channel congestion. Worth trying a different AP or
+moving the board before blaming the code.
+
+Harmless for CW itself — every element is timed on the keyer — but it
+will make a logger's BUSY tracking and abort feel sluggish, and it is
+the main thing standing between this and contest-ready.
+
 ### Diagnostic traps hit while testing — do not repeat
 
 - **Do not reset the board with manual DTR/RTS toggling** to read the boot
@@ -126,6 +145,9 @@ over **wired serial** and over **WiFi TCP** (`wk-test.py --host …`).
 - **macOS Sequoia cannot scan for the setup AP.** `system_profiler
   SPAirPortDataType` no longer lists nearby networks, so its silence is
   not evidence the AP is down. Read the board's own `/net` output.
+- **Binary garbage on the serial port** used to mean the CLI had been
+  flipped into WinKeyer mode by a stray 0x00 (fixed 2026-09-10). If it
+  reappears, that is the first thing to suspect — not a crashed board.
 
 ## What changed
 
@@ -138,34 +160,35 @@ over **wired serial** and over **WiFi TCP** (`wk-test.py --host …`).
   keyer core (weighting, ratio, Farnsworth, prosign merge, manual PTT,
   key-out disable, queue introspection). Revised the OTRSP pin
   reservation off the I²C pins. Flashed and verified the protocol engine
-  over serial.
+  over **serial and WiFi TCP**. Onboarded to WiFi, moved segments with
+  `/wifi reset`. Fixed: portal timeout stranding an un-onboarded board,
+  serial flipping to binary mode on a stray 0x00, and WiFi modem sleep
+  costing ~300 ms of host latency. Measured a poor RF link that remains
+  unexplained (see link quality).
 
 ## Network placement (measured 2026-09-10)
 
-Manoj's LAN is segmented and **routed between segments**. As tested:
-keyer on `<your-ssid>` = 192.168.30.20, Mac = 192.168.10.30, MQTT broker =
-192.168.1.10 — three subnets, all mutually reachable.
+Manoj's LAN is segmented and **routed between segments**. The keyer was
+first onboarded to `<your-ssid>` (192.168.30.20), then moved via `/wifi reset`
+to the segment the Mac is on — **currently 192.168.10.20**, Mac
+192.168.10.30. The shack MQTT broker is on 192.168.1.10, a third
+segment.
 
-What this actually means, measured rather than assumed:
+Measured rather than assumed:
 
-- **mDNS does cross the segments here.** `winkeyer.local` resolved and
-  pinged from the Mac on a different subnet, so something on the network
-  is reflecting mDNS. (An earlier note in this file claimed it would not
-  — that was wrong for this LAN.)
+- **mDNS crosses the segments here.** `winkeyer.local` resolved from the
+  Mac even when the keyer was on a different subnet, so something on the
+  network reflects mDNS. (An earlier note in this file claimed it would
+  not — that was wrong for this LAN.)
 - **Flex discovery will not.** It is a raw UDP broadcast and is not
-  reflected the way mDNS is. If the radio ends up on another segment,
-  skip discovery and pin the address with `/flex ip <addr>`.
-- **Latency across segments is ~100 ms**, which is very high for a LAN.
-  Harmless for CW — every element is timed on the keyer — but it makes
-  the case for putting the keyer on the same segment as the operating
-  position if convenient.
-- **MQTT reaches the broker but is rejected `rc=5` (unauthorized)**, i.e.
+  reflected the way mDNS is. If the radio sits on another segment, skip
+  discovery and pin the address with `/flex ip <addr>`.
+- **MQTT reaches the broker but is rejected `rc=5` (unauthorized)** — so
   `include/secrets.h` still holds the example password, not the real
-  `iot` role password. Network placement is not the problem.
-
-**The WinKeyer TCP port is unauthenticated** — anyone who can reach port
-8088 can key the transmitter. That is an argument for a trusted LAN, and
-against exposing it beyond one.
+  `iot` role password. Reachability is not the problem, even across
+  segments.
+- Same-subnet placement did **not** fix latency; see the link-quality
+  section below.
 
 **The WinKeyer TCP port is unauthenticated** — anyone who can reach port
 8088 can key the transmitter. That is an argument for a trusted LAN, and
@@ -177,9 +200,10 @@ against exposing it beyond one.
    from the shack password manager). Currently the example value, so the
    broker rejects the connection with `rc=5` every 5 s. Everything else
    works; this is the only thing failing.
-2. **Decide whether to move the keyer off `<your-ssid>`.** It works there
-   (see "Network placement"), so this is a preference, not a fix.
-   `/wifi reset` clears credentials and reboots into the portal.
+2. **Chase the WiFi link quality** — ~12% packet loss and 260 ms average
+   latency on the same subnet (see above). Firmware side is done; this is
+   an RF/AP problem. Try a closer AP, a different channel, or an external
+   antenna board. This is the biggest remaining obstacle to real use.
 3. **Try a real logger** — the protocol is verified against
    `tools/wk-test.py`, not yet against N1MM+/RUMlogNG through
    `tools/wk-bridge.py`. That is the last compatibility unknown.
