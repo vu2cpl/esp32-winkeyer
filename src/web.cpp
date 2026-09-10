@@ -176,11 +176,11 @@ legend[title]{cursor:help}
 <div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
-<div class="row"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
+<div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
   <input type="text" id="flexip" style="width:130px" placeholder="auto (discovery)"></div>
-<div class="row"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
+<div class="row flexonly"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
-<div class="row"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
+<div class="row flexonly"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
   <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="flexbind"> bind GUI</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flexxmit"> xmit</label></div>
@@ -260,6 +260,12 @@ async function refresh(){
       : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
       : 'searching';
   $('flex').checked=s.flex.enabled;
+  // Hide the Flex detail rows when the backend is off. Gated on the ENABLE,
+  // not on the Keying selector: keying locally while the radio stays
+  // connected is legitimate, and hiding on "Keying = local" would take the
+  // enable checkbox with it, leaving no way to switch Flex back on.
+  for (const el of document.querySelectorAll('.flexonly'))
+    el.hidden = !s.flex.enabled;
   $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
   if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
   {

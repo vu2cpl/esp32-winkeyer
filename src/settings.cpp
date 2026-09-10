@@ -440,7 +440,10 @@ void toJson(JsonDocument& doc) {
   doc["potmax"]  = Keyer::getPotMin() + Keyer::getPotRange();
   doc["busy"]    = Keyer::busy();
   doc["key"]     = Keyer::keyIsDown();
-  doc["ptt"]     = Keyer::pttIsOn();      // the local line, GPIO32/19
+  // NOT "ptt": that key is the enable SETTING, and reusing it here made
+  // the web checkbox mirror the live line instead — so it read false almost
+  // always and appeared impossible to turn on.
+  doc["ptton"]   = Keyer::pttIsOn();      // the line right now, GPIO32/19
   doc["tune"]    = Keyer::tuning();
   doc["backend"] = WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
   doc["host"]    = WinKeyer::hostOpen();
