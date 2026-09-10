@@ -132,6 +132,25 @@ void sendCmd(const String& cmd) {
   tcp.printf("C%lu|%s\n", (unsigned long)seq++, cmd.c_str());
 }
 
+// Exact key lookup in a space-separated "k=v k=v" status body.
+//
+// indexOf("mode=") is NOT good enough: a slice status also carries
+// agc_mode=, rfgain_mode= and tx_ant_mode=, so a substring search returns
+// whichever appears first and the slice mode then tracks inconsistently —
+// switching to USB was seen, switching back to CW was not. Morconi's
+// bridge tokenises on spaces and splits each token at '=' for this reason.
+bool kv(const String& body, const char* key, String& out) {
+  String k = String(key) + "=";
+  int i = body.startsWith(k) ? 0 : body.indexOf(" " + k);
+  if (i < 0) return false;
+  if (i) i++;                       // step over the space
+  int v = i + k.length();
+  int e = v;
+  while (e < (int)body.length() && body[e] > ' ') e++;
+  out = body.substring(v, e);
+  return true;
+}
+
 void onLine(const String& line) {
   if (line.length() < 2) return;
   char t = line[0];
@@ -187,17 +206,9 @@ void onLine(const String& line) {
     // slice in use transmits nothing and reports no error, which is an
     // hour of debugging if the keyer stays silent about it.
     if (body.startsWith("slice ")) {
-      if (body.indexOf("in_use=0") >= 0) {
-        sliceInUse = false;
-      } else if (body.indexOf("in_use=1") >= 0) {
-        sliceInUse = true;
-      }
-      int m = body.indexOf("mode=");
-      if (m >= 0) {
-        int me = m + 5;
-        while (me < (int)body.length() && body[me] > ' ') me++;
-        sliceIsCw = body.substring(m + 5, me) == "CW";
-      }
+      String v;
+      if (kv(body, "in_use", v)) sliceInUse = (v == "1");
+      if (kv(body, "mode",   v)) sliceIsCw  = (v == "CW");
     }
 
     // A non-GUI client cannot transmit in its own right — the radio only
@@ -418,15 +429,25 @@ void poll() {
   handleDiscovery(udpNew);
   handleDiscovery(udpOld);
 
-  // Audible link state: C when the radio connects, D when it drops.
+  // Audible state: C when the radio becomes ready to key, D when it stops.
+  //
+  // "Ready" is connected AND holding a slice in CW mode — not merely
+  // connected. Closing the SDR client removes the slice while leaving the
+  // TCP session open, so a socket-based test stays silent through exactly
+  // the event the operator needs to hear: the radio is still there and
+  // will now transmit nothing.
+  //
   // Sidetone only — Keyer::chirp() touches neither the key line nor PTT,
   // so this can never put the rig on the air.
   {
-    static bool wasUp = false;
-    bool isUp = connected();
-    if (isUp != wasUp) {
-      wasUp = isUp;
-      Keyer::chirp(isUp ? 'C' : 'D');
+    static bool wasReady = false;
+    bool isReady = connected() && sliceReady();
+    if (isReady != wasReady) {
+      wasReady = isReady;
+      Log::printf("[FLEX] %s — chirp %c\n",
+                  isReady ? "ready to key" : "NOT ready (no CW slice or link)",
+                  isReady ? 'C' : 'D');
+      Keyer::chirp(isReady ? 'C' : 'D');
     }
   }
 
@@ -441,6 +462,9 @@ void poll() {
     sendCmd("sub cwx all");
     sendCmd("sub client all");     // so we can find a GUI client to bind to
     sendCmd("sub slice all");      // to warn when there is nothing to key on
+    // A subscription delivers CHANGES. Without a snapshot the slice state
+    // stays unknown until something happens to it, so ask outright.
+    sendCmd("slice list");
     subscribed = true;
     Log::printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
   }
