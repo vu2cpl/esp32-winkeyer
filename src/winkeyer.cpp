@@ -134,6 +134,23 @@ bool     serialEcho = false;
 // the same WPM; its key events are withheld from the hook by
 // Keyer::setHookPaddleOnly() so the radio is not keyed twice.
 bool     monitorLocal = true;
+
+// Characters handed to the radio but not yet echoed to the host.
+//
+// WinKeyer echo exists so a logger can highlight the character being SENT.
+// On the Flex backend the whole buffer is handed over in one batch, so
+// echoing at queue time dumps the entire message instantly: the host's idea
+// of progress runs ahead of the air, and after the first message its
+// highlight is desynchronised and later echoes are discarded. The radio
+// reports real progress with "cwx sent=", so pace the echo against that.
+char     echoQ[256];
+uint16_t echoHead = 0, echoTail = 0;
+inline uint16_t echoCount() { return (uint16_t)(echoTail - echoHead); }
+inline void echoPush(char c) {
+  if (echoCount() < sizeof(echoQ)) echoQ[echoTail++ % sizeof(echoQ)] = c;
+}
+inline void echoReset() { echoHead = echoTail = 0; }
+
 uint8_t  modeReg    = 0x00;
 WkBackend backend   = WK_BACKEND_LOCAL;
 
@@ -197,6 +214,7 @@ void applyModeRegister(uint8_t m) {
 
 void resetToDefaults() {
   bufReset();
+  echoReset();
   flexLen = 0;
   paused = false;
   Keyer::clearBuffer();
@@ -297,7 +315,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
-      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); }
+      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); echoReset(); }
       break;
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
@@ -381,7 +399,7 @@ void pump() {
       bufDrop();
       flexOut[flexLen++] = (char)b;
       if (monitorLocal) Keyer::sendChar((char)b);   // sidetone only
-      if (serialEcho) emit(b);
+      if (serialEcho) echoPush((char)b);            // echoed as the radio sends it
     }
     flushFlex();
     return;
@@ -465,8 +483,19 @@ void feed(uint8_t b, WriteFn s) {
   bufPush(b);
 }
 
+// Emit as many as the radio has actually sent. Self-correcting: if the
+// Flex backstop gives up on a stalled radio and zeroes pending, everything
+// outstanding is flushed rather than stranded.
+void pumpEcho() {
+  if (backend != WK_BACKEND_FLEX || !serialEcho) return;
+  int outstanding = (int)echoCount() - Flex::pending();
+  while (outstanding-- > 0 && echoCount() > 0)
+    emit((uint8_t)echoQ[echoHead++ % sizeof(echoQ)]);
+}
+
 void poll() {
   pump();
+  pumpEcho();
   emitStatus(false);
   emitPot(false);
 }

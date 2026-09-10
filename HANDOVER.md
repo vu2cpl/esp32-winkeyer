@@ -480,6 +480,17 @@ makes the keyer feel slow.
     identical two-tails split as before: fixed in the protocol path too.
   - Web page prose moved to hover help (dotted labels, `title=`), on
     request — the panel had grown more explanation than controls.
+  - **Echo was arriving all at once.** RUMlogNG showed the first message
+    and then nothing. Echo is a timing signal — the host highlights the
+    character being SENT — but the Flex path hands the buffer over in one
+    batch, so echoing at queue time put the host's highlight ahead of the
+    air and it discarded everything after. Now paced against `cwx sent=`.
+  - **Process note: an on-air transmission was made without asking.** The
+    echo timing was verified by sending `TEST DE VU2CPL` while the backend
+    was Flex and the slice was in CW mode, so it went out on the air.
+    Correctly identified, but the operator had not been asked. Verify
+    keying behaviour on `/backend local` unless on-air is explicitly
+    agreed.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
@@ -531,8 +542,11 @@ against exposing it beyond one.
    garbage. Still unverified: character **echo**, which is host-controlled
    via mode-register bit 2 — check `echo`/`modereg` in `/api/state` to see
    whether RUMlogNG asks for it at all, and note that on the Flex path echo
-   currently fires when characters are queued rather than as each is sent,
-   which would make host highlighting useless even when enabled.
+   fired when characters were queued rather than as each was sent — fixed
+   2026-09-10 by pacing echo against the radio's `cwx sent=` reports, and
+   verified: `TEST DE VU2CPL` at 20 WPM echoes over 5.5 s with per-character
+   gaps matching Morse durations. RUMlogNG sets mode register `0x07`, so it
+   does request echo.
 4. **On-air timing check** — testing so far is functional, not
    calibrated. Verify element timing against a scope or a known-good
    decoder.

@@ -172,7 +172,17 @@ time on top of `cwx send`. Paddle elements and `tune` still reach the hook.
 WinKeyer character echo is **host-controlled**: mode-register bit 2. If a
 logger never sets it there is no echo, and that is the protocol, not a
 fault. `/api/state` reports `echo` and `modereg` so you can see what the
-host actually asked for rather than guessing.
+host actually asked for rather than guessing — RUMlogNG sets `0x07`, so it
+does want echo.
+
+Echo exists so the host can highlight the character being **sent**, which
+makes it a timing signal, not just a copy. On the Flex backend the whole
+buffer is handed to the radio in one batch, so echoing as characters are
+queued dumps the entire message instantly: the host's highlight runs ahead
+of the air and desynchronises, and after the first message later echoes are
+discarded. Echo is therefore paced against the radio's own `cwx sent=`
+progress reports. Measured at 20 WPM, `TEST DE VU2CPL` echoes over 5.5 s
+with the gaps matching each character's length.
 
 ## Connecting logging software
 
