@@ -230,6 +230,12 @@ CLI and the page:
 Out-of-range values are refused with the accepted range and nothing is
 changed — `farns 3` answers `farnsworth: 0 (off) or 5..60`.
 
+Number boxes step with **↑/↓ by 1, Shift+↑/↓ by 10**, clamped to the
+setting's range. The value is written once you pause, so holding a key
+costs one save rather than one per key repeat — these go to NVS. A field
+you are editing is also exempt from the 1 Hz status poll, which would
+otherwise overwrite what you are part-way through typing.
+
 Same trust posture as the WinKeyer TCP port: **no authentication**, so
 keep it on a trusted LAN. Visual style is borrowed from soft-MORCONI
 (`~/projects/Morconi`) — that project is a browser UI plus a Node bridge,

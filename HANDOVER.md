@@ -493,9 +493,12 @@ against exposing it beyond one.
    calibrated. Verify element timing against a scope or a known-good
    decoder.
 5. **Flex network keying works** (2026-09-10) and persists across
-   reboots. Still to do: tune the 400 ms PTT tail at real sending speed,
-   and confirm on-air fist quality with a decoder — the mechanism is
-   proven, the *feel* has not been judged by ear yet. `logKeying` in
+   reboots. **PTT tail settled at 400 ms by ear** (2026-09-10) — Manoj
+   compared it against the 250 ms default from the settings page and kept
+   400. It is now a persisted setting (`/tail 400` or the PTT panel), not
+   a compile-time guess. Still to do: confirm on-air fist quality with a
+   decoder — the mechanism is proven and the tail now sounds right, but
+   the *fist* has not been judged against a decoder. `logKeying` in
    `flex.cpp` prints every edge; turn it off once happy.
 6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would

@@ -131,6 +131,9 @@ balance without changing WPM; ratio changes dah length.</div>
   <input type="number" id="lead" min="0" max="2000"><span class="val">ms before the first element</span></div>
 <div class="row"><label>Tail</label>
   <input type="number" id="tail" min="0" max="2000"><span class="val">ms after the last</span></div>
+<div class="hint">Click a number box and use &uarr;/&darr; to step by 1,
+Shift+&uarr;/&darr; by 10. The value is written once you pause, so holding a
+key costs one save, not one per repeat.</div>
 </fieldset>
 
 <fieldset><legend>SPEED POT</legend>
@@ -166,7 +169,7 @@ balance without changing WPM; ratio changes dah length.</div>
 <div class="foot">winkeyer.local &middot; settings persist in NVS</div>
 </div><script>
 const $=i=>document.getElementById(i);
-let editing=null;
+let editing=null,pend=null;
 function note(t,err){const m=$('msg');m.textContent=t;m.className=err?'err':''}
 async function post(u){const r=await fetch(u,{method:'POST'});const t=await r.text();
   note(t,!r.ok);refresh()}
@@ -201,7 +204,29 @@ for(const [id,lbl,suf] of [['wpm','wpmV',' WPM'],['sthz','sthzV',' Hz'],
   $(id).oninput=e=>{editing=id;$(lbl).textContent=e.target.value+suf};
   $(id).onchange=e=>{editing=null;set(id,e.target.value)};
 }
-for(const id of ['mode','backend','dispctl','potmin','potmax','farns','lead','tail'])
+// Number boxes. Two things make these painful without help: the 1 Hz poll
+// overwrites whatever you are part-way through entering, and every keypress
+// would otherwise be its own POST and its own NVS write. So: claim the field
+// while it has focus, and debounce the write so holding an arrow key costs
+// one commit at the end rather than one per repeat.
+function bindNum(id,min,max){
+  const e=$(id);
+  e.onfocus=()=>editing=id;
+  e.onblur =()=>{editing=null;clearTimeout(pend);set(id,e.value)};
+  e.oninput=()=>{editing=id;clearTimeout(pend);pend=setTimeout(()=>set(id,e.value),500)};
+  e.onkeydown=ev=>{
+    if(ev.key==='Enter'){clearTimeout(pend);set(id,e.value);e.blur();return}
+    if(ev.key!=='ArrowUp'&&ev.key!=='ArrowDown')return;
+    ev.preventDefault();                       // step ourselves so it clamps
+    const d=(ev.shiftKey?10:1)*(ev.key==='ArrowUp'?1:-1);
+    e.value=Math.max(min,Math.min(max,(parseInt(e.value,10)||0)+d));
+    editing=id; clearTimeout(pend);
+    pend=setTimeout(()=>set(id,e.value),400);
+  };
+}
+bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
+bindNum('potmin',5,59); bindNum('potmax',6,60);
+for(const id of ['mode','backend','dispctl'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
