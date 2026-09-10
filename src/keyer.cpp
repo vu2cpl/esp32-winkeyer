@@ -373,7 +373,10 @@ void      setPttEnabled(bool en) { cfgPtt = en; if (!en) digitalWrite(PIN_PTT_OU
 void      setPttLeadMs(uint16_t ms) { cfgLeadMs = ms; }
 void      setPttTailMs(uint16_t ms) { cfgTailMs = ms; }
 void      setPotEnabled(bool en) { cfgPotEn = en; potLastWpm = -1; }
-void      setPotRange(uint8_t minWpm, uint8_t range) { cfgPotMin = minWpm; cfgPotRange = range; }
+bool      getPotEnabled() { return cfgPotEn; }
+void      setPotRange(uint8_t minWpm, uint8_t range) { cfgPotMin = minWpm; cfgPotRange = range; potLastWpm = -1; }
+uint8_t   getPotMin()   { return cfgPotMin; }
+uint8_t   getPotRange() { return cfgPotRange; }
 void      setKeyOutEnabled(bool en) { cfgKeyOut = en; if (!en) digitalWrite(PIN_KEY_OUT, LOW); }
 void      setWeighting(uint8_t w) { cfgWeight = constrain(w, (uint8_t)10, (uint8_t)90); recalc(); }
 void      setRatio(uint8_t r)     { cfgRatio  = constrain(r, (uint8_t)33, (uint8_t)66); recalc(); }

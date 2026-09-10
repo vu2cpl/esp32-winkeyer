@@ -1,0 +1,37 @@
+#pragma once
+
+// ============================================================
+//  ESP32 WinKeyer — persisted operator settings
+//
+//  One place that owns validation and NVS, so the serial CLI and
+//  the web page cannot drift apart on what a setting is called,
+//  what range it accepts, or whether it survives a power cycle.
+//
+//  The rule on persistence: the OPERATOR's panel settings stick,
+//  the HOST's session settings do not. A pot enabled at the bench
+//  is still enabled tomorrow; a speed N1MM sets for one contest is
+//  gone at the next boot. So Settings::apply() persists, while the
+//  WK protocol engine calls the Keyer API directly and does not.
+// ============================================================
+
+#include <Arduino.h>
+#include <ArduinoJson.h>
+
+namespace Settings {
+
+void begin();   // restore everything from NVS. Call after the modules' begin().
+
+// Apply one setting by name and persist it. `msg` receives a human-readable
+// result (an error explains the accepted range). Returns false if the key is
+// unknown or the value is out of range — nothing is changed in that case.
+bool apply(const char* key, const char* val, char* msg, size_t msgLen);
+
+void toJson(JsonDocument& doc);   // full current state, for the web UI
+
+// Backend selection has three coupled side effects (which engine keys, whether
+// the local key line is live, where the keyer's key events are routed), so it
+// lives here rather than being repeated by every caller.
+void applyBackend(bool useFlex, bool persist);
+bool loadBackend();
+
+}  // namespace Settings

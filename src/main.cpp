@@ -13,10 +13,15 @@
 //  cannot be confused. Host close returns it to the CLI.
 //
 //    /wpm 25   /mode a|b   /swap        /tune       /pot on|off
-//    /st 700   /st on|off  /ptt on|off  /status     /net
+//    /pot 10 35            /st 700      /st on|off  /ptt on|off
+//    /disp on|off          /disp sh1106|ssd1306
 //    /backend local|flex   /flex on|off /flex ip <addr>
-//    /wifi     /wifi portal /wifi reset
+//    /wifi     /wifi portal /wifi reset  /status     /net
 //    anything else is sent as CW.
+//
+//  Operator settings persist in NVS (see settings.cpp) and are also
+//  editable from the web page at http://winkeyer.local/ — CLI and web
+//  both go through Settings::apply(), so they cannot disagree.
 // ============================================================
 
 #include <Arduino.h>
@@ -24,13 +29,15 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include <Preferences.h>
 #include "config.h"
 #include "pins.h"
 #include "keyer.h"
 #include "winkeyer.h"
 #include "flex.h"
 #include "net.h"
+#include "display.h"
+#include "settings.h"
+#include "web.h"
 
 WiFiClient   net;
 PubSubClient mqtt(net);
@@ -65,34 +72,6 @@ bool mqttConnect() {
   return ok;
 }
 
-// ── Backend selection ─────────────────────────────────────
-// Switching backend has three coupled side effects, so they live in one
-// place rather than being repeated by the CLI and by boot-time restore.
-void applyBackend(bool useFlex, bool persist) {
-  WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
-  // On the Flex path the radio is keyed over the network; the local key
-  // line stays idle so the rig is not keyed twice. Sidetone stays local,
-  // generated from the operator's own paddle timing, so the fist sounds
-  // right in the ear regardless of what the link is doing.
-  Keyer::setKeyOutEnabled(!useFlex);
-  Flex::setDirectKeying(useFlex);
-  Keyer::setKeyEventHook(useFlex ? Flex::keyEvent : nullptr);
-  if (persist) {
-    Preferences p;
-    p.begin("wk", false);
-    p.putBool("flexbe", useFlex);
-    p.end();
-  }
-}
-
-bool loadBackend() {
-  Preferences p;
-  p.begin("wk", true);
-  bool useFlex = p.isKey("flexbe") ? p.getBool("flexbe", false) : false;
-  p.end();
-  return useFlex;
-}
-
 // ── Serial as a WinKeyer transport ────────────────────────
 void serialSink(const uint8_t* data, size_t len) { Serial.write(data, len); }
 
@@ -105,6 +84,12 @@ void printStatus() {
                 Keyer::getSidetoneHz(),
                 Keyer::tuning() ? "on" : "off",
                 Keyer::busy() ? "yes" : "no");
+  Serial.printf("[KEYER] pot=%s (%u-%u WPM on GPIO34)  display=%s\n",
+                Keyer::getPotEnabled() ? "on" : "off",
+                Keyer::getPotMin(), Keyer::getPotMin() + Keyer::getPotRange(),
+                Display::present()
+                  ? (Display::enabled() ? Display::controller() : "off")
+                  : "not detected");
   Serial.printf("[WK]    backend=%s host=%s\n",
                 WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
                 WinKeyer::hostOpen() ? "open" : "closed");
@@ -129,6 +114,14 @@ void printNet() {
                 Net::clientConnected() ? "connected" : "none");
 }
 
+// Every persisted setting goes through Settings::apply() so the CLI and the
+// web page validate identically and both end up in NVS.
+void setting(const char* key, const char* val) {
+  char msg[80];
+  bool ok = Settings::apply(key, val, msg, sizeof msg);
+  Serial.printf("[%s] %s\n", ok ? "SET" : "ERR", msg);
+}
+
 void handleLine(char* line) {
   if (line[0] == '\0') return;
   if (line[0] == '/') {
@@ -136,35 +129,38 @@ void handleLine(char* line) {
     char* arg = strtok(nullptr, " ");
     char* arg2 = strtok(nullptr, " ");
     if (!cmd) return;
-    if (!strcasecmp(cmd, "wpm") && arg) {
-      Keyer::setWpm(atoi(arg));
-      Serial.printf("[KEYER] wpm=%u\n", Keyer::getWpm());
-    } else if (!strcasecmp(cmd, "mode") && arg) {
-      Keyer::setMode(tolower(arg[0]) == 'a' ? KEYER_IAMBIC_A : KEYER_IAMBIC_B);
-      Serial.printf("[KEYER] mode=%c\n", toupper(arg[0]));
-    } else if (!strcasecmp(cmd, "swap")) {
-      Keyer::setPaddleSwap(!Keyer::getPaddleSwap());
-      Serial.printf("[KEYER] swap=%s\n", Keyer::getPaddleSwap() ? "on" : "off");
+    if (!strcasecmp(cmd, "swap")) {
+      // Toggles, so they read the current value rather than taking one.
+      setting("swap", Keyer::getPaddleSwap() ? "off" : "on");
     } else if (!strcasecmp(cmd, "tune")) {
-      Keyer::tune(!Keyer::tuning());
+      Keyer::tune(!Keyer::tuning());        // never persisted — it is an action
       Serial.printf("[KEYER] tune=%s\n", Keyer::tuning() ? "on" : "off");
     } else if (!strcasecmp(cmd, "pot") && arg) {
-      Keyer::setPotEnabled(!strcasecmp(arg, "on"));
-      Serial.printf("[KEYER] pot=%s\n", arg);
-    } else if (!strcasecmp(cmd, "ptt") && arg) {
-      Keyer::setPttEnabled(!strcasecmp(arg, "on"));
-      Serial.printf("[KEYER] ptt=%s\n", arg);
-    } else if (!strcasecmp(cmd, "st") && arg) {
-      if (!strcasecmp(arg, "on"))       Keyer::setSidetone(true);
-      else if (!strcasecmp(arg, "off")) Keyer::setSidetone(false);
-      else                              Keyer::setSidetoneHz(atoi(arg));
-      Serial.printf("[KEYER] sidetone %s\n", arg);
+      // "/pot on|off" toggles the knob, "/pot 10 35" sets its range.
+      if (isdigit((unsigned char)arg[0]) && arg2) {
+        // Each half is validated against the other, so raising the range
+        // must widen it before narrowing it — otherwise "/pot 40 55" is
+        // rejected against the old 10-35 max before the max has moved.
+        if (atoi(arg) >= Keyer::getPotMin() + Keyer::getPotRange()) {
+          setting("potmax", arg2); setting("potmin", arg);
+        } else {
+          setting("potmin", arg);  setting("potmax", arg2);
+        }
+      } else {
+        setting("pot", arg);
+      }
+    } else if (!strcasecmp(cmd, "disp") && arg) {
+      bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
+      setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "wpm")   && arg) { setting("wpm", arg);
+    } else if (!strcasecmp(cmd, "mode")  && arg) { setting("mode", arg);
+    } else if (!strcasecmp(cmd, "ptt")   && arg) { setting("ptt", arg);
+    } else if (!strcasecmp(cmd, "st")    && arg) { setting("st", arg);
     } else if (!strcasecmp(cmd, "backend") && arg) {
-      bool useFlex = !strcasecmp(arg, "flex");
-      applyBackend(useFlex, true);
-      Serial.printf("[WK] backend=%s (paddle keying %s, saved)\n",
-                    useFlex ? "flex" : "local",
-                    useFlex ? "-> radio over network" : "-> local key output");
+      setting("backend", arg);
+      Serial.printf("[WK] paddle keying %s\n",
+                    !strcasecmp(arg, "flex") ? "-> radio over network"
+                                             : "-> local key output");
     } else if (!strcasecmp(cmd, "flex")) {
       if (arg && !strcasecmp(arg, "on"))       { Flex::setEnabled(true);  Serial.println("[FLEX] enabled"); }
       else if (arg && !strcasecmp(arg, "off")) { Flex::setEnabled(false); Serial.println("[FLEX] disabled"); }
@@ -228,7 +224,8 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /wifi /paddle /net /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /backend "
+                     "/flex /wifi /paddle /net /status");
     }
     return;
   }
@@ -297,6 +294,7 @@ void setup() {
   // Keyer first — it must work with no WiFi at all.
   Keyer::begin();
   WinKeyer::begin();
+  Display::begin();     // optional panel; silently absent if none is wired
   Serial.printf("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
                 Keyer::getWpm(), Keyer::getSidetoneHz());
 
@@ -315,12 +313,17 @@ void setup() {
 
   Net::begin();
   Flex::begin();
+  Web::begin();
 
-  // Restore the backend last: it needs Flex::begin() to have created the
-  // key queue before the hook can be attached.
-  bool useFlex = loadBackend();
-  applyBackend(useFlex, false);
-  Serial.printf("[WK] backend=%s (restored)\n", useFlex ? "flex" : "local");
+  // Restore settings last: the backend needs Flex::begin() to have created
+  // the key queue before the hook can be attached, and the display needs its
+  // controller choice before the first frame goes out.
+  Settings::begin();
+  bool useFlex = Settings::loadBackend();
+  Settings::applyBackend(useFlex, false);
+  Serial.printf("[WK] backend=%s, %u WPM, pot %s (restored)\n",
+                useFlex ? "flex" : "local", Keyer::getWpm(),
+                Keyer::getPotEnabled() ? "on" : "off");
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
@@ -332,6 +335,7 @@ void loop() {
   wm.process();          // captive portal, when active
   pollSerial();
   Net::poll();
+  Web::poll();
   WinKeyer::poll();
   Flex::poll();
 

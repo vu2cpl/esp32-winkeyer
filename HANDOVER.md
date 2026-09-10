@@ -2,8 +2,9 @@
 *For continuation in a new Claude session*
 
 **Created:** 2026-08-26 · **Updated:** 2026-09-10 · **Type:** ESP firmware
-(esp32dev, S3 env reserved) · **Status:** feature-complete on the bench,
-awaiting WiFi onboarding + on-air testing
+(esp32dev, S3 env reserved) · **Status:** feature-complete on the bench;
+OLED panel + settings web page + persisted settings written and building,
+**not yet run on hardware**; awaiting on-air testing
 
 ---
 
@@ -37,9 +38,14 @@ implemented — see "Flex backend" below.
 | Key out | 33 | active high → PC817 opto (330 Ω) or NPN |
 | PTT out | 32 | active high → PC817 opto (330 Ω) or NPN |
 | Sidetone | 4 | LEDC PWM → passive piezo |
-| Speed pot | 34 | ADC1_CH6 (input-only) — **disabled in fw until wired** (`/pot on`), pin floats otherwise |
+| Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
+| OLED SDA / SCL | 21 / 22 | SH1106 or SSD1306 128x64, optional; probed at boot |
 | Status LED | 2 | onboard |
 | Reserved OTRSP | 16,17 (UART2), 27, 14, 13, 5 | revised 2026-09-10 — see below |
+
+`include/pins.h` carried a **stale** reservation comment still claiming
+18/19/21/22/23 for OTRSP, contradicting the 2026-09-10 revision below.
+Corrected when the display landed.
 
 **Pin reservation revised 2026-09-10.** The original OTRSP block claimed
 GPIO 21/22, which are the standard ESP32 I²C pins. If a display is ever
@@ -50,7 +56,7 @@ command button).
 
 ## Architecture
 
-Four modules, each transport- or backend-agnostic so they compose:
+Seven modules, each transport- or backend-agnostic so they compose:
 
 - **`src/keyer.cpp`** — 1 kHz FreeRTOS task, core 1, priority 10 (above
   loopTask; WiFi/BT live on core 0), so element timing is jitter-free
@@ -71,6 +77,20 @@ Four modules, each transport- or backend-agnostic so they compose:
   `winkeyer.local` (`_winkeyer._tcp`). One client at a time; a new
   connection displaces the old one and resets the host session.
 - **`src/flex.cpp`** — FlexRadio discovery + SmartSDR command API.
+- **`src/settings.cpp`** — validation + NVS (namespace `wk`), the single
+  place that knows what a setting is called, what range it takes, and
+  whether it persists. The CLI and the web page both call
+  `Settings::apply()`, so they cannot drift apart. `applyBackend()` moved
+  here from `main.cpp` because backend selection has three coupled side
+  effects and every caller was at risk of doing two of them.
+- **`src/display.cpp`** — optional SH1106/SSD1306 128x64 panel, rendered
+  at 5 Hz from its own task at priority 1 on **core 0**. An I²C frame
+  blocks ~25 ms, which must not sit in front of the keyer task (element
+  timing) or `loop()` (the host link), so it gets neither.
+- **`src/web.cpp`** — settings page + JSON API on port 80, serviced from
+  `loop()`. Listening is deferred to `poll()` because WiFiManager is
+  non-blocking and there is usually no IP at `setup()` time — same
+  lazy-start pattern `net.cpp` already uses for mDNS.
 
 Serial (115200) is a text CLI that **auto-switches** to the WinKeyer
 binary protocol when a host-open arrives (0x00 is never valid CLI input)
@@ -371,6 +391,32 @@ makes the keyer feel slow.
   serial flipping to binary mode on a stray 0x00, and WiFi modem sleep
   costing ~300 ms of host latency. Measured a poor RF link that remains
   unexplained (see link quality).
+- **2026-09-10 (later session)** — **speed pot wiring documented and its
+  enable made persistent**; **OLED status panel** and **settings web
+  page** added; new `settings.cpp` owning validation + NVS.
+  - `/pot on` used to be RAM-only, so a wired pot went dead at every power
+    cycle. Now persisted, along with its range (`/pot 10 35`).
+  - Persistence rule established: **operator settings stick, host session
+    settings do not.** A speed set over the WK protocol by a logger is
+    gone at the next boot; a speed set from the panel or the web page is
+    not. Without this a contest would silently leave the keyer
+    reconfigured for good.
+  - Display controller (SH1106 vs SSD1306) is a **setting, not a probe** —
+    both answer at the same I²C address, so it cannot be detected. Default
+    `sh1106` (Manoj's panel is a 1.3"). Wrong choice shows a 2 px shift
+    with a garbage left edge; `/disp ssd1306` fixes it without a reflash.
+  - Web page style borrowed from soft-MORCONI (`~/projects/Morconi`).
+    That project turned out to be a browser UI + Node bridge with **no
+    embedded server to reuse** — the look carried over, none of the code.
+    Fonts are system stacks, not Google Fonts: the keyer often sits on a
+    VLAN with no internet route and a font fetch would stall every load.
+  - Verified: both envs build; the page's rendering, state polling and
+    POST paths were exercised against a stub server (screenshotted).
+    **Nothing here has been run on the ESP32 yet** — no panel has been
+    wired, and no power-cycle test of NVS restore has been done.
+  - Flash is now at **75.7%** of the 1.31 MB app partition on `esp32dev`.
+    Worth watching before the OTRSP phase adds more; a bigger partition
+    table is the escape hatch.
 
 ## Network placement (measured 2026-09-10)
 
@@ -425,14 +471,31 @@ against exposing it beyond one.
    silently disable sidetone or key output. Revisit after testing with a
    real logger.
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), speed pot,
-   enclosure.
+   OLED panel, enclosure.
+7a. **Bench-test the display, the web page and NVS restore on real
+   hardware.** All three are written and building but have never run on
+   an ESP32. Specifically: wire the 1.3" panel to 21/22 and confirm the
+   controller default (`sh1106`) is right — if the image sits 2 px right
+   with a garbage left edge, `/disp ssd1306`; confirm the I²C probe finds
+   it at 0x3C; confirm a ~25 ms I²C frame on core 0 really does not
+   disturb element timing (watch for a fist wobble at 5 Hz); load
+   `winkeyer.local` in Safari; then power-cycle and check speed, mode,
+   pot enable and pot range all come back.
+7b. **Wire the speed pot** (10 k linear, 100 nF wiper→GND, GPIO 34) and
+   `/pot on`. Untested end to end — the ADC path has never had a real
+   pot on it.
 8. **Sharing with Manoj's friend** — repo is private. Needs either a
    collaborator invite or an explicit decision to publish. Not done.
-9. Considered but not built: **display** (SSD1306 on I²C 21/22 — pins now
-   free for it) and **Bluetooth keyboard** (BT Classic HID *host* support
-   is thin on ESP32 and BT/WiFi share the radio; prototype standalone
-   before committing). Ordering rationale: display is low-risk, BT
-   keyboard is the one with real unknowns.
+9. **Recently resolved:** the display is no longer "considered but not
+   built" — `src/display.cpp` implements it for SH1106/SSD1306 on I²C
+   21/22 (see 7a for the bench test that still owes). Still considered
+   but not built: **Bluetooth keyboard** (BT Classic HID *host* support is
+   thin on ESP32 and BT/WiFi share the radio; prototype standalone before
+   committing) — it was always the one with real unknowns.
+
+   Also not built, now that a display exists to make them worth having:
+   a **command button** on one of the input-only spares (35/36/39) for
+   menu/message playback, and showing **decoded sent text** on the panel.
 10. Future: ESP32-S3 env for a native-USB descriptor; OTRSP/SO2R phase
     (pins reserved; SO2R docs in `~/projects/SO2R box`).
 

@@ -51,6 +51,7 @@ void poll() {
   if (!mdnsUp) {
     if (MDNS.begin(MDNS_HOSTNAME)) {
       MDNS.addService("winkeyer", "tcp", WK_TCP_PORT);
+      MDNS.addService("http", "tcp", 80);   // the settings page (src/web.cpp)
       mdnsUp = true;
       Serial.printf("[NET] mDNS: %s.local\n", MDNS_HOSTNAME);
     }

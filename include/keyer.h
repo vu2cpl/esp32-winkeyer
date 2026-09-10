@@ -35,7 +35,10 @@ void      setPttEnabled(bool enabled);  // default on
 void      setPttLeadMs(uint16_t ms);    // default 50
 void      setPttTailMs(uint16_t ms);    // default 250
 void      setPotEnabled(bool enabled);  // default OFF until a pot is wired (GPIO34 floats)
+bool      getPotEnabled();
 void      setPotRange(uint8_t minWpm, uint8_t range);  // default 10 + 25 → 10..35
+uint8_t   getPotMin();
+uint8_t   getPotRange();
 void      setKeyOutEnabled(bool en);    // false = sidetone only (Flex backend owns the rig)
 
 // WK-style refinements. Nominal values reproduce standard timing.
