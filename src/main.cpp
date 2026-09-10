@@ -186,11 +186,26 @@ void pollSerial() {
       continue;
     }
 
-    // A null byte is the WinKeyer admin prefix and never valid CLI input.
+    // A null byte starts a WinKeyer admin command — but a single stray 0x00
+    // is exactly what line noise produces when a host opens the port, and
+    // switching on that alone silently kills the CLI and leaves the port
+    // spewing status bytes. So feed the 0x00 plus its sub-command, and only
+    // commit to binary mode if that actually opened a host session.
     if (c == 0x00) {
-      serialWkMode = true;
-      len = 0;
       WinKeyer::feed(0x00, serialSink);
+      unsigned long deadline = millis() + 50;
+      int sub = -1;
+      while (millis() < deadline) {
+        if (Serial.available()) { sub = Serial.read(); break; }
+      }
+      if (sub >= 0) WinKeyer::feed((uint8_t)sub, serialSink);
+      if (WinKeyer::hostOpen()) {
+        serialWkMode = true;
+        len = 0;
+        Serial.println();     // the host ignores this; a human sees the switch
+      } else {
+        WinKeyer::closeHost();   // discard the partial command, stay on the CLI
+      }
       continue;
     }
 
@@ -222,6 +237,12 @@ void setup() {
   wm.setConfigPortalBlocking(false);
   Serial.println("[WiFi] autoConnect (portal: vu2cpl-esp32-winkeyer-setup)");
   wm.autoConnect(WIFI_AP_NAME, WIFI_AP_PASS);
+
+  // The ESP32 defaults to modem sleep, waking only on DTIM beacons. That
+  // adds 100–300 ms of latency and heavy jitter to every inbound packet —
+  // measured at 307 ms average on the bench, on the same subnet. A keyer
+  // is mains-powered and wants a responsive host link, so trade the ~20 mA.
+  WiFi.setSleep(false);
 
   Net::begin();
   Flex::begin();
