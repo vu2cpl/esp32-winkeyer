@@ -174,15 +174,20 @@ void drawMainLcd() {
              Keyer::getPttTailMs());
     lcdLine(3, l);
   } else {
-    // 16x2: speed and backend on top, address below — replaced by the
-    // activity flag while keying, which matters more in that moment.
-    snprintf(l, sizeof l, "%2uWPM %s %s", Keyer::getWpm(),
+    // 16x2: row 0 packs speed, mode, speed-source and backend into all 16
+    // columns. Row 1 is the address, because that is what you need in order
+    // to reach the web page — replaced by KEY/TUNE only while sending.
+    snprintf(l, sizeof l, "%2uWPM %c %s %s", Keyer::getWpm(),
+             Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
              Keyer::getPotEnabled() ? "POT" : "FIX", be);
     lcdLine(0, l);
-    if (*act)                              snprintf(l, sizeof l, "%s", act);
-    else if (WiFi.status() == WL_CONNECTED) snprintf(l, sizeof l, "%s",
-                                                    WiFi.localIP().toString().c_str());
-    else                                    snprintf(l, sizeof l, "no wifi");
+
+    if (*act)
+      snprintf(l, sizeof l, "%s", act);
+    else if (WiFi.status() == WL_CONNECTED)
+      snprintf(l, sizeof l, "%s", WiFi.localIP().toString().c_str());
+    else
+      snprintf(l, sizeof l, "no wifi");
     lcdLine(1, l);
   }
 }

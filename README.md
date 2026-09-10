@@ -148,8 +148,31 @@ What *cannot* be detected, because each pair shares an address:
 - **16x2 vs 20x4** — same chip, so a wrong choice just truncates or leaves
   rows blank. Fix with `/disp lcd16x2`.
 
-A blank LCD with a lit backlight is almost always the contrast trimmer on
-the backpack, not the firmware.
+### LCD power — read this before blaming the firmware
+
+**HD44780 LCDs want 5V, and the ESP32 is a 3.3V part.** Run one from 3V3
+and the characters come out so faint they look absent, at any setting of
+the contrast trimmer, with a dim backlight to match. Nothing in software
+can help: contrast on an HD44780 is the analogue Vo pin, not a driver
+setting. This is why the OLEDs are trouble-free — SSD1306 and SH1106
+modules are native 3.3V.
+
+Feed the LCD's **VCC from the devkit's 5V / VIN pin** (USB 5V). But note
+the trap: the PCF8574 backpack's onboard pull-ups then tie SDA and SCL to
+5V, and **ESP32 GPIOs are not 5V tolerant** — that is how GPIO21/22 get
+damaged. Two safe ways:
+
+1. **Move the pull-ups.** Remove the backpack's two pull-up resistors and
+   fit 4.7 kΩ from SDA and SCL to **3V3** instead. I²C is open-drain — the
+   chip only ever pulls the line low — so with the pull-ups on 3.3V the bus
+   never exceeds 3.3V while the LCD still runs at 5V. Tidiest answer.
+2. **A bidirectional level shifter** (BSS138-type) between the ESP32 and
+   the backpack. No soldering on the module.
+
+Before either, sweep the contrast trimmer through its full range with the
+panel powered. Faint ghosting at one end confirms the voltage diagnosis; a
+completely dead panel at every setting points at wiring or the address
+instead — run `/i2c`.
 
 See `include/pins.h`.
 
