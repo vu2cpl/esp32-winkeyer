@@ -168,6 +168,9 @@ void handleLine(char* line) {
       } else if (arg && !strcasecmp(arg, "auto")) {
         Flex::setManualIp("");
         Serial.println("[FLEX] using discovery");
+      } else if (arg && !strcasecmp(arg, "cmd") && arg2) {
+        Flex::setKeyVerb(arg2);
+        Serial.printf("[FLEX] keying command: cw %s\n", Flex::keyVerb());
       } else if (arg && !strcasecmp(arg, "bind") && arg2) {
         Flex::setBind(!strcasecmp(arg2, "on"));
         Serial.printf("[FLEX] client bind %s — reconnecting\n", arg2);

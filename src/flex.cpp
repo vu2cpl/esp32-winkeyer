@@ -72,6 +72,7 @@ bool          keyIsDown = false;
 bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
 uint16_t      keyIndex = 0;       // 16-bit sequence counter for cw key
 bool          cfgBind = true;     // issue "client bind" to the GUI client
+const char*   cfgKeyVerb = "ptt"; // "ptt" per the FlexRadio wiki, or "key"
 uint32_t      lastKeyMs = 0;
 uint32_t      pttTailMs = 400;    // hold TX this long after the last element
 
@@ -282,6 +283,11 @@ void setUseXmit(bool on) {
 }
 bool useXmit() { return cfgUseXmit; }
 
+void setKeyVerb(const char* verb) {
+  cfgKeyVerb = (verb && !strcasecmp(verb, "key")) ? "key" : "ptt";
+}
+const char* keyVerb() { return cfgKeyVerb; }
+
 void setBind(bool on) {
   cfgBind = on;
   boundClientId = "";        // force re-evaluation on the next client status
@@ -317,11 +323,17 @@ void pumpKeying() {
     //
     // The timestamps let the radio reconstruct element timing rather than
     // keying on packet arrival, so the fist survives the link.
-    tcp.printf("C%lu|cw key %d time=0x%04X index=%u client_handle=%s\n",
-               (unsigned long)seq++, e.down ? 1 : 0,
+    // Sub-command spelling is contested: FlexRadio's own wiki documents
+    // "cw ptt [1|0] time= index=" ("will transition radio between PTT and
+    // MOX or key on/off"), while MORCONI's author shows "cw key". Both are
+    // accepted by the radio, so which one actually keys is a question for
+    // the meter — hence the runtime switch.
+    tcp.printf("C%lu|cw %s %d time=0x%04X index=%u client_handle=%s\n",
+               (unsigned long)seq++, cfgKeyVerb,
+               e.down ? 1 : 0,
                (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
                guiHandle.length() ? guiHandle.c_str() : "0x0");
-    if (logKeying) Serial.printf("[FLEX] cw key %d\n", e.down ? 1 : 0);
+    if (logKeying) Serial.printf("[FLEX] cw %s %d\n", cfgKeyVerb, e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();
   }

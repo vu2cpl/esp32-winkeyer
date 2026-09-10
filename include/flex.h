@@ -44,6 +44,11 @@ bool useXmit();
 void setBind(bool on);
 bool bindEnabled();
 
+// "ptt" (FlexRadio wiki) or "key" (MORCONI). Both are accepted by the
+// radio; only a power meter can say which one keys.
+void        setKeyVerb(const char* verb);
+const char* keyVerb();
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm
