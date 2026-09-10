@@ -217,7 +217,7 @@ legend[title]{cursor:help}
 <div id="msg"></div>
 </fieldset>
 
-<div class="foot">winkeyer.local &middot; settings persist in NVS</div>
+<div class="foot" id="foot">winkeyer.local &middot; settings persist in NVS</div>
 </div><script>
 const $=i=>document.getElementById(i);
 let editing=null,pend=null;
@@ -260,6 +260,13 @@ async function refresh(){
   $('flex').checked=s.flex.enabled;
   $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
   if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
+  {
+    const u = s.uptime|0;
+    const t = u < 90 ? u + 's' : u < 5400 ? Math.round(u/60) + 'm'
+                                          : (u/3600).toFixed(1) + 'h';
+    $('foot').textContent = 'winkeyer.local \u00b7 up ' + t
+      + ' \u00b7 last reset: ' + (s.resetreason || '?');
+  }
   $('legSerial').title = s.baud==1200
     ? 'Ready for a logger: 1200 8N2 is what a WinKeyer host expects.'
     : 'Console rate. A logger looking for a WinKeyer will NOT talk to the port '

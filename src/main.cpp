@@ -422,6 +422,7 @@ void setup() {
       default:               why = "unknown";               break;
     }
     Serial.printf("[BOOT] last reset: %s\n", why);
+    Settings::setResetReason(why);   // so it can be asked for over HTTP
   }
 
   pinMode(PIN_STATUS_LED, OUTPUT);

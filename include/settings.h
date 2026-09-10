@@ -28,6 +28,13 @@ uint32_t hostBaud();
 bool     quietBoot();   // true when the link is too slow for a chatty boot
 bool     displayEnabled();   // needed before Display::begin()
 
+// Why the board last restarted, as a short string. Captured once at boot
+// and served from RAM: the reason is printed to serial exactly once, and
+// that port is usually held by a logger, so a crash during real operation
+// was otherwise undiagnosable.
+void        setResetReason(const char* why);
+const char* resetReason();
+
 // Apply one setting by name and persist it. `msg` receives a human-readable
 // result (an error explains the accepted range). Returns false if the key is
 // unknown or the value is out of range — nothing is changed in that case.

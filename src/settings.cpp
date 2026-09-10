@@ -123,6 +123,10 @@ bool loadBackend() {
   return useFlex;
 }
 
+const char* resetWhy = "?";
+void        setResetReason(const char* why) { resetWhy = why; }
+const char* resetReason() { return resetWhy; }
+
 uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
 
 // Read before Display::begin(), which runs long before begin() restores
@@ -416,6 +420,8 @@ void toJson(JsonDocument& doc) {
   doc["tail"]    = Keyer::getPttTailMs();
   doc["flextail"]= Flex::pttTailMs();   // proves the two are in step
   doc["baud"]    = hostBaud();
+  doc["resetreason"] = resetReason();
+  doc["uptime"]      = (uint32_t)(millis() / 1000);
   doc["echo"]    = WinKeyer::echoEnabled();
   doc["monitor"] = WinKeyer::monitor();
   doc["pecho"]   = WinKeyer::paddleEcho();
