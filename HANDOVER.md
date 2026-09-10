@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-11 (late session) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-11 (overnight) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -540,6 +540,35 @@ makes the keyer feel slow.
     keyer and left the radio at its previous rate. Now polled in `loop()`
     and pushed on change, which catches every path including the pot
     (which updates from the 1 kHz task and must not do network work).
+  - **Never leave a transmitter keyed.** `Flex::keyEvent()` dropped queue
+    entries when full "rather than stall element timing" — fine for a
+    key-DOWN, fatal for a key-UP, because `keyIsDown` then stays true and
+    the `xmit` release is gated on it. Key-ups now evict the oldest entry
+    rather than being dropped. Both PTT paths gained absolute backstops
+    that LOG when they fire (radio: 5 s with no key event; local line:
+    10 s of PTT with no keying, tune excluded). A backstop firing means a
+    transition was lost upstream — treat it as a bug report, not a fix.
+  - **`/api/state` now carries `resetreason` and `uptime`.** The reset
+    reason is printed to serial exactly once at boot, and a logger usually
+    owns that port, so every crash during real operation used to destroy
+    its own evidence. Ask the board over HTTP instead.
+  - **A fresh board exposed two first-boot bugs.** Every ESP32 this
+    project had run on was already written to, so nothing exercised an
+    empty NVS: the settings namespace was opened read-only, and a
+    read-only open of a namespace that has never been written fails
+    *slowly* (~630 ms, logged), once per poll of `/api/state`. Created
+    read-write up front now. Flex was also unreachable from the web page
+    (enable and IP were CLI-only) and its keying options — key verb, bind,
+    xmit — were never persisted at all, so they had to be re-entered after
+    every reflash.
+  - **Slice tracking was substring-matching.** `indexOf("mode=")` also
+    matches `agc_mode=`, `rfgain_mode=` and `tx_ant_mode=`, so which value
+    was read depended on field order — a slice switched to USB registered,
+    switched back to CW did not. Keys are tokenised now, and a `slice list`
+    snapshot is requested at connect because a subscription delivers only
+    deltas. Both fixes came from **soft-morconi's bridge**, which had
+    already solved this; that project is now a private repo rather than
+    three untracked files.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
@@ -663,6 +692,34 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
+11x. **HARDWARE: the board was swapped, and the cause is still unproven.**
+    The original ESP32 began spontaneously restarting, always reporting
+    `power-on` — never a panic, never a watchdog. Software cannot cause a
+    power-on reset, so it is a supply or connection fault. A USB cable
+    change and then a **new ESP32** were tried in quick succession, so if
+    the resets are gone we do not know which fixed it. **Ask whether they
+    have recurred.** `uptime` in `/api/state` makes an unwitnessed restart
+    obvious.
+
+    Suspect, in order: the USB cable (one tried was charge-only and would
+    not enumerate at all), the devkit's 3V3 regulator under WiFi current
+    spikes, a breadboard short, RF ingress on the USB lead during TX.
+
+11y. **OPEN: the local PTT line releases far too late on the Flex backend.**
+    Observed releasing ~20 s after a transmission against a 250 ms tail.
+    The radio's own `xmit` released correctly; only GPIO32 hung on. That
+    timing matches the **10 s safety backstop** firing rather than the
+    normal path, which would mean the primary release is still broken and
+    the net is covering for it. **To confirm: reproduce with RUMlogNG
+    closed and watch for** `PTT was stuck with no keying — forced off by
+    the safety backstop` **on the console.** If that line appears, fix the
+    release rather than the symptom.
+
+    Related and unverified: **paddle keying on the Flex backend**. That is
+    the path that actually uses our `xmit` (buffered text goes via
+    `cwx send` and the radio keys itself), so it is the likely source of
+    the original stuck-PTT report and it has never been tested.
+
 11z. **OPEN AND ACTIVE: the display hangs the board.** Confirmed
     2026-09-11 — with the OLED enabled the board hangs during display
     init and never reaches the web server or the host link; with it
