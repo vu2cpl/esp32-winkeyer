@@ -146,6 +146,34 @@ of the session, not a protocol fault, and cannot be fixed in firmware —
 only by disabling the auto-reset circuit in hardware, or by moving to the
 ESP32-S3 env, whose native USB has no DTR-driven reset.
 
+## Sharing the port with a logger
+
+The console and the WinKeyer protocol share one serial port, so **while a
+host session is open the console goes silent** (`src/log.cpp`). A `[FLEX]`
+line written during a session is not a log message to the logger — it is
+protocol data, and it appears in the logger's CW window as garbage text.
+The web page and MQTT report the same state and do not touch serial, so
+use those while a logger is connected.
+
+### Sidetone while the radio is keying
+
+On the Flex backend the radio generates buffered CW itself, so the keyer
+has no elements of its own to sound and is silent while the rig transmits.
+The same text is therefore also run through the local keyer purely for
+**monitor sidetone** at the same WPM (`/monitor on|off`, or the checkbox on
+the web page).
+
+Those monitored elements are withheld from the key hook
+(`Keyer::setHookPaddleOnly`) — otherwise they would key the radio a second
+time on top of `cwx send`. Paddle elements and `tune` still reach the hook.
+
+### Echo
+
+WinKeyer character echo is **host-controlled**: mode-register bit 2. If a
+logger never sets it there is no echo, and that is the protocol, not a
+fault. `/api/state` reports `echo` and `modereg` so you can see what the
+host actually asked for rather than guessing.
+
 ## Connecting logging software
 
 The keyer speaks the WinKeyer protocol over a TCP socket. Loggers want a

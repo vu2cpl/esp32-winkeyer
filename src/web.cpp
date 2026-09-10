@@ -17,6 +17,7 @@
 // ============================================================
 
 #include "web.h"
+#include "log.h"
 #include "config.h"
 #include "settings.h"
 #include "keyer.h"
@@ -126,7 +127,8 @@ balance without changing WPM; ratio changes dah length.</div>
 <fieldset><legend>PTT</legend>
 <div class="row"><label>Line</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled (GPIO32)</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
+  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> monitor sent text</label></div>
 <div class="row"><label>Lead-in</label>
   <input type="number" id="lead" min="0" max="2000"><span class="val">ms before the first element</span></div>
 <div class="row"><label>Tail</label>
@@ -219,7 +221,7 @@ async function refresh(){
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
-  $('ptt').checked=s.ptt;$('st').checked=s.st;
+  $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';
   $('weightV').textContent=$('weight').value+(s.weight==50?' (nominal)':'');
@@ -256,7 +258,7 @@ bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
 for(const id of ['mode','backend','dispctl','baud'])
   $(id).onchange=e=>set(id,e.target.value);
-for(const id of ['swap','pot','disp','ptt','st'])
+for(const id of ['swap','pot','disp','ptt','st','monitor'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 refresh();setInterval(refresh,1000);
@@ -280,7 +282,7 @@ void handleSet() {
   char msg[80];
   bool ok = Settings::apply(server.arg("k").c_str(), server.arg("v").c_str(),
                             msg, sizeof msg);
-  Serial.printf("[WEB] %s=%s -> %s\n", server.arg("k").c_str(),
+  Log::printf("[WEB] %s=%s -> %s\n", server.arg("k").c_str(),
                 server.arg("v").c_str(), msg);
   server.send(ok ? 200 : 400, "text/plain", msg);
 }
@@ -290,7 +292,7 @@ void handleSend() {
   if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
   for (size_t i = 0; i < t.length(); i++) Keyer::sendChar(t[i]);
   Keyer::sendChar(' ');
-  Serial.printf("[WEB] > %s\n", t.c_str());
+  Log::printf("[WEB] > %s\n", t.c_str());
   server.send(200, "text/plain", String("sent: ") + t);
 }
 
@@ -324,7 +326,7 @@ void poll() {
   if (!started) {
     server.begin();
     started = true;
-    Serial.printf("[WEB] settings at http://%s.local/ or http://%s/\n",
+    Log::printf("[WEB] settings at http://%s.local/ or http://%s/\n",
                   MDNS_HOSTNAME, WiFi.localIP().toString().c_str());
   }
   server.handleClient();

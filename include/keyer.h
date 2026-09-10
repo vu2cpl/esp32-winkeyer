@@ -70,6 +70,12 @@ bool   paddleDah();        // debounced dah lever (after any swap)
 // can mirror the element timing to a radio. Must not block: it runs inside
 // the 1 kHz task. Pass nullptr to detach.
 void setKeyEventHook(void (*fn)(bool down));
+
+// Restrict the key hook to PADDLE-generated elements. On a network backend
+// the radio generates buffered text itself, so buffered text may be run
+// through this keyer purely to make sidetone — but its key events must not
+// reach the hook, or the radio would be keyed twice for the same text.
+void setHookPaddleOnly(bool on);
 bool   paddleBreakIn();    // true once if paddle press aborted a buffered send
 
 }  // namespace Keyer

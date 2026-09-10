@@ -32,6 +32,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "config.h"
+#include "log.h"
 #include "pins.h"
 #include "keyer.h"
 #include "winkeyer.h"
@@ -61,7 +62,7 @@ void boot(const char* fmt, ...) {
 void onMqtt(char* topic, byte* payload, unsigned int len) {
   char msg[64] = {0};
   strncpy(msg, (char*)payload, len < sizeof(msg) - 1 ? len : sizeof(msg) - 1);
-  Serial.printf("[MQTT] %s = %s\n", topic, msg);
+  Log::printf("[MQTT] %s = %s\n", topic, msg);
 }
 
 bool mqttConnect() {
@@ -73,12 +74,12 @@ bool mqttConnect() {
   // keyer's own output on the console.
   static int lastRc = 999;
   if (ok) {
-    Serial.println("[MQTT] connected");
+    Log::println("[MQTT] connected");
     mqtt.publish(T_STATUS, "{\"event\":\"online\"}", true);
     lastRc = 999;
   } else if (mqtt.state() != lastRc) {
     lastRc = mqtt.state();
-    Serial.printf("[MQTT] connect failed rc=%d%s (further retries silent)\n",
+    Log::printf("[MQTT] connect failed rc=%d%s (further retries silent)\n",
                   lastRc, lastRc == 5 ? " — bad credentials in secrets.h" : "");
   }
   return ok;
@@ -89,38 +90,38 @@ void serialSink(const uint8_t* data, size_t len) { Serial.write(data, len); }
 
 // ── Serial CLI ────────────────────────────────────────────
 void printStatus() {
-  Serial.printf("[KEYER] wpm=%u mode=%s swap=%s sidetone=%uHz tune=%s busy=%s\n",
+  Log::printf("[KEYER] wpm=%u mode=%s swap=%s sidetone=%uHz tune=%s busy=%s\n",
                 Keyer::getWpm(),
                 Keyer::getMode() == KEYER_IAMBIC_A ? "A" : "B",
                 Keyer::getPaddleSwap() ? "on" : "off",
                 Keyer::getSidetoneHz(),
                 Keyer::tuning() ? "on" : "off",
                 Keyer::busy() ? "yes" : "no");
-  Serial.printf("[KEYER] weight=%u ratio=%u farns=%u  ptt=%s lead=%ums tail=%ums\n",
+  Log::printf("[KEYER] weight=%u ratio=%u farns=%u  ptt=%s lead=%ums tail=%ums\n",
                 Keyer::getWeighting(), Keyer::getRatio(), Keyer::getFarnsworth(),
                 Keyer::getPttEnabled() ? "on" : "off",
                 Keyer::getPttLeadMs(), Keyer::getPttTailMs());
-  Serial.printf("[KEYER] pot=%s (%u-%u WPM on GPIO34)  display=%s\n",
+  Log::printf("[KEYER] pot=%s (%u-%u WPM on GPIO34)  display=%s\n",
                 Keyer::getPotEnabled() ? "on" : "off",
                 Keyer::getPotMin(), Keyer::getPotMin() + Keyer::getPotRange(),
                 Display::present()
                   ? (Display::enabled() ? Display::controller() : "off")
                   : "not detected");
-  Serial.printf("[KEYER] serial %u baud %s — %s\n",
+  Log::printf("[KEYER] serial %u baud %s — %s\n",
                 (unsigned)Settings::hostBaud(),
                 Settings::hostBaud() == 1200 ? "8N2" : "8N1",
                 Settings::hostBaud() == 1200
                   ? "WinKeyer standard, loggers open the port this way"
                   : "console rate; a logger expecting a WinKeyer needs 1200");
-  Serial.printf("[WK]    backend=%s host=%s\n",
+  Log::printf("[WK]    backend=%s host=%s\n",
                 WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
                 WinKeyer::hostOpen() ? "open" : "closed");
-  Serial.printf("[FLEX]  %s radio=%s %s\n",
+  Log::printf("[FLEX]  %s radio=%s %s\n",
                 Flex::enabled() ? "enabled" : "disabled",
                 Flex::radioIp().length() ? Flex::radioIp().c_str() : "(not found)",
                 Flex::connected() ? "connected" : "");
   if (Flex::connected())
-    Serial.printf("[FLEX]  keying: cw %s, slice %s — %s\n",
+    Log::printf("[FLEX]  keying: cw %s, slice %s — %s\n",
                   Flex::keyVerb(),
                   Flex::sliceReady() ? "CW/in use" : "NOT ready",
                   Flex::sliceReady() ? "ready to key"
@@ -128,10 +129,10 @@ void printStatus() {
 }
 
 void printNet() {
-  Serial.printf("[NET]   wifi=%s ip=%s rssi=%d\n",
+  Log::printf("[NET]   wifi=%s ip=%s rssi=%d\n",
                 WiFi.status() == WL_CONNECTED ? "up" : "down",
                 WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
-  Serial.printf("[NET]   %s.local:%d  client=%s\n",
+  Log::printf("[NET]   %s.local:%d  client=%s\n",
                 MDNS_HOSTNAME, WK_TCP_PORT,
                 Net::clientConnected() ? "connected" : "none");
 }
@@ -141,7 +142,7 @@ void printNet() {
 void setting(const char* key, const char* val) {
   char msg[80];
   bool ok = Settings::apply(key, val, msg, sizeof msg);
-  Serial.printf("[%s] %s\n", ok ? "SET" : "ERR", msg);
+  Log::printf("[%s] %s\n", ok ? "SET" : "ERR", msg);
 }
 
 void handleLine(char* line) {
@@ -156,7 +157,7 @@ void handleLine(char* line) {
       setting("swap", Keyer::getPaddleSwap() ? "off" : "on");
     } else if (!strcasecmp(cmd, "tune")) {
       Keyer::tune(!Keyer::tuning());        // never persisted — it is an action
-      Serial.printf("[KEYER] tune=%s\n", Keyer::tuning() ? "on" : "off");
+      Log::printf("[KEYER] tune=%s\n", Keyer::tuning() ? "on" : "off");
     } else if (!strcasecmp(cmd, "pot") && arg) {
       // "/pot on|off" toggles the knob, "/pot 10 35" sets its range.
       if (isdigit((unsigned char)arg[0]) && arg2) {
@@ -174,6 +175,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "disp") && arg) {
       bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
       setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
     } else if (!strcasecmp(cmd, "ratio")  && arg) { setting("ratio", arg);
@@ -186,53 +188,53 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "st")    && arg) { setting("st", arg);
     } else if (!strcasecmp(cmd, "backend") && arg) {
       setting("backend", arg);
-      Serial.printf("[WK] paddle keying %s\n",
+      Log::printf("[WK] paddle keying %s\n",
                     !strcasecmp(arg, "flex") ? "-> radio over network"
                                              : "-> local key output");
     } else if (!strcasecmp(cmd, "flex")) {
-      if (arg && !strcasecmp(arg, "on"))       { Flex::setEnabled(true);  Serial.println("[FLEX] enabled"); }
-      else if (arg && !strcasecmp(arg, "off")) { Flex::setEnabled(false); Serial.println("[FLEX] disabled"); }
+      if (arg && !strcasecmp(arg, "on"))       { Flex::setEnabled(true);  Log::println("[FLEX] enabled"); }
+      else if (arg && !strcasecmp(arg, "off")) { Flex::setEnabled(false); Log::println("[FLEX] disabled"); }
       else if (arg && !strcasecmp(arg, "ip") && arg2) {
         Flex::setManualIp(arg2);
-        Serial.printf("[FLEX] fixed IP %s\n", arg2);
+        Log::printf("[FLEX] fixed IP %s\n", arg2);
       } else if (arg && !strcasecmp(arg, "auto")) {
         Flex::setManualIp("");
-        Serial.println("[FLEX] using discovery");
+        Log::println("[FLEX] using discovery");
       } else if (arg && !strcasecmp(arg, "cmd") && arg2) {
         Flex::setKeyVerb(arg2);
-        Serial.printf("[FLEX] keying command: cw %s\n", Flex::keyVerb());
+        Log::printf("[FLEX] keying command: cw %s\n", Flex::keyVerb());
       } else if (arg && !strcasecmp(arg, "bind") && arg2) {
         Flex::setBind(!strcasecmp(arg2, "on"));
-        Serial.printf("[FLEX] client bind %s — reconnecting\n", arg2);
+        Log::printf("[FLEX] client bind %s — reconnecting\n", arg2);
       } else if (arg && !strcasecmp(arg, "ptt") && arg2) {
         Flex::setUseXmit(!strcasecmp(arg2, "on"));
-        Serial.printf("[FLEX] ptt(xmit) %s — with it off, break-in must "
+        Log::printf("[FLEX] ptt(xmit) %s — with it off, break-in must "
                       "switch T/R from the key edge\n", arg2);
       } else {
-        Serial.printf("[FLEX] %s radio=%s connected=%s\n",
+        Log::printf("[FLEX] %s radio=%s connected=%s\n",
                       Flex::enabled() ? "enabled" : "disabled",
                       Flex::radioIp().c_str(), Flex::connected() ? "yes" : "no");
       }
     } else if (!strcasecmp(cmd, "wifi")) {
       if (arg && !strcasecmp(arg, "reset")) {
         wm.resetSettings();
-        Serial.println("[WiFi] credentials cleared — rebooting into the portal");
+        Log::println("[WiFi] credentials cleared — rebooting into the portal");
         delay(300);
         ESP.restart();
       } else if (arg && !strcasecmp(arg, "portal")) {
         wm.startConfigPortal(WIFI_AP_NAME, WIFI_AP_PASS);
-        Serial.printf("[WiFi] portal open: %s\n", WIFI_AP_NAME);
+        Log::printf("[WiFi] portal open: %s\n", WIFI_AP_NAME);
       } else {
-        Serial.printf("[WiFi] %s ssid=%s ip=%s\n",
+        Log::printf("[WiFi] %s ssid=%s ip=%s\n",
                       WiFi.status() == WL_CONNECTED ? "connected" : "not connected",
                       WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
-        Serial.printf("[WiFi] setup AP: %s / %s\n", WIFI_AP_NAME, WIFI_AP_PASS);
+        Log::printf("[WiFi] setup AP: %s / %s\n", WIFI_AP_NAME, WIFI_AP_PASS);
       }
     } else if (!strcasecmp(cmd, "paddle")) {
       // Bring-up diagnostic: reports the debounced levers for 10 s so a
       // wiring fault can be told apart from a firmware problem. Blocks the
       // host link while it runs — deliberate, it is a bench tool.
-      Serial.println("[PADDLE] squeeze each lever — 10 s (idle = both open)");
+      Log::println("[PADDLE] squeeze each lever — 10 s (idle = both open)");
       unsigned long until = millis() + 10000;
       bool pd = false, ph = false, sawAny = false;
       while (millis() < until) {
@@ -240,11 +242,11 @@ void handleLine(char* line) {
         if (d != pd || h != ph) {
           pd = d; ph = h;
           if (d || h) sawAny = true;
-          Serial.printf("[PADDLE] dit=%s dah=%s\n", d ? "DOWN" : "up", h ? "DOWN" : "up");
+          Log::printf("[PADDLE] dit=%s dah=%s\n", d ? "DOWN" : "up", h ? "DOWN" : "up");
         }
         delay(5);
       }
-      Serial.println(sawAny ? "[PADDLE] levers detected — wiring is good"
+      Log::println(sawAny ? "[PADDLE] levers detected — wiring is good"
                             : "[PADDLE] nothing seen — check tip/ring to GPIO25/26 "
                               "and sleeve to GND");
     } else if (!strcasecmp(cmd, "i2c")) {
@@ -254,8 +256,8 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
-                     "      /weight /ratio /farns /lead /tail /baud\n"
+      Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
+                     "      /weight /ratio /farns /lead /tail /baud /monitor\n"
                      "      /backend /flex /wifi /paddle /net /status");
     }
     return;
@@ -263,7 +265,7 @@ void handleLine(char* line) {
   // Plain text → CW
   for (char* p = line; *p; p++) Keyer::sendChar(*p);
   Keyer::sendChar(' ');
-  Serial.printf("[CW] > %s\n", line);
+  Log::printf("[CW] > %s\n", line);
 }
 
 void pollSerial() {
@@ -278,7 +280,8 @@ void pollSerial() {
       if (!WinKeyer::hostOpen()) {      // host closed — hand the port back to the CLI
         serialWkMode = false;
         len = 0;
-        Serial.println("\n[WK] serial host closed — CLI active");
+        Log::setMuted(false);
+        Log::println("\n[WK] serial host closed — CLI active");
       }
       continue;
     }
@@ -299,7 +302,10 @@ void pollSerial() {
       if (WinKeyer::hostOpen()) {
         serialWkMode = true;
         len = 0;
-        Serial.println();     // the host ignores this; a human sees the switch
+        // From here every byte on this wire is protocol. A console line
+        // would be read by the logger as CW text and shown in its window,
+        // so the console goes quiet until the host closes.
+        Log::setMuted(true);
       } else {
         WinKeyer::closeHost();   // discard the partial command, stay on the CLI
       }
@@ -327,11 +333,11 @@ void setup() {
   if (quiet) {
     // Every character here is one the host waits through before its
     // handshake is answered. One line, then silence.
-    Serial.printf("\n[BOOT] ESP32 WinKeyer @ %u 8N2 (quiet — use the web page)\n",
+    Log::printf("\n[BOOT] ESP32 WinKeyer @ %u 8N2 (quiet — use the web page)\n",
                   (unsigned)baud);
     wm.setDebugOutput(false);
   } else {
-    Serial.printf("\n[BOOT] ESP32 WinKeyer @ %u baud\n", (unsigned)baud);
+    Log::printf("\n[BOOT] ESP32 WinKeyer @ %u baud\n", (unsigned)baud);
   }
   pinMode(PIN_STATUS_LED, OUTPUT);
 

@@ -22,6 +22,7 @@
 // ============================================================
 
 #include "flex.h"
+#include "log.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Preferences.h>
@@ -119,7 +120,7 @@ void handleDiscovery(WiFiUDP& udp) {
     foundIp    = ip;
     foundModel = field(s, "model");
     foundNick  = field(s, "nickname");
-    Serial.printf("[FLEX] discovered %s at %s (%s)\n",
+    Log::printf("[FLEX] discovered %s at %s (%s)\n",
                   foundModel.c_str(), foundIp.c_str(), foundNick.c_str());
   }
   lastDiscovery = millis();
@@ -140,7 +141,7 @@ void onLine(const String& line) {
     return;
   }
   if (t == 'V') {                      // API version banner
-    Serial.printf("[FLEX] api %s\n", line.substring(1).c_str());
+    Log::printf("[FLEX] api %s\n", line.substring(1).c_str());
     return;
   }
   if (t == 'R') {                      // reply: R<seq>|<hex status>|<message>
@@ -156,12 +157,12 @@ void onLine(const String& line) {
     // error is what made direct keying look unsupported.
     if (st == 0x50001000) return;
     if (st != 0) {
-      Serial.printf("[FLEX] command error %s (%s)\n", status.c_str(), msg.c_str());
+      Log::printf("[FLEX] command error %s (%s)\n", status.c_str(), msg.c_str());
       // A refused command will never be acknowledged, so anything we were
       // waiting on is never going to complete. Drop it rather than leaving
       // the host stuck reading BUSY forever.
       if (queuedIdx > sentIdx) {
-        Serial.println("[FLEX] send refused — clearing pending");
+        Log::println("[FLEX] send refused — clearing pending");
         queuedIdx = sentIdx = 0;
         busyUntil = 0;
       }
@@ -223,10 +224,10 @@ void onLine(const String& line) {
           }
           if (cfgBind) {
             sendCmd("client bind client_id=" + id);
-            Serial.printf("[FLEX] bound to GUI client %s (handle %s)\n",
+            Log::printf("[FLEX] bound to GUI client %s (handle %s)\n",
                           id.c_str(), guiHandle.c_str());
           } else {
-            Serial.printf("[FLEX] GUI client %s (handle %s) — not binding\n",
+            Log::printf("[FLEX] GUI client %s (handle %s) — not binding\n",
                           id.c_str(), guiHandle.c_str());
           }
         }
@@ -249,12 +250,12 @@ void tryConnect() {
   if (millis() - lastConnectTry < 5000) return;
   lastConnectTry = millis();
 
-  Serial.printf("[FLEX] connecting to %s:%d… ", ip.c_str(), FLEX_API_PORT);
+  Log::printf("[FLEX] connecting to %s:%d… ", ip.c_str(), FLEX_API_PORT);
   if (!tcp.connect(ip.c_str(), FLEX_API_PORT)) {
-    Serial.println("failed");
+    Log::println("failed");
     return;
   }
-  Serial.println("ok");
+  Log::println("ok");
   tcp.setNoDelay(true);
   rxLine = "";
   subscribed = false;
@@ -275,7 +276,7 @@ void begin() {
   // which looks like a fault on a fresh board when it is just "unset".
   cfgManualIp = prefs.isKey("ip") ? prefs.getString("ip", "") : String("");
   prefs.end();
-  Serial.printf("[FLEX] backend %s%s\n",
+  Log::printf("[FLEX] backend %s%s\n",
                 cfgEnabled ? "enabled" : "disabled",
                 cfgManualIp.length() ? (", fixed IP " + cfgManualIp).c_str() : "");
 }
@@ -339,14 +340,14 @@ void pumpKeying() {
     // nothing, which is indistinguishable from a broken keyer.
     if (e.down && (!sliceInUse || !sliceIsCw) && millis() - lastWarnMs > 5000) {
       lastWarnMs = millis();
-      Serial.printf("[FLEX] warning: %s — the radio will not transmit\n",
+      Log::printf("[FLEX] warning: %s — the radio will not transmit\n",
                     !sliceInUse ? "no slice in use in SmartSDR"
                                 : "the slice is not in CW mode");
     }
     if (e.down && !xmitOn && cfgUseXmit) {
       tcp.printf("C%lu|xmit 1\n", (unsigned long)seq++);
       xmitOn = true;
-      if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
+      if (logKeying) Log::println("[FLEX] xmit 1 (PTT)");
     }
     // Form taken from MORCONI:
     //   cw key 1 time=0xB85A index=225 client_handle=0x6A2C5ABC
@@ -369,7 +370,7 @@ void pumpKeying() {
                e.down ? 1 : 0,
                (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
                guiHandle.length() ? guiHandle.c_str() : "0x0");
-    if (logKeying) Serial.printf("[FLEX] cw %s %d\n", cfgKeyVerb, e.down ? 1 : 0);
+    if (logKeying) Log::printf("[FLEX] cw %s %d\n", cfgKeyVerb, e.down ? 1 : 0);
     keyIsDown = e.down;
     lastKeyMs = millis();
   }
@@ -380,7 +381,7 @@ void pumpKeying() {
   if (xmitOn && !keyIsDown && lastKeyMs && millis() - lastKeyMs > cfgTailMs) {
     tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
     xmitOn = false;
-    if (logKeying) Serial.println("[FLEX] xmit 0 (PTT release)");
+    if (logKeying) Log::println("[FLEX] xmit 0 (PTT release)");
   }
 }
 
@@ -409,7 +410,7 @@ void poll() {
     sendCmd("sub client all");     // so we can find a GUI client to bind to
     sendCmd("sub slice all");      // to warn when there is nothing to key on
     subscribed = true;
-    Serial.printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
+    Log::printf("[FLEX] subscribed (handle %s)\n", radioHandle.c_str());
   }
 }
 
@@ -464,7 +465,7 @@ int pending() {
   // interlock, another client holding the transmitter. Without a backstop
   // the host reads BUSY forever and a logger hangs waiting for the keyer.
   if (busyUntil && (int32_t)(millis() - busyUntil) > 0) {
-    Serial.println("[FLEX] no progress from radio — clearing pending "
+    Log::println("[FLEX] no progress from radio — clearing pending "
                    "(slice not in CW mode? another client transmitting?)");
     queuedIdx = sentIdx = 0;
     busyUntil = 0;

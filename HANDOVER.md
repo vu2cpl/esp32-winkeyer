@@ -458,6 +458,19 @@ makes the keyer feel slow.
     live**, gated only by `/ptt`, for an amp or sequencer. Lead-in applies
     to GPIO32 on both backends; the radio does its own T/R, so there is no
     Flex lead.
+  - **The console was corrupting the host stream.** Every `Serial.printf`
+    in the firmware wrote ASCII to the same wire the WinKeyer session used,
+    so `[FLEX]` lines appeared in RUMlogNG's CW window as text. All console
+    output now goes through `src/log.cpp`, muted for the duration of a
+    serial host session. Diagnose over the web page instead; it does not
+    share the port.
+  - **Local sidetone while the radio keys.** On the Flex backend buffered
+    text goes straight to `cwx send`, so the operator heard nothing at all
+    while transmitting. The text is now also run through the local keyer
+    for monitor sidetone (`/monitor`, default on). The trap: those elements
+    must NOT reach the key hook or the radio is keyed twice — hence
+    `Keyer::setHookPaddleOnly()`. Watch out that `curIsAuto` is stale
+    outside `startElement()`, which silently swallowed `tune` until fixed.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
@@ -500,9 +513,17 @@ against exposing it beyond one.
 2. **WiFi link is mediocre but no longer limiting** — 131 ms average,
    0% loss, RSSI -68. Improve when convenient (closer AP, different
    channel, external-antenna board); not a blocker.
-3. **Try a real logger** — the protocol is verified against
-   `tools/wk-test.py`, not yet against N1MM+/RUMlogNG through
-   `tools/wk-bridge.py`. That is the last compatibility unknown.
+3. **RUMlogNG drives it over USB and keys the radio** (2026-09-10) — the
+   last compatibility unknown, now closed. It took two fixes: the serial
+   link had to move to **1200 baud 8N2** (a real WinKeyer's rate, which
+   loggers open without asking — the firmware was at 115200 and every
+   handshake arrived as noise), and the console had to stop sharing the
+   wire (see below). Handshake now answers version 23 in 0.0 s with zero
+   garbage. Still unverified: character **echo**, which is host-controlled
+   via mode-register bit 2 — check `echo`/`modereg` in `/api/state` to see
+   whether RUMlogNG asks for it at all, and note that on the Flex path echo
+   currently fires when characters are queued rather than as each is sent,
+   which would make host highlighting useless even when enabled.
 4. **On-air timing check** — testing so far is functional, not
    calibrated. Verify element timing against a scope or a known-good
    decoder.

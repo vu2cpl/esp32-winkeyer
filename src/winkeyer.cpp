@@ -126,6 +126,13 @@ uint8_t  lastStatus = 0;
 uint8_t  lastPot    = 0xFF;
 bool     paused     = false;
 bool     serialEcho = false;
+// Monitor buffered text locally on a network backend. The radio generates
+// the actual CW, so the operator otherwise hears nothing at all while the
+// rig is transmitting — the keyer is silent because it is not the thing
+// keying. Running the same text through the local keyer gives sidetone at
+// the same WPM; its key events are withheld from the hook by
+// Keyer::setHookPaddleOnly() so the radio is not keyed twice.
+bool     monitorLocal = true;
 uint8_t  modeReg    = 0x00;
 WkBackend backend   = WK_BACKEND_LOCAL;
 
@@ -284,7 +291,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
-      if (backend == WK_BACKEND_FLEX) Flex::clear();
+      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); }
       break;
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
@@ -367,6 +374,7 @@ void pump() {
       if (flexLen >= sizeof(flexOut) - 1) break;
       bufDrop();
       flexOut[flexLen++] = (char)b;
+      if (monitorLocal) Keyer::sendChar((char)b);   // sidetone only
       if (serialEcho) emit(b);
     }
     flushFlex();
@@ -456,6 +464,15 @@ void poll() {
   emitStatus(false);
   emitPot(false);
 }
+
+void setMonitor(bool on) {
+  monitorLocal = on;
+  if (!on) Keyer::clearBuffer();
+}
+bool monitor() { return monitorLocal; }
+
+uint8_t modeRegister() { return modeReg; }
+bool    echoEnabled()  { return serialEcho; }
 
 bool hostOpen() { return hostIsOpen; }
 

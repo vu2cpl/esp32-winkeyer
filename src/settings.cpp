@@ -82,6 +82,9 @@ void applyBackend(bool useFlex, bool persist) {
   Keyer::setKeyOutEnabled(!useFlex);
   Flex::setDirectKeying(useFlex);
   Keyer::setKeyEventHook(useFlex ? Flex::keyEvent : nullptr);
+  // On Flex, buffered text is keyed by the radio and only monitored locally,
+  // so those elements must not reach the hook. Paddle elements still must.
+  Keyer::setHookPaddleOnly(useFlex);
   if (persist) {
     Preferences p;
     p.begin(NS, false);
@@ -131,6 +134,7 @@ void begin() {
   String ctl = loadStr("dispctl");
   Display::setController(ctl.length() ? ctl.c_str() : "sh1106");
   Display::setEnabled(loadU32("dispen", 1));
+  WinKeyer::setMonitor(loadU32("monitor", 1));
 }
 
 bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
@@ -240,6 +244,12 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
+  } else if (!strcasecmp(key, "monitor")) {
+    if (!boolish(val)) return fail("monitor: on|off");
+    bool b = truthy(val);
+    WinKeyer::setMonitor(b); saveU32("monitor", b);
+    snprintf(msg, msgLen, "sidetone monitor=%s", b ? "on" : "off");
+
   } else if (!strcasecmp(key, "baud")) {
     // Only rates a WinKeyer host or a human console would actually use.
     const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
@@ -285,6 +295,9 @@ void toJson(JsonDocument& doc) {
   doc["tail"]    = Keyer::getPttTailMs();
   doc["flextail"]= Flex::pttTailMs();   // proves the two are in step
   doc["baud"]    = hostBaud();
+  doc["echo"]    = WinKeyer::echoEnabled();
+  doc["monitor"] = WinKeyer::monitor();
+  doc["modereg"] = WinKeyer::modeRegister();
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();
   doc["farns"]   = Keyer::getFarnsworth();

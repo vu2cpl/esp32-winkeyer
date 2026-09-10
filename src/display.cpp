@@ -15,6 +15,7 @@
 // ============================================================
 
 #include "display.h"
+#include "log.h"
 #include "pins.h"
 #include "config.h"
 #include "keyer.h"
@@ -79,7 +80,7 @@ void pickBusSpeed() {
   if (answersAt(i2cAddr, 400000)) { busHz = 400000; return; }
   busHz = 100000;
   Wire.setClock(busHz);
-  Serial.println("[DISP] panel does not answer at 400 kHz — running the bus at "
+  Log::println("[DISP] panel does not answer at 400 kHz — running the bus at "
                  "100 kHz. Works, but add 4.7k pull-ups to 3V3 or shorten the "
                  "leads if the panel ever goes missing at boot.");
 }
@@ -203,7 +204,7 @@ bool tryAdopt() {
   drawSplash();
   splashUntil = millis() + 1500;
   startTask();
-  Serial.printf("[DISP] %s at 0x%02X on I2C %d/%d @ %u kHz\n",
+  Log::printf("[DISP] %s at 0x%02X on I2C %d/%d @ %u kHz\n",
                 Display::controller(), i2cAddr, PIN_I2C_SDA, PIN_I2C_SCL,
                 (unsigned)(busHz / 1000));
   return true;
@@ -215,7 +216,7 @@ namespace Display {
 
 void begin() {
   if (!tryAdopt())
-    Serial.printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off "
+    Log::printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off "
                   "(wire one and run /i2c, no reboot needed)\n",
                   PIN_I2C_SDA, PIN_I2C_SCL);
 }
@@ -223,13 +224,13 @@ void begin() {
 uint8_t scan() {
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 100000);
   Wire.setClock(100000);   // scan slow so a marginal bus still shows up
-  Serial.printf("[I2C] scanning bus on SDA=%d SCL=%d @ 100 kHz\n",
+  Log::printf("[I2C] scanning bus on SDA=%d SCL=%d @ 100 kHz\n",
                 PIN_I2C_SDA, PIN_I2C_SCL);
   uint8_t n = 0;
   for (uint8_t a = 1; a < 127; a++) {
     Wire.beginTransmission(a);
     if (Wire.endTransmission() == 0) {
-      Serial.printf("[I2C]   0x%02X responds%s\n", a,
+      Log::printf("[I2C]   0x%02X responds%s\n", a,
                     (a == 0x3C || a == 0x3D) ? "   <- OLED address" : "");
       n++;
     }
@@ -237,11 +238,11 @@ uint8_t scan() {
   if (!n) {
     // A dead bus is nearly always physical. Name the four things that
     // actually cause it, in the order they are worth checking.
-    Serial.println("[I2C] nothing responded. In order of likelihood:");
-    Serial.println("[I2C]   1. SDA/SCL swapped — SDA must be GPIO21, SCL GPIO22");
-    Serial.println("[I2C]   2. no power — check 3V3 and GND at the panel itself");
-    Serial.println("[I2C]   3. missing pull-ups — 4.7k from each line to 3V3");
-    Serial.println("[I2C]   4. a broken jumper or dry joint on one of the four wires");
+    Log::println("[I2C] nothing responded. In order of likelihood:");
+    Log::println("[I2C]   1. SDA/SCL swapped — SDA must be GPIO21, SCL GPIO22");
+    Log::println("[I2C]   2. no power — check 3V3 and GND at the panel itself");
+    Log::println("[I2C]   3. missing pull-ups — 4.7k from each line to 3V3");
+    Log::println("[I2C]   4. a broken jumper or dry joint on one of the four wires");
   }
   tryAdopt();   // restores the panel's own bus speed if one is found
   return n;

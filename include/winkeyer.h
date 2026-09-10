@@ -29,6 +29,18 @@ void feed(uint8_t b, WriteFn sink);
 void poll();          // pump the send buffer, emit status/pot changes
 
 bool hostOpen();
+
+// What the host asked for. Echo is mode-register bit 2: if a logger never
+// sets it there is no echo, and that is the spec, not a fault — so make it
+// visible rather than a guess.
+// Sidetone for buffered text on a network backend, where the radio — not
+// this keyer — generates the CW. Off makes the keyer silent while the rig
+// transmits, which is what a bare "cwx send" path does.
+void setMonitor(bool on);
+bool monitor();
+
+uint8_t modeRegister();
+bool    echoEnabled();
 void closeHost();     // drop host mode (transport disconnected)
 
 void      setBackend(WkBackend b);

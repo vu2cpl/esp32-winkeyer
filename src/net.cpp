@@ -7,6 +7,7 @@
 // ============================================================
 
 #include "net.h"
+#include "log.h"
 #include "winkeyer.h"
 #include "config.h"
 #include <WiFi.h>
@@ -45,7 +46,7 @@ void poll() {
     server.begin();
     server.setNoDelay(true);
     started = true;
-    Serial.printf("[NET] WinKeyer TCP server on port %d\n", WK_TCP_PORT);
+    Log::printf("[NET] WinKeyer TCP server on port %d\n", WK_TCP_PORT);
   }
 
   if (!mdnsUp) {
@@ -53,24 +54,24 @@ void poll() {
       MDNS.addService("winkeyer", "tcp", WK_TCP_PORT);
       MDNS.addService("http", "tcp", 80);   // the settings page (src/web.cpp)
       mdnsUp = true;
-      Serial.printf("[NET] mDNS: %s.local\n", MDNS_HOSTNAME);
+      Log::printf("[NET] mDNS: %s.local\n", MDNS_HOSTNAME);
     }
   }
 
   if (server.hasClient()) {
     WiFiClient incoming = server.available();
     if (client && client.connected()) {
-      Serial.println("[NET] new client — dropping the previous one");
+      Log::println("[NET] new client — dropping the previous one");
       client.stop();
       WinKeyer::closeHost();
     }
     client = incoming;
     client.setNoDelay(true);
-    Serial.printf("[NET] client %s connected\n", client.remoteIP().toString().c_str());
+    Log::printf("[NET] client %s connected\n", client.remoteIP().toString().c_str());
   }
 
   if (client && !client.connected()) {
-    Serial.println("[NET] client disconnected");
+    Log::println("[NET] client disconnected");
     client.stop();
     WinKeyer::closeHost();
   }

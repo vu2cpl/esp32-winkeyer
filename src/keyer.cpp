@@ -135,6 +135,11 @@ static const int POT_HYST_CWPM = 60;   // hundredths of a WPM
 static const int SIDETONE_CH = 0;
 
 void (*keyHook)(bool) = nullptr;
+bool hookPaddleOnly = false;
+
+// The hook mirrors element timing to a network backend. Buffered text keyed
+// locally for sidetone must not reach it — see setHookPaddleOnly().
+inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
 
 // ── Low-level outputs ─────────────────────────────────────
 void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
@@ -144,14 +149,14 @@ void keyDown() {
   bool was = keyDownFlag;
   keyDownFlag = true;
   toneOn();
-  if (!was && keyHook) keyHook(true);
+  if (!was && hookWanted()) keyHook(true);
 }
 void keyUp() {
   digitalWrite(PIN_KEY_OUT, LOW);
   bool was = keyDownFlag;
   keyDownFlag = false;
   toneOff();
-  if (was && keyHook) keyHook(false);
+  if (was && hookWanted()) keyHook(false);
 }
 void pttAssert()  { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
 void pttRelease() {
@@ -289,6 +294,11 @@ void keyerTask(void*) {
     if (flagTune && state != ST_TUNE) {
       keyUp();
       pattern = nullptr;
+      // Tune is an operator action, not buffered text: it must reach the
+      // key hook (and so the radio) even when buffered elements are being
+      // keyed locally for sidetone only. curIsAuto is otherwise stale from
+      // whatever element ran last.
+      curIsAuto = false;
       pttAssert();
       keyDown();
       state = ST_TUNE;
@@ -428,6 +438,7 @@ bool paddleDit()    { return dit; }
 bool paddleDah()    { return dah; }
 
 void setKeyEventHook(void (*fn)(bool)) { keyHook = fn; }
+void setHookPaddleOnly(bool on) { hookPaddleOnly = on; }
 
 bool paddleBreakIn() {
   bool b = flagBreakIn;
