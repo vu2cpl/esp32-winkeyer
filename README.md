@@ -29,10 +29,29 @@ Bluetooth keyboard is considered but not built — see `HANDOVER.md`.
 ## Quick start
 
 ```bash
-python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the build
+python3 install.py     # detects the host, prompts for local settings, verifies the build
 ./flash.sh             # build + upload (picks the serial port)
-./monitor.sh           # serial monitor
+./monitor.sh           # serial monitor, 1200 baud
 ```
+
+`install.py` detects macOS, Raspberry Pi, Linux or Windows (with a manual
+override), then asks for your MQTT broker, mDNS name and setup-AP details.
+Answers go to **`include/secrets.h`**, which is git-ignored and overrides
+the defaults in `config.h` — so a clone stays clean and an upgrade never
+collides with your local edits. Press Enter through it all to accept the
+defaults; nothing here is required to key CW.
+
+**On Windows** `flash.sh` / `monitor.sh` cannot run, so use the
+cross-platform equivalents, which pick the port the same way:
+
+```bash
+python install.py flash            # build + upload
+python install.py monitor          # 1200 baud
+python install.py monitor 115200   # after /baud 115200
+```
+
+The port is never guessed when several boards are attached — some CP2102s
+share factory serial `0001`, so the wrong board would be flashed silently.
 
 1. First boot opens WiFi AP **`vu2cpl-esp32-winkeyer-setup`** (password
    `vu2cpl1234`). Join it from a laptop or phone; a captive portal opens
