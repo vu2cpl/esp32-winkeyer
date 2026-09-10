@@ -25,7 +25,23 @@ namespace {
 
 const char* NS = "wk";
 
+// Create the namespace once, read-write. A read-only open of a namespace
+// that has never been written FAILS, and fails SLOWLY — about 630 ms, with
+// an ERROR logged each time. hostBaud() is reached from toJson(), which the
+// settings page polls every second, so on a factory-fresh board that made
+// the endpoint unusable and filled the console. Same failure mode that took
+// the web server down when memories were first added.
+void ensureNs() {
+  static bool done = false;
+  if (done) return;
+  Preferences p;
+  p.begin(NS, false);
+  p.end();
+  done = true;
+}
+
 uint32_t loadU32(const char* key, uint32_t def) {
+  ensureNs();
   Preferences p;
   p.begin(NS, true);
   uint32_t v = p.isKey(key) ? p.getUInt(key, def) : def;
@@ -48,6 +64,7 @@ void saveStr(const char* key, const char* v) {
 }
 
 String loadStr(const char* key) {
+  ensureNs();
   Preferences p;
   p.begin(NS, true);
   String v = p.isKey(key) ? p.getString(key, "") : String("");
@@ -98,6 +115,7 @@ void applyBackend(bool useFlex, bool persist) {
 }
 
 bool loadBackend() {
+  ensureNs();
   Preferences p;
   p.begin(NS, true);
   bool useFlex = p.isKey("flexbe") ? p.getBool("flexbe", false) : false;
