@@ -107,6 +107,10 @@ bool loadBackend() {
 
 uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
 
+// Read before Display::begin(), which runs long before begin() restores
+// the rest — a disabled panel must not be probed at all.
+bool displayEnabled() { return loadU32("dispen", 1) != 0; }
+
 // Below ~9600 the boot log itself becomes the problem: every character
 // printed is a character the host is waiting through before its Host Open
 // gets an answer, and loggers give up.

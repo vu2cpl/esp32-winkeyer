@@ -26,6 +26,7 @@ void begin();   // restore everything from NVS. Call after the modules' begin().
 // a logger that opens the port at WinKeyer speed is already talking.
 uint32_t hostBaud();
 bool     quietBoot();   // true when the link is too slow for a chatty boot
+bool     displayEnabled();   // needed before Display::begin()
 
 // Apply one setting by name and persist it. `msg` receives a human-readable
 // result (an error explains the accepted range). Returns false if the key is

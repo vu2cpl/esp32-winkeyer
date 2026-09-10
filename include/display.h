@@ -24,7 +24,11 @@
 
 namespace Display {
 
-void begin();            // probe + splash; safe to call with no panel wired
+// Probe + splash, unless the panel has been disabled — in which case the
+// I²C bus is not touched at all. That matters because the probe and init
+// run before the saved settings are loaded, so "disabled" previously still
+// meant "poke the bus at every boot", which is where a stuck line hangs.
+void begin(bool enabled);
 bool present();          // a panel answered on the bus
 uint8_t address();       // 7-bit address it answered on, 0 if none
 void setEnabled(bool en);// blank the panel without unwiring it

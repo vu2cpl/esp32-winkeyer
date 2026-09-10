@@ -394,7 +394,12 @@ bool tryAdopt() {
 
 namespace Display {
 
-void begin() {
+void begin(bool enabled) {
+  cfgEnabled = enabled;
+  if (!enabled) {
+    Log::println("[DISP] disabled — I2C bus not touched");
+    return;
+  }
   if (!tryAdopt())
     Log::printf("[DISP] no OLED at 0x3C/0x3D on I2C %d/%d — display off "
                   "(wire one and run /i2c, no reboot needed)\n",

@@ -407,7 +407,7 @@ void setup() {
   // Keyer first — it must work with no WiFi at all.
   Keyer::begin();
   WinKeyer::begin();
-  Display::begin();     // optional panel; silently absent if none is wired
+  Display::begin(Settings::displayEnabled());   // skips the bus when off
   Fsk::begin();
   Memories::begin();
   boot("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
