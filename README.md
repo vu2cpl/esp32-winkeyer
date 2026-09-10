@@ -497,3 +497,12 @@ install.py             toolchain bootstrap, macOS/Pi branch
 ```
 
 See `HANDOVER.md` for design decisions and open items.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Use it, change it, build one; just keep the
+copyright notice.
+
+The WinKeyer protocol is Steve K1EL's, and the K3ng CW keyer by Anthony
+Good K3NG was used as a behavioural reference. The implementation here is
+original and carries no upstream licence obligations.
