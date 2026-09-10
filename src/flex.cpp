@@ -80,7 +80,7 @@ bool          sliceInUse = false;
 bool          sliceIsCw  = false;
 uint32_t      lastWarnMs = 0;
 uint32_t      lastKeyMs = 0;
-uint32_t      pttTailMs = 400;    // hold TX this long after the last element
+uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
 struct KeyEvt { bool down; uint32_t at; };
 
@@ -288,6 +288,9 @@ void keyEvent(bool down) {
   xQueueSend(keyQ, &e, 0);
 }
 
+void     setPttTailMs(uint16_t ms) { cfgTailMs = ms; }
+uint16_t pttTailMs() { return cfgTailMs; }
+
 void setDirectKeying(bool on) {
   cfgDirect = on;
   if (!on && tcp.connected()) {                      // never leave it keyed
@@ -374,7 +377,7 @@ void pumpKeying() {
   // Release the transmitter once the operator has stopped sending — but
   // never while the key is still down, or a long element (or tune) would
   // drop PTT out from under itself.
-  if (xmitOn && !keyIsDown && lastKeyMs && millis() - lastKeyMs > pttTailMs) {
+  if (xmitOn && !keyIsDown && lastKeyMs && millis() - lastKeyMs > cfgTailMs) {
     tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
     xmitOn = false;
     if (logKeying) Serial.println("[FLEX] xmit 0 (PTT release)");

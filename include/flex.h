@@ -31,6 +31,15 @@ void keyEvent(bool down);
 void setDirectKeying(bool on);
 bool directKeying();
 
+// How long to hold the transmitter after the last element before "xmit 0".
+// This is the Flex path's own tail, and it is a SEPARATE transmitter from
+// the keyer's: the keyer's tail releases the local PTT line (GPIO32, still
+// live on this backend for an amp or sequencer), this one releases the
+// radio. Both must be set together or the control silently does nothing to
+// whichever one you are listening to. Settings::apply() keeps them in step.
+void     setPttTailMs(uint16_t ms);
+uint16_t pttTailMs();
+
 // Whether to assert PTT (xmit 1) around keying. With break-in/QSK the
 // radio can switch T/R off the key edge alone, in which case asserting
 // PTT ourselves may suppress the carrier. Runtime-switchable so this can

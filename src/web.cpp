@@ -131,6 +131,7 @@ balance without changing WPM; ratio changes dah length.</div>
   <input type="number" id="lead" min="0" max="2000"><span class="val">ms before the first element</span></div>
 <div class="row"><label>Tail</label>
   <input type="number" id="tail" min="0" max="2000"><span class="val">ms after the last</span></div>
+<div class="hint" id="pttNote"></div>
 <div class="hint">Click a number box and use &uarr;/&darr; to step by 1,
 Shift+&uarr;/&darr; by 10. The value is written once you pause, so holding a
 key costs one save, not one per repeat.</div>
@@ -186,6 +187,13 @@ async function refresh(){
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
   $('flexip').textContent=s.flex.enabled?(s.flex.ip||'searching'):'';
+  $('pttNote').textContent = s.backend==='flex'
+    ? 'Backend is FlexRadio: Tail releases both the local PTT line (GPIO32) '
+      +'and the radio itself (xmit 0). Lead-in applies to GPIO32 only — still '
+      +'live here for an amp or sequencer — since the radio does its own T/R. '
+      +'The KEY line (GPIO33) is idle on this backend.'
+    : 'Backend is local: lead-in and tail both sequence the PTT line on GPIO32, '
+      +'around the KEY line on GPIO33.';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};

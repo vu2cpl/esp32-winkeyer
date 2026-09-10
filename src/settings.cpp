@@ -106,6 +106,7 @@ void begin() {
   Keyer::setPttEnabled(loadU32("ptt", 1));
   Keyer::setPttLeadMs(loadU32("lead", D_LEAD));
   Keyer::setPttTailMs(loadU32("tail", D_TAIL));
+  Flex::setPttTailMs(loadU32("tail", D_TAIL));
   Keyer::setWeighting(loadU32("weight", D_WEIGHT));
   Keyer::setRatio(loadU32("ratio", D_RATIO));
   Keyer::setFarnsworth(loadU32("farns", D_FARNS));
@@ -178,8 +179,15 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
 
   } else if (!strcasecmp(key, "tail")) {
     if (n < 0 || n > 2000) return fail("tail: 0..2000 ms");
-    Keyer::setPttTailMs(n); saveU32("tail", n);
-    snprintf(msg, msgLen, "ptt tail=%d ms", n);
+    // Two transmitters to release: the local PTT line (GPIO32, live on both
+    // backends for an amp or sequencer) and, on the Flex backend, the radio
+    // itself via "xmit 0". Flex kept its own hardcoded 400 ms, so this
+    // control moved the local line while the operator was listening to the
+    // radio — audibly doing nothing.
+    Keyer::setPttTailMs(n);
+    Flex::setPttTailMs(n);
+    saveU32("tail", n);
+    snprintf(msg, msgLen, "ptt tail=%d ms (local + flex)", n);
 
   } else if (!strcasecmp(key, "weight")) {
     if (n < 10 || n > 90) return fail("weight: 10..90 (50 nominal)");
@@ -254,6 +262,7 @@ void toJson(JsonDocument& doc) {
   doc["ptt"]     = Keyer::getPttEnabled();
   doc["lead"]    = Keyer::getPttLeadMs();
   doc["tail"]    = Keyer::getPttTailMs();
+  doc["flextail"]= Flex::pttTailMs();   // proves the two are in step
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();
   doc["farns"]   = Keyer::getFarnsworth();

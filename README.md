@@ -224,8 +224,19 @@ CLI and the page:
 | Weight | 10–90 | 50 | mark/space balance, **without** changing WPM |
 | Dah ratio | 33–66 | 50 | dah length (50 = the standard 3 dits) |
 | Farnsworth | 0, or 5–60 | 0 (off) | stretches only the gaps, to this WPM |
-| PTT lead-in | 0–2000 ms | 50 | delay before the first element |
+| PTT lead-in | 0–2000 ms | 50 | delay before the first element (GPIO32) |
 | PTT tail | 0–2000 ms | 250 | hold after the last element |
+
+**The tail releases two transmitters.** It sets both the local PTT line
+and, on the Flex backend, the radio itself (`xmit 0`) — these are separate
+timers and setting only one makes the control appear dead on whichever you
+are listening to. `/api/state` reports `flextail` next to `tail` so you can
+see they agree.
+
+On the Flex backend the **KEY line (GPIO33) is idle** so the rig is not
+keyed twice, but the **PTT line (GPIO32) stays live** for an amp or
+sequencer — that is what lead-in still drives. The radio handles its own
+T/R, so there is no Flex lead-in.
 
 Out-of-range values are refused with the accepted range and nothing is
 changed — `farns 3` answers `farnsworth: 0 (off) or 5..60`.

@@ -444,6 +444,20 @@ makes the keyer feel slow.
     the pot tracks properly on GPIO 34. That closes the display and pot
     lines of the roadmap — everything in this feature set has now run on
     real hardware.
+  - **The two-tails bug.** `/tail` and the web PTT panel wrote the keyer's
+    `cfgTailMs`, which sequences the local PTT line — but `flex.cpp` kept
+    its own private `pttTailMs = 400` for releasing the radio (`xmit 0`).
+    On the Flex backend the operator therefore heard no change from any
+    value, because the thing he was listening to was never being set.
+    `Settings::apply("tail")` now drives both, and `/api/state` reports
+    `flextail` alongside `tail` so the two can be seen to agree.
+
+    Related and easy to get wrong (it was, twice, in comments): on the
+    Flex backend the **KEY line GPIO33 is idle** (`setKeyOutEnabled(false)`
+    so the rig is not keyed twice) but the **PTT line GPIO32 is still
+    live**, gated only by `/ptt`, for an amp or sequencer. Lead-in applies
+    to GPIO32 on both backends; the radio does its own T/R, so there is no
+    Flex lead.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
@@ -493,12 +507,20 @@ against exposing it beyond one.
    calibrated. Verify element timing against a scope or a known-good
    decoder.
 5. **Flex network keying works** (2026-09-10) and persists across
-   reboots. **PTT tail settled at 400 ms by ear** (2026-09-10) — Manoj
-   compared it against the 250 ms default from the settings page and kept
-   400. It is now a persisted setting (`/tail 400` or the PTT panel), not
-   a compile-time guess. Still to do: confirm on-air fist quality with a
-   decoder — the mechanism is proven and the tail now sounds right, but
-   the *fist* has not been judged against a decoder. `logKeying` in
+   reboots. **PTT tail is 400 ms**, now a real persisted setting.
+
+   Correction to an earlier claim in this file: a note said Manoj had
+   compared 400 ms against 250 ms by ear and chosen 400. That was wrong —
+   at the time, `/tail` could not affect the Flex path at all (see the
+   two-tails bug below), so every value he tried was still the hardcoded
+   400. The 400 ms figure is the original blind guess, now confirmed only
+   as "sounds OK", never A/B'd against anything.
+
+   **Worth actually A/B-ing now that the control works.** Measured on the
+   wire: 150→157 ms, 250→255 ms, 400→406 ms from the last `cw key 0` to
+   `xmit 0`.
+
+   Still to do: confirm on-air fist quality with a decoder. `logKeying` in
    `flex.cpp` prints every edge; turn it off once happy.
 6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would
