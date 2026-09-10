@@ -26,6 +26,7 @@
 // ============================================================
 
 #include <Arduino.h>
+#include <stdarg.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
@@ -45,6 +46,16 @@ PubSubClient mqtt(net);
 WiFiManager  wm;
 unsigned long lastBeat = 0;
 bool serialWkMode = false;
+bool quiet = false;          // trim boot chatter when the link is slow
+
+// Boot-time logging that costs the host link nothing when it matters.
+void boot(const char* fmt, ...) {
+  if (quiet) return;
+  va_list ap; va_start(ap, fmt);
+  char b[160]; vsnprintf(b, sizeof b, fmt, ap);
+  va_end(ap);
+  Serial.print(b);
+}
 
 // ── MQTT ─────────────────────────────────────────────────
 void onMqtt(char* topic, byte* payload, unsigned int len) {
@@ -95,6 +106,12 @@ void printStatus() {
                 Display::present()
                   ? (Display::enabled() ? Display::controller() : "off")
                   : "not detected");
+  Serial.printf("[KEYER] serial %u baud %s — %s\n",
+                (unsigned)Settings::hostBaud(),
+                Settings::hostBaud() == 1200 ? "8N2" : "8N1",
+                Settings::hostBaud() == 1200
+                  ? "WinKeyer standard, loggers open the port this way"
+                  : "console rate; a logger expecting a WinKeyer needs 1200");
   Serial.printf("[WK]    backend=%s host=%s\n",
                 WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
                 WinKeyer::hostOpen() ? "open" : "closed");
@@ -157,6 +174,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "disp") && arg) {
       bool onoff = !strcasecmp(arg, "on") || !strcasecmp(arg, "off");
       setting(onoff ? "disp" : "dispctl", arg);
+    } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
     } else if (!strcasecmp(cmd, "ratio")  && arg) { setting("ratio", arg);
     } else if (!strcasecmp(cmd, "farns")  && arg) { setting("farns", arg);
@@ -237,7 +255,7 @@ void handleLine(char* line) {
       printStatus();
     } else {
       Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
-                     "      /weight /ratio /farns /lead /tail\n"
+                     "      /weight /ratio /farns /lead /tail /baud\n"
                      "      /backend /flex /wifi /paddle /net /status");
     }
     return;
@@ -300,22 +318,35 @@ void pollSerial() {
 
 // ── Setup ─────────────────────────────────────────────────
 void setup() {
-  Serial.begin(115200);
-  Serial.println("\n[BOOT] ESP32 WinKeyer");
+  // Baud first, before anything is printed. A logger that opens this port
+  // has already sent its Host Open by the time we get here, and a real
+  // WinKeyer answers at 1200 8N2 — see WK_HOST_BAUD_DEFAULT.
+  uint32_t baud = Settings::hostBaud();
+  Serial.begin(baud, baud == 1200 ? SERIAL_8N2 : SERIAL_8N1);
+  quiet = Settings::quietBoot();
+  if (quiet) {
+    // Every character here is one the host waits through before its
+    // handshake is answered. One line, then silence.
+    Serial.printf("\n[BOOT] ESP32 WinKeyer @ %u 8N2 (quiet — use the web page)\n",
+                  (unsigned)baud);
+    wm.setDebugOutput(false);
+  } else {
+    Serial.printf("\n[BOOT] ESP32 WinKeyer @ %u baud\n", (unsigned)baud);
+  }
   pinMode(PIN_STATUS_LED, OUTPUT);
 
   // Keyer first — it must work with no WiFi at all.
   Keyer::begin();
   WinKeyer::begin();
   Display::begin();     // optional panel; silently absent if none is wired
-  Serial.printf("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
-                Keyer::getWpm(), Keyer::getSidetoneHz());
+  boot("[KEYER] up — %u WPM, iambic B, sidetone %u Hz\n",
+       Keyer::getWpm(), Keyer::getSidetoneHz());
 
   // Non-blocking onboarding: portal runs in the background, loop keeps running.
   wm.setHostname(MDNS_HOSTNAME);
   wm.setConfigPortalTimeout(WIFI_PORTAL_TIMEOUT_S);
   wm.setConfigPortalBlocking(false);
-  Serial.println("[WiFi] autoConnect (portal: vu2cpl-esp32-winkeyer-setup)");
+  boot("[WiFi] autoConnect (portal: %s)\n", WIFI_AP_NAME);
   wm.autoConnect(WIFI_AP_NAME, WIFI_AP_PASS);
 
   // The ESP32 defaults to modem sleep, waking only on DTIM beacons. That
@@ -334,9 +365,9 @@ void setup() {
   Settings::begin();
   bool useFlex = Settings::loadBackend();
   Settings::applyBackend(useFlex, false);
-  Serial.printf("[WK] backend=%s, %u WPM, pot %s (restored)\n",
-                useFlex ? "flex" : "local", Keyer::getWpm(),
-                Keyer::getPotEnabled() ? "on" : "off");
+  boot("[WK] backend=%s, %u WPM, pot %s (restored)\n",
+       useFlex ? "flex" : "local", Keyer::getWpm(),
+       Keyer::getPotEnabled() ? "on" : "off");
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);

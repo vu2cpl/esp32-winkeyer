@@ -18,6 +18,20 @@
 // to join, which is exactly when you need it most.
 #define WIFI_PORTAL_TIMEOUT_S  0
 
+// ── Serial host link ──────────────────────────────────────
+// A real K1EL WinKeyer runs its serial link at 1200 baud, 8 data bits, TWO
+// stop bits, and loggers open the port that way without asking. RUMlogNG was
+// observed doing exactly this (stty reported "speed 1200 baud; cs8 cstopb"),
+// so the firmware must match or the handshake arrives as noise.
+//
+// The cost is that the console shares this port: at 1200 baud a chatty boot
+// takes seconds, and the host cannot be answered until it finishes. So when
+// the link is running at WinKeyer speed the boot log is trimmed to one line
+// and the WiFiManager debug chatter is silenced — use the web page or
+// /status for detail, both of which are unaffected.
+#define WK_HOST_BAUD_DEFAULT  1200
+#define WK_CONSOLE_BAUD       115200   // pick this with /baud for a readable log
+
 // ── WinKeyer transport ────────────────────────────────────
 // Raw WinKeyer byte stream over TCP; the host-side bridge in tools/
 // maps it to a serial port. Advertised as _winkeyer._tcp over mDNS.

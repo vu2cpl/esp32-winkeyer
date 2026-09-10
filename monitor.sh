@@ -25,5 +25,11 @@ else
 fi
 : "${PORT:?No port selected}"
 
-echo "→ pio device monitor --port $PORT -b 115200"
-exec pio device monitor --port "$PORT" -b 115200
+# The firmware defaults to 1200 baud, because that is what a K1EL WinKeyer
+# runs at and what a logger opens the port with. Pass a rate to override,
+# e.g. ./monitor.sh 115200 if you set /baud 115200 for a readable console.
+BAUD="${1:-1200}"
+echo "→ pio device monitor --port $PORT -b $BAUD"
+echo "  (firmware default is 1200 8N2 — WinKeyer standard. Boot log is one"
+echo "   line at that rate; use http://winkeyer.local/ for full status.)"
+exec pio device monitor --port "$PORT" -b "$BAUD"

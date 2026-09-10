@@ -12,6 +12,7 @@
 // ============================================================
 
 #include "settings.h"
+#include "config.h"
 #include "keyer.h"
 #include "winkeyer.h"
 #include "flex.h"
@@ -96,6 +97,13 @@ bool loadBackend() {
   p.end();
   return useFlex;
 }
+
+uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
+
+// Below ~9600 the boot log itself becomes the problem: every character
+// printed is a character the host is waiting through before its Host Open
+// gets an answer, and loggers give up.
+bool quietBoot() { return hostBaud() <= 9600; }
 
 void begin() {
   Keyer::setWpm(loadU32("wpm", D_WPM));
@@ -232,6 +240,19 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveStr("dispctl", Display::controller());
     snprintf(msg, msgLen, "display controller=%s", Display::controller());
 
+  } else if (!strcasecmp(key, "baud")) {
+    // Only rates a WinKeyer host or a human console would actually use.
+    const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
+    bool ok = false;
+    for (uint32_t a : allowed) if ((uint32_t)n == a) ok = true;
+    if (!ok) return fail("baud: 1200 (WinKeyer) 4800 9600 19200 38400 57600 115200");
+    saveU32("baud", n);
+    snprintf(msg, msgLen, "serial %d baud %s — switching now", n,
+             n == 1200 ? "8N2 (WinKeyer)" : "8N1");
+    Serial.flush();                       // get the reply out at the old rate
+    Serial.end();
+    Serial.begin(n, n == 1200 ? SERIAL_8N2 : SERIAL_8N1);
+
   } else if (!strcasecmp(key, "backend")) {
     bool useFlex = !strcasecmp(val, "flex");
     applyBackend(useFlex, true);
@@ -263,6 +284,7 @@ void toJson(JsonDocument& doc) {
   doc["lead"]    = Keyer::getPttLeadMs();
   doc["tail"]    = Keyer::getPttTailMs();
   doc["flextail"]= Flex::pttTailMs();   // proves the two are in step
+  doc["baud"]    = hostBaud();
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();
   doc["farns"]   = Keyer::getFarnsworth();

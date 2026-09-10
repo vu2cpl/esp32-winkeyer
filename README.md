@@ -80,6 +80,14 @@ with no pot wired; that setting then persists.
 Expect the top of the knob's travel to be a small dead zone: ADC_11db
 saturates near 3.1 V rather than 3.3 V. Normal ESP32 behaviour.
 
+The speed follows the knob through a **0.6 WPM hysteresis band**. A pot
+parked on a step boundary otherwise alternates between two speeds forever,
+and each flip is both a speed change and an unsolicited WinKeyer pot byte —
+a stream that saturates a 1200-baud host link. Hysteresis is the right cure
+rather than heavier smoothing or a settle delay: those fix the dither by
+adding lag to every deliberate turn as well, which the operator feels at
+once as a sluggish knob.
+
 **OLED (optional).** VCC→3V3, GND→GND, SDA→21, SCL→22. Most breakouts
 carry their own pull-ups; if yours does not, add 4.7 kΩ from each line to
 3V3. The firmware probes 0x3C then 0x3D at boot and stays off if nothing
@@ -104,6 +112,39 @@ left edge (the SH1106 has 132 columns of RAM to the SSD1306's 128). Fix
 it with `/disp ssd1306` — no reflash.
 
 See `include/pins.h`.
+
+## Serial / USB — baud matters
+
+**The firmware defaults to 1200 baud, 8N2.** That is the K1EL WinKeyer
+serial standard, and loggers open the port that way without asking —
+RUMlogNG was observed doing exactly this (`stty` reported
+`speed 1200 baud; cs8 cstopb`). At any other rate a logger's handshake
+arrives as noise and no session ever opens, which looks exactly like a
+dead keyer.
+
+The console shares that port, so at 1200 baud the boot log is trimmed to
+one line and WiFiManager's chatter is silenced — every character printed
+is one the host waits through before its Host Open is answered. Use the
+web page or `/status` for detail.
+
+```bash
+/baud 115200     # readable console; a logger will NOT talk to it here
+/baud 1200       # WinKeyer standard; what loggers expect
+./monitor.sh          # defaults to 1200
+./monitor.sh 115200   # when you have set the console rate
+```
+
+The **SERIAL / USB** panel on the web page sets the same thing, and is the
+escape hatch if you pick a rate you cannot monitor at — WiFi is unaffected
+by the serial rate.
+
+**Known limitation of this board.** Opening the port pulses DTR/RTS, which
+resets the ESP32, and the ROM bootloader always prints its startup banner
+at 115200 regardless of the firmware setting. A logger sitting at 1200
+therefore sees a burst of garbage before the handshake. It is noise ahead
+of the session, not a protocol fault, and cannot be fixed in firmware —
+only by disabling the auto-reset circuit in hardware, or by moving to the
+ESP32-S3 env, whose native USB has no DTR-driven reset.
 
 ## Connecting logging software
 

@@ -120,6 +120,17 @@ static const uint8_t DEBOUNCE_TICKS = 3;
 uint32_t potAccum = 0;
 uint16_t potTick  = 0;
 int      potLastWpm = -1;
+// A pot parked on a step boundary alternates between two adjacent speeds
+// forever, and every flip is a speed change AND an unsolicited WinKeyer pot
+// byte — at 1200 baud that stream saturates the host link.
+//
+// The cure is hysteresis, NOT more smoothing: a deeper filter or a
+// wait-and-see settle both fix the dither by adding lag to every real
+// movement too, which the operator feels immediately as a sluggish knob.
+// Requiring 0.6 WPM of travel before the speed follows costs nothing on a
+// deliberate turn — it acts on the very next sample — while a boundary
+// flicker of ±0.5 step can never cross it.
+static const int POT_HYST_CWPM = 60;   // hundredths of a WPM
 
 static const int SIDETONE_CH = 0;
 
@@ -236,13 +247,14 @@ void samplePot() {
   if (++potTick < 50) return;          // one reading per 50 ms
   potTick = 0;
   potAccum = (potAccum * 3 + (uint32_t)analogRead(PIN_SPEED_POT)) / 4;  // IIR smooth
-  int wpm = cfgPotMin + (int)((potAccum * cfgPotRange) / 4095);
-  if (potLastWpm < 0) { potLastWpm = wpm; return; }   // first reading: don't stomp boot speed
-  if (wpm != potLastWpm) {
-    potLastWpm = wpm;
-    cfgWpm = wpm;
-    recalc();
-  }
+  // Work in hundredths so the deadband can sit between two whole WPM steps.
+  int cwpm = (int)cfgPotMin * 100 + (int)((potAccum * cfgPotRange * 100) / 4095);
+  if (potLastWpm < 0) { potLastWpm = (cwpm + 50) / 100; return; }  // don't stomp boot speed
+  int cur = potLastWpm * 100;
+  if (cwpm < cur + POT_HYST_CWPM && cwpm > cur - POT_HYST_CWPM) return;
+  potLastWpm = (cwpm + 50) / 100;
+  cfgWpm     = constrain(potLastWpm, 5, 60);
+  recalc();
 }
 
 // ── The 1 kHz keyer task ──────────────────────────────────

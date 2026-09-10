@@ -90,7 +90,10 @@ def main():
     ap.add_argument("--host", default="winkeyer.local")
     ap.add_argument("--port", type=int, default=8088)
     ap.add_argument("--serial")
-    ap.add_argument("--baud", type=int, default=115200)
+    # A real WinKeyer runs 1200 8N2 and loggers open the port that way; the
+# firmware defaults to the same. Testing at 115200 is what hid the
+# mismatch from RUMlogNG for so long — match the wire by default.
+    ap.add_argument("--baud", type=int, default=1200)
     ap.add_argument("--wpm", type=int, default=25)
     ap.add_argument("--text", default="CQ DE VU2CPL")
     args = ap.parse_args()
@@ -98,7 +101,9 @@ def main():
     if args.serial:
         if serial is None:
             sys.exit("pyserial not installed: pip3 install pyserial")
-        link = Link(ser=serial.Serial(args.serial, args.baud, timeout=1))
+        link = Link(ser=serial.Serial(args.serial, args.baud, timeout=1,
+                                      stopbits=serial.STOPBITS_TWO
+                                      if args.baud == 1200 else serial.STOPBITS_ONE))
         time.sleep(0.3)
         link.ser.reset_input_buffer()
         print(f"opened {args.serial} @ {args.baud}")

@@ -152,6 +152,19 @@ key costs one save, not one per repeat.</div>
   <option value="ssd1306">SSD1306 (0.96")</option></select></div>
 </fieldset>
 
+<fieldset><legend>SERIAL / USB</legend>
+<div class="row"><label>Host baud</label>
+  <select id="baud">
+    <option value="1200">1200 8N2 &mdash; WinKeyer standard</option>
+    <option value="9600">9600 8N1</option>
+    <option value="19200">19200 8N1</option>
+    <option value="38400">38400 8N1</option>
+    <option value="57600">57600 8N1</option>
+    <option value="115200">115200 8N1 &mdash; console</option>
+  </select></div>
+<div class="hint" id="baudNote"></div>
+</fieldset>
+
 <fieldset><legend>BACKEND</legend>
 <div class="row"><label>Keying</label>
   <select id="backend"><option value="local">Local key line</option>
@@ -187,6 +200,12 @@ async function refresh(){
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
   $('flexip').textContent=s.flex.enabled?(s.flex.ip||'searching'):'';
+  $('baudNote').textContent = s.baud==1200
+    ? 'A logger opening this port as a WinKeyer expects 1200 8N2. The serial '
+      +'console runs at this rate too, so the boot log is trimmed to one line '
+      +'to keep the handshake fast — use this page for status.'
+    : 'Readable console rate. A logger looking for a WinKeyer will NOT talk to '
+      +'the port at this setting unless you can set its baud to match.';
   $('pttNote').textContent = s.backend==='flex'
     ? 'Backend is FlexRadio: Tail releases both the local PTT line (GPIO32) '
       +'and the radio itself (xmit 0). Lead-in applies to GPIO32 only — still '
@@ -195,7 +214,8 @@ async function refresh(){
     : 'Backend is local: lead-in and tail both sequence the PTT line on GPIO32, '
       +'around the KEY line on GPIO33.';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
-    backend:s.backend,dispctl:s.dispctl,weight:s.weight,ratio:s.ratio,
+    backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
+    weight:s.weight,ratio:s.ratio,
     farns:s.farns,lead:s.lead,tail:s.tail};
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
@@ -234,7 +254,7 @@ function bindNum(id,min,max){
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
 bindNum('potmin',5,59); bindNum('potmax',6,60);
-for(const id of ['mode','backend','dispctl'])
+for(const id of ['mode','backend','dispctl','baud'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');

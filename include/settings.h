@@ -21,6 +21,12 @@ namespace Settings {
 
 void begin();   // restore everything from NVS. Call after the modules' begin().
 
+// The serial link's baud rate, read straight from NVS. Needed before
+// begin() because Serial.begin() has to happen first thing in setup() —
+// a logger that opens the port at WinKeyer speed is already talking.
+uint32_t hostBaud();
+bool     quietBoot();   // true when the link is too slow for a chatty boot
+
 // Apply one setting by name and persist it. `msg` receives a human-readable
 // result (an error explains the accepted range). Returns false if the key is
 // unknown or the value is out of range — nothing is changed in that case.
