@@ -398,6 +398,34 @@ baud against a theoretical 2.81 s, and 1.77 s at 75 baud against 1.70 s.
 The 14-character message occupies 17 code times, which is the two shift
 characters `2` forces.
 
+## Bench-testing the key and PTT lines
+
+The four outputs are plain active-high 3.3 V GPIOs, so an LED and a
+resistor to GND is enough to watch them:
+
+| Line | GPIO |
+|---|---|
+| KEY / PTT, radio 1 | 33 / 32 |
+| KEY / PTT, radio 2 | 18 / 19 |
+
+Anode to the GPIO, cathode through **330 Ω** to GND — about 4 mA, bright
+enough and well inside what an ESP32 pin should source. Do not go below
+~150 Ω.
+
+**On the Flex backend the KEY line is deliberately idle** (the radio is
+keyed over the network instead, so the rig is not keyed twice) — a KEY LED
+will stay dark however much you send. Use `/backend local` to test it. PTT
+is live on both backends.
+
+`/tune` is the easiest test: a continuous key-down with PTT asserted, so
+both LEDs sit steady rather than flickering through elements. Sending text
+afterwards shows the sequencing — PTT leads the first element by the
+lead-in and holds for the tail after the last.
+
+`/radio 2` moves keying to the second pair and `/radio both` drives all
+four, which is also the quickest way to confirm the `LOCALB` / `FLXB`
+indicator on the display.
+
 ## Connecting logging software
 
 The keyer speaks the WinKeyer protocol over a TCP socket. Loggers want a

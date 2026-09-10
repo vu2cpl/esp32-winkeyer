@@ -43,9 +43,16 @@ void begin() {
   // Opened read-WRITE so the namespace is created if it has never been
   // used. A read-only open of a missing namespace is the slow failure.
   p.begin(NS, false);
-  for (uint8_t i = 1; i <= COUNT; i++)
-    cache[i] = p.getString(slotKey(i).c_str(), "");
-  callCache = p.getString("call", "");
+  // isKey() first: getString() logs "nvs_get_str len fail: NOT_FOUND" at
+  // ERROR level for a missing key even when a default is supplied, so an
+  // unused memory slot printed an alarming line at every boot.
+  for (uint8_t i = 1; i <= COUNT; i++) {
+    // Hold the String: slotKey() returns a temporary, so keeping only its
+    // c_str() would leave a dangling pointer once the expression ended.
+    String k = slotKey(i);
+    cache[i] = p.isKey(k.c_str()) ? p.getString(k.c_str(), "") : String("");
+  }
+  callCache = p.isKey("call") ? p.getString("call", "") : String("");
   p.end();
   loaded = true;
 }
