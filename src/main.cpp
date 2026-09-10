@@ -127,10 +127,16 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "backend") && arg) {
       bool useFlex = !strcasecmp(arg, "flex");
       WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
-      // On the Flex path the radio keys itself; the local key line must stay
-      // idle or the rig would be keyed twice. Sidetone stays on for the op.
+      // On the Flex path the radio is keyed over the network; the local key
+      // line stays idle so the rig is not keyed twice. Sidetone stays local,
+      // generated from the operator's own paddle timing, so the fist sounds
+      // right in the ear regardless of what the link is doing.
       Keyer::setKeyOutEnabled(!useFlex);
-      Serial.printf("[WK] backend=%s\n", useFlex ? "flex" : "local");
+      Flex::setDirectKeying(useFlex);
+      Keyer::setKeyEventHook(useFlex ? Flex::keyEvent : nullptr);
+      Serial.printf("[WK] backend=%s (paddle keying %s)\n",
+                    useFlex ? "flex" : "local",
+                    useFlex ? "-> radio over network" : "-> local key output");
     } else if (!strcasecmp(cmd, "flex")) {
       if (arg && !strcasecmp(arg, "on"))       { Flex::setEnabled(true);  Serial.println("[FLEX] enabled"); }
       else if (arg && !strcasecmp(arg, "off")) { Flex::setEnabled(false); Serial.println("[FLEX] disabled"); }

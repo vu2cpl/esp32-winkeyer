@@ -55,6 +55,11 @@ bool   keyIsDown();        // for WK status reporting
 bool   paddleActive();     // either paddle currently closed
 bool   paddleDit();        // debounced dit lever (after any swap)
 bool   paddleDah();        // debounced dah lever (after any swap)
+
+// Called from the keyer task on every key transition, so a network backend
+// can mirror the element timing to a radio. Must not block: it runs inside
+// the 1 kHz task. Pass nullptr to detach.
+void setKeyEventHook(void (*fn)(bool down));
 bool   paddleBreakIn();    // true once if paddle press aborted a buffered send
 
 }  // namespace Keyer

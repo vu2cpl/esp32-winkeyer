@@ -25,6 +25,12 @@ String manualIp();
 String radioIp();
 String radioModel();
 
+// Real-time keying. keyEvent() is safe to call from the keyer task; it only
+// queues, and poll() does the network write.
+void keyEvent(bool down);
+void setDirectKeying(bool on);
+bool directKeying();
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm

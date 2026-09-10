@@ -123,18 +123,24 @@ int      potLastWpm = -1;
 
 static const int SIDETONE_CH = 0;
 
+void (*keyHook)(bool) = nullptr;
+
 // ── Low-level outputs ─────────────────────────────────────
 void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
 void toneOff() { ledcWriteTone(SIDETONE_CH, 0); }
 void keyDown() {
   if (cfgKeyOut) digitalWrite(PIN_KEY_OUT, HIGH);
+  bool was = keyDownFlag;
   keyDownFlag = true;
   toneOn();
+  if (!was && keyHook) keyHook(true);
 }
 void keyUp() {
   digitalWrite(PIN_KEY_OUT, LOW);
+  bool was = keyDownFlag;
   keyDownFlag = false;
   toneOff();
+  if (was && keyHook) keyHook(false);
 }
 void pttAssert()  { if (cfgPtt) digitalWrite(PIN_PTT_OUT, HIGH); pttOn = true; }
 void pttRelease() {
@@ -398,6 +404,8 @@ bool keyIsDown()    { return keyDownFlag; }
 bool paddleActive() { return dit || dah; }
 bool paddleDit()    { return dit; }
 bool paddleDah()    { return dah; }
+
+void setKeyEventHook(void (*fn)(bool)) { keyHook = fn; }
 
 bool paddleBreakIn() {
   bool b = flagBreakIn;

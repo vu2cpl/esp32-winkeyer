@@ -59,6 +59,20 @@ uint32_t estimateMs(size_t n) {
   return (uint32_t)n * 12 * unit;
 }
 
+// ── Direct (element-level) keying ─────────────────────────
+// The keyer task produces key transitions; it must never block on the
+// network, so it only enqueues here and poll() does the socket write.
+// This is how Maestro and MORCONI key a Flex over the network.
+bool          cfgDirect = false;
+bool          logKeying = true;   // chatty during bring-up
+QueueHandle_t keyQ = nullptr;
+bool          xmitOn = false;     // do we currently hold the transmitter?
+bool          keyIsDown = false;
+uint32_t      lastKeyMs = 0;
+uint32_t      pttTailMs = 400;    // hold TX this long after the last element
+
+struct KeyEvt { bool down; uint32_t at; };
+
 // Extract "key=value" from a discovery datagram, honouring token
 // boundaries so "ip=" does not match inside "serial_ip=".
 String field(const String& s, const char* key) {
@@ -124,7 +138,13 @@ void onLine(const String& line) {
     if (p1 < 0) return;
     String status = (p2 > 0) ? line.substring(p1 + 1, p2) : line.substring(p1 + 1);
     String msg    = (p2 > 0) ? line.substring(p2 + 1) : "";
-    if (strtoul(status.c_str(), nullptr, 16) != 0) {
+    uint32_t st = strtoul(status.c_str(), nullptr, 16);
+    // 0x50001000 is NOT a failure. Per FlexRadio: the command ran fine but
+    // the handler neglected to set a result, so the command processor
+    // substitutes this code. "cw key" answers this way — treating it as an
+    // error is what made direct keying look unsupported.
+    if (st == 0x50001000) return;
+    if (st != 0) {
       Serial.printf("[FLEX] command error %s (%s)\n", status.c_str(), msg.c_str());
       // A refused command will never be acknowledged, so anything we were
       // waiting on is never going to complete. Drop it rather than leaving
@@ -205,6 +225,7 @@ void tryConnect() {
 namespace Flex {
 
 void begin() {
+  keyQ = xQueueCreate(64, sizeof(KeyEvt));
   prefs.begin("flex", false);
   cfgEnabled = prefs.getBool("en", false);
   // isKey() first: getString on a missing key logs an error at E level,
@@ -216,8 +237,62 @@ void begin() {
                 cfgManualIp.length() ? (", fixed IP " + cfgManualIp).c_str() : "");
 }
 
+void keyEvent(bool down) {
+  if (!cfgDirect || !keyQ) return;
+  KeyEvt e{down, millis()};
+  // Called from the keyer task (a task, not an ISR) — zero-tick send so it
+  // never blocks; drop rather than stall element timing if it backs up.
+  xQueueSend(keyQ, &e, 0);
+}
+
+void setDirectKeying(bool on) {
+  cfgDirect = on;
+  if (!on && tcp.connected()) {                      // never leave it keyed
+    sendCmd("cw key 0");
+    if (xmitOn) { sendCmd("xmit 0"); xmitOn = false; }
+  }
+}
+bool directKeying() { return cfgDirect; }
+
+// Drain queued key transitions onto the socket. Called every loop pass.
+//
+// A bare "cw key" does nothing: the radio only keys for whichever client
+// holds the transmitter, and interlock.tx_client_handle stays 0 until one
+// asks for it. So this mirrors a hardware keyer — assert PTT (xmit 1) on
+// the first element, key the elements, and drop PTT after a tail so the
+// transmitter is not held between letters.
+void pumpKeying() {
+  if (!keyQ || !tcp.connected()) return;
+
+  KeyEvt e;
+  while (xQueueReceive(keyQ, &e, 0) == pdTRUE) {
+    if (e.down && !xmitOn) {
+      tcp.printf("C%lu|xmit 1\n", (unsigned long)seq++);
+      xmitOn = true;
+      if (logKeying) Serial.println("[FLEX] xmit 1 (PTT)");
+    }
+    // time= lets the radio schedule the edge instead of keying on arrival,
+    // which is what keeps the CW readable across a jittery link.
+    tcp.printf("C%lu|cw key %d time=0x%lX\n",
+               (unsigned long)seq++, e.down ? 1 : 0, (unsigned long)e.at);
+    if (logKeying) Serial.printf("[FLEX] cw key %d\n", e.down ? 1 : 0);
+    keyIsDown = e.down;
+    lastKeyMs = millis();
+  }
+
+  // Release the transmitter once the operator has stopped sending — but
+  // never while the key is still down, or a long element (or tune) would
+  // drop PTT out from under itself.
+  if (xmitOn && !keyIsDown && lastKeyMs && millis() - lastKeyMs > pttTailMs) {
+    tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
+    xmitOn = false;
+    if (logKeying) Serial.println("[FLEX] xmit 0 (PTT release)");
+  }
+}
+
 void poll() {
   if (!cfgEnabled || WiFi.status() != WL_CONNECTED) return;
+  pumpKeying();
 
   static bool listening = false;
   if (!listening) {
