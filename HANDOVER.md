@@ -1,10 +1,11 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-10 · **Type:** ESP firmware
-(esp32dev, S3 env reserved) · **Status:** feature-complete on the bench;
-OLED panel, settings web page and persisted settings all verified on
-hardware, speed pot wired and tracking; awaiting on-air testing
+**Created:** 2026-08-26 · **Updated:** 2026-09-11 · **Type:** ESP firmware
+(esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
+(MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
+speed pot, settings web page, memories, second radio and RTTY FSK all on
+hardware. Outstanding: FSK polarity and on-air fist quality unverified.
 
 ---
 
@@ -629,6 +630,20 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
+11a. **Display: four panel types, family auto-detected** (2026-09-11).
+    OLEDs answer at 0x3C/0x3D and HD44780 backpacks at 0x27/0x3F, so one
+    firmware runs whichever is plugged in and `/disp auto` re-probes after
+    a swap — no reflash. Geometry within a family is NOT detectable
+    (SH1106 vs SSD1306, 16x2 vs 20x4 each share an address), so those stay
+    settings that fail visibly.
+
+    **HD44780 LCDs want 5V and are unreadable on 3V3** — faint at any
+    contrast setting, which presents as a firmware fault. Contrast is the
+    analogue Vo pin; no driver can fix it. Powering from VIN puts the
+    backpack pull-ups on 5V, which ESP32 GPIOs do not tolerate, so the
+    pull-ups must move to 3V3 or a level shifter goes in. Documented in
+    README; the OLEDs are native 3.3V and unaffected.
+
 12. **Done 2026-09-11:** second KEY/PTT pair on 18/19 with `/radio`, and
     six message memories with `%C` callsign expansion. Still wanted:
     front-panel buttons (13/14/23 have internal pull-ups), and LCD
