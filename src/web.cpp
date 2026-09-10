@@ -173,7 +173,7 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend>BACKEND</legend>
-<div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
+<div class="row flexonly"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
 <div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
@@ -260,12 +260,12 @@ async function refresh(){
       : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
       : 'searching';
   $('flex').checked=s.flex.enabled;
-  // Hide the Flex detail rows when the backend is off. Gated on the ENABLE,
-  // not on the Keying selector: keying locally while the radio stays
-  // connected is legitimate, and hiding on "Keying = local" would take the
-  // enable checkbox with it, leaving no way to switch Flex back on.
+  // Every Flex row disappears when keying is local — none of it applies.
+  // Safe to hide the enable along with the rest: the Keying selector
+  // itself always stays visible, so switching back to flex brings them
+  // all back.
   for (const el of document.querySelectorAll('.flexonly'))
-    el.hidden = !s.flex.enabled;
+    el.hidden = (s.backend !== 'flex');
   $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
   if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
   {
@@ -438,7 +438,13 @@ void handleTune() {
 namespace Web {
 
 void begin() {
-  server.on("/", HTTP_GET, []() { server.send_P(200, "text/html", PAGE); });
+  server.on("/", HTTP_GET, []() {
+    // The page is baked into the firmware and changes on almost every
+    // flash, so a cached copy is always the wrong one. Served with no
+    // headers at all it could be held indefinitely.
+    server.sendHeader("Cache-Control", "no-store, must-revalidate");
+    server.send_P(200, "text/html", PAGE);
+  });
   server.on("/api/state", HTTP_GET,  handleState);
   server.on("/api/set",   HTTP_POST, handleSet);
   server.on("/api/send",  HTTP_POST, handleSend);
