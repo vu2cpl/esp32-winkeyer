@@ -588,8 +588,28 @@ against exposing it beyond one.
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
-8. **Sharing with Manoj's friend** — repo is private. Needs either a
-   collaborator invite or an explicit decision to publish. Not done.
+8. **Repo is PUBLIC** since 2026-09-11 — github.com/vu2cpl/esp32-winkeyer.
+   Manoj's friend can clone it directly; no invite needed.
+
+   **Before publishing, the git history was rewritten** to scrub real shack
+   addresses: the broker, radio, keyer and Mac IPs, the segment map and the
+   SSID appeared in both file contents and two commit messages. Sanitising
+   the working tree is NOT enough — publishing a repo publishes every
+   commit. Two `git filter-branch` passes were needed (`--tree-filter` for
+   contents, `--msg-filter` for messages), verified against a *fresh clone
+   of the remote*, which is the only check that reflects what the public
+   sees. `git log --all` is misleading here: it includes `refs/original`,
+   filter-branch's local backup, and will keep reporting the old history
+   forever. Pre-rewrite commit was `2a7f7df`.
+
+   **Keep it sanitised.** Placeholders now in use: broker `192.168.1.10`,
+   radio `192.168.1.50`, keyer `192.168.10.20`, Mac `192.168.10.30`, SSID
+   `<your-ssid>`. Never commit the real ones again — put local values in
+   `include/secrets.h`, which is git-ignored and overrides `config.h`.
+
+   The setup-AP password `vu2cpl1234` was deliberately left as-is: it is
+   already public in esp8266-gps-ntp and vu2cpl-as3935-bridge, so changing
+   it here alone would achieve nothing and break a shack-wide convention.
 9. **Recently resolved:** the display is no longer "considered but not
    built" — `src/display.cpp` implements it for SH1106/SSD1306 on I²C
    21/22 (see 7a for the bench test that still owes). Still considered
