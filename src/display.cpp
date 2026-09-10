@@ -149,6 +149,18 @@ void lcdLine(uint8_t row, const char* text) {
   lcd->print(pad);
 }
 
+// Which radio the key line drives, shown as a suffix on the backend so it
+// reads as one token: LOCAL1, FLEX2, FLEXB. Attached rather than spaced
+// because the "both" letter B would otherwise sit next to the iambic mode
+// letter, which is also A or B — "FLEX B B" is not a readable status line.
+const char* radioTag() {
+  switch (Keyer::getRadio()) {
+    case 2:  return "2";
+    case 3:  return "B";
+    default: return "1";
+  }
+}
+
 void drawMainLcd() {
   char l[24];
   const char* be = "LOCAL";
@@ -160,7 +172,9 @@ void drawMainLcd() {
     snprintf(l, sizeof l, "%2u WPM %s %4s", Keyer::getWpm(),
              Keyer::getPotEnabled() ? "POT" : "FIX", act);
     lcdLine(0, l);
-    snprintf(l, sizeof l, "%-5s %c %s%s", be,
+    char bere[10];
+    snprintf(bere, sizeof bere, "%s%s", be, radioTag());
+    snprintf(l, sizeof l, "%-6s %c %s%s", bere,
              Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
              WinKeyer::hostOpen() ? "HOST" : "----",
              Net::clientConnected() ? "+NET" : "");
@@ -177,9 +191,11 @@ void drawMainLcd() {
     // 16x2: row 0 packs speed, mode, speed-source and backend into all 16
     // columns. Row 1 is the address, because that is what you need in order
     // to reach the web page — replaced by KEY/TUNE only while sending.
-    snprintf(l, sizeof l, "%2uWPM %c %s %s", Keyer::getWpm(),
-             Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
-             Keyer::getPotEnabled() ? "POT" : "FIX", be);
+    // 16 columns exactly: "28WPM POT FLEX!1". The iambic mode letter is
+    // the one thing dropped here — it changes once a year, whereas which
+    // radio is live can change between overs.
+    snprintf(l, sizeof l, "%2uWPM %s %s%s", Keyer::getWpm(),
+             Keyer::getPotEnabled() ? "POT" : "FIX", be, radioTag());
     lcdLine(0, l);
 
     if (*act)
@@ -255,7 +271,9 @@ void drawMain() {
     // '!' connected but the radio has no CW slice to key.
     be = !Flex::connected() ? "FLEX?" : (Flex::sliceReady() ? "FLEX" : "FLEX!");
   }
-  snprintf(buf, sizeof buf, "%-5s %c %s%s", be,
+  char bere[10];
+  snprintf(bere, sizeof bere, "%s%s", be, radioTag());
+  snprintf(buf, sizeof buf, "%-6s %c %s%s", bere,
            Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
            WinKeyer::hostOpen() ? "HOST" : "----",
            Net::clientConnected() ? "+NET" : "");

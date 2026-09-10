@@ -148,6 +148,65 @@ What *cannot* be detected, because each pair shares an address:
 - **16x2 vs 20x4** — same chip, so a wrong choice just truncates or leaves
   rows blank. Fix with `/disp lcd16x2`.
 
+### Reading the display
+
+**OLED, 128x64:**
+
+```
+WinKeyer            -52dBm     link quality, or "no wifi"
+--------------------------
+ 28 WPM  POT        [ KEY ]    speed, where it came from, activity
+--------------------------
+FLEX1  B  HOST+NET             backend+radio, iambic mode, host links
+192.168.1.20                   address, or "join <setup AP>"
+```
+
+**LCD 20x4** carries the same fields as text:
+
+```
+28 WPM POT   KEY
+FLEX1  B HOST+NET
+192.168.1.20
+-52dBm  tail 400ms
+```
+
+**LCD 16x2** has room for two rows, so the iambic mode letter is dropped —
+it changes once a year, whereas the live radio can change between overs:
+
+```
+28WPM POT FLEX1
+192.168.1.20
+```
+
+Every indicator:
+
+| Shown | Meaning |
+|---|---|
+| `28 WPM` | current speed |
+| `POT` | speed is following the knob |
+| `FIX` | speed was set by host, CLI or web — the knob is off |
+| `KEY` | key is down right now |
+| `TUNE` | continuous carrier, latched until you stop it |
+| empty box | idle |
+| `LOCAL` | keying the wire: KEY on GPIO33, PTT on GPIO32 |
+| `FLEX` | keying the radio over the network, slice ready |
+| `FLEX!` | radio connected but **the slice is not in CW mode** — it will transmit nothing |
+| `FLEX?` | **not connected** to the radio at all |
+| `…1` `…2` `…B` | which radio the key line drives — 1, 2, or **both** |
+| `A` / `B` | iambic mode (not shown on 16x2) |
+| `HOST` | a WinKeyer host session is open (a logger is attached) |
+| `----` | no host session — placeholder, so the field keeps its width |
+| `+NET` | a TCP client is connected over WiFi as well |
+| `-52dBm` | WiFi signal; `no wifi` if the link is down |
+
+The radio number is attached to the backend as one token — `LOCAL1`,
+`FLEX2`, `FLEXB` — rather than spaced, because the "both" letter `B` would
+otherwise sit beside the iambic mode letter, which is also `A` or `B`.
+
+`FLEX!` is the one worth knowing on sight: everything looks connected and
+the keyer reports no error, but SmartSDR has no slice in CW mode so nothing
+reaches the air.
+
 ### LCD power — read this before blaming the firmware
 
 **HD44780 LCDs want 5V, and the ESP32 is a 3.3V part.** Run one from 3V3
