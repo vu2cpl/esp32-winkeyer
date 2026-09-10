@@ -315,7 +315,12 @@ refresh();setInterval(refresh,1000);
 </script></body></html>)HTML";
 
 void handleState() {
-  StaticJsonDocument<2560> doc;
+  // Heap, NOT the stack. This began as StaticJsonDocument<640> and grew to
+  // 2560 as fields were added — 2.5 KB of stack, plus six String copies of
+  // the memories and a String for the output, inside loopTask's 8 KB. The
+  // page polls this every second, so the overflow presented as the board
+  // rebooting at random rather than as anything pointing here.
+  DynamicJsonDocument doc(2560);
   Settings::toJson(doc);
   JsonArray mems = doc.createNestedArray("mems");
   for (uint8_t i = 1; i <= Memories::COUNT; i++) mems.add(Memories::get(i));
@@ -323,6 +328,7 @@ void handleState() {
   doc["rssi"] = (int)WiFi.RSSI();
   doc["ip"]   = WiFi.localIP().toString();
   String out;
+  out.reserve(1024);
   serializeJson(doc, out);
   server.send(200, "application/json", out);
 }

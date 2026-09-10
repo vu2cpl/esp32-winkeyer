@@ -507,6 +507,19 @@ makes the keyer feel slow.
     Correctly identified, but the operator had not been asked. Verify
     keying behaviour on `/backend local` unless on-air is explicitly
     agreed.
+  - **Random reboots from a stack overflow in `/api/state`.** The state
+    document started as `StaticJsonDocument<640>` and was grown three
+    times in one session — to 1024, 1536, then 2560 — as fields were
+    added, without anyone noticing it lives on **loopTask's 8 KB stack**.
+    Adding six `String` copies of the message memories and a `String` for
+    the serialised output beside it pushed it over. The page polls that
+    endpoint once a second, so it presented as the board rebooting at
+    random rather than as anything pointing at JSON. Now a
+    `DynamicJsonDocument` on the heap. After the fix: 160 consecutive
+    polls and 20 NVS writes with no failures, against 0/60 before.
+
+    **Rule: nothing large goes on the stack in a polled handler.** If the
+    state document grows again, it must stay on the heap.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
