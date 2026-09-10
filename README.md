@@ -15,11 +15,12 @@ as a behavioural reference; the implementation here is original.
 | Piece | State |
 |---|---|
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
+| Speed pot on GPIO 34 | working, wired and tracking on hardware |
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
-| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 found at 0x3C on hardware |
+| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C @ 400 kHz on hardware |
 | Settings web page at `winkeyer.local` | working, exercised on hardware |
 | Persisted settings (NVS) | working, verified across a hard reset |
 

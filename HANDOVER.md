@@ -4,7 +4,7 @@
 **Created:** 2026-08-26 · **Updated:** 2026-09-10 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** feature-complete on the bench;
 OLED panel, settings web page and persisted settings all verified on
-hardware; awaiting on-air testing
+hardware, speed pot wired and tracking; awaiting on-air testing
 
 ---
 
@@ -435,9 +435,19 @@ makes the keyer feel slow.
       rebooting it under him, and a burst of those resets reads exactly
       like a boot loop in the log. Use HTTP (`/api/state`) to observe a
       running board; use serial only when a reset is acceptable.
-    - Live demo of why the pot defaults off: enabling it with nothing on
-      GPIO 34 let the floating pin drive the speed, which wandered
-      20→33 WPM on its own.
+    - Live demo of why the pot defaults off: with the knob not yet
+      connected, enabling it let the floating GPIO 34 drive the speed,
+      which wandered 20→33 WPM on its own.
+  - **Both the OLED and the speed pot are now wired and confirmed working
+    on hardware.** SH1106 at 0x3C rendering at 400 kHz, no controller
+    override needed (the `sh1106` default was right for the 1.3" panel);
+    the pot tracks properly on GPIO 34. That closes the display and pot
+    lines of the roadmap — everything in this feature set has now run on
+    real hardware.
+  - **Settings left behind by testing** (they persist, so they are real):
+    pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
+    restore. Speed and mode were also written during the persistence
+    test.
 
 ## Network placement (measured 2026-09-10)
 
@@ -491,20 +501,9 @@ against exposing it beyond one.
    The remaining bits differ between WK revisions and guessing wrong would
    silently disable sidetone or key output. Revisit after testing with a
    real logger.
-7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), speed pot,
-   OLED panel, enclosure.
-7a. **Bench-test the display, the web page and NVS restore on real
-   hardware.** All three are written and building but have never run on
-   an ESP32. Specifically: wire the 1.3" panel to 21/22 and confirm the
-   controller default (`sh1106`) is right — if the image sits 2 px right
-   with a garbage left edge, `/disp ssd1306`; confirm the I²C probe finds
-   it at 0x3C; confirm a ~25 ms I²C frame on core 0 really does not
-   disturb element timing (watch for a fist wobble at 5 Hz); load
-   `winkeyer.local` in Safari; then power-cycle and check speed, mode,
-   pot enable and pot range all come back.
-7b. **Wire the speed pot** (10 k linear, 100 nF wiper→GND, GPIO 34) and
-   `/pot on`. Untested end to end — the ADC path has never had a real
-   pot on it.
+7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
+   The speed pot and the OLED are **wired and working** (2026-09-10);
+   what remains is the opto-isolated key/PTT interface and the box.
 8. **Sharing with Manoj's friend** — repo is private. Needs either a
    collaborator invite or an explicit decision to publish. Not done.
 9. **Recently resolved:** the display is no longer "considered but not
