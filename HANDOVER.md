@@ -138,6 +138,40 @@ keyer's commands reach it and are accepted at the protocol level.
    simply wiring the local key output to the radio's KEY jack, which has
    none of this contention and none of the latency.
 
+#### Verdict on CWX: it does not work as a second client on this radio
+
+Every configuration was tried on 2026-09-10, into a dummy load, and
+`cwx send` was refused with `500000C2` in all of them:
+
+| Configuration | Result |
+|---|---|
+| SmartSDR open, keyer unbound | `500000C2` refused |
+| SmartSDR open, **bound to the GUI client**, slice in CW, `tx_allowed=1` | `500000C2` refused |
+| Everything closed, fresh CW slice created by us | `tx_allowed=0` — nothing may transmit |
+| Direct session from the Mac (keyer uninvolved) | `500000C2` refused |
+
+At the point of refusal the radio also reported
+`tx_client_handle=0x00000000` — nobody held the transmitter — so the
+error text is not describing the actual state.
+
+**Conclusion: CWX behaves as exclusively owned by the GUI client.** With
+SmartSDR running it holds CWX; with SmartSDR closed there is no transmit
+context at all. Binding (`client bind client_id=…`) is implemented and
+demonstrably works — the keyer logs the bind and the radio accepts it —
+but it does not unlock CWX. This matches community reports of CWX
+conflicting with third-party programs.
+
+This is a limitation of the approach, not a defect in the keyer: every
+layer the keyer owns is verified working, and the refusal is identical
+when the keyer is taken out of the loop entirely.
+
+**Recommended path for this shack: wire the local key output (GPIO 33)
+to the radio's KEY jack.** No client contention, no binding, no network
+latency, and it works whether or not SmartSDR is running. The CWX path's
+real value is remote operating, where no wire is possible; anyone
+pursuing it should investigate SmartSDR CAT's own WinKeyer emulation
+(which is what N1MM+ drives) rather than CWX as a second client.
+
 #### Gotcha: slice indices are not stable
 
 `slice set 0 …` failed with `5000000D` after SmartSDR closed, because
@@ -294,11 +328,12 @@ against exposing it beyond one.
 4. **On-air timing check** — testing so far is functional, not
    calibrated. Verify element timing against a scope or a known-good
    decoder.
-5. **Flex keying still unproven — blocked by the radio, not the keyer.**
-   Find what is holding the CW/CWX path (see the on-air test above),
-   put the slice in CW, then retry. Untested until then: the `cwx send`
-   round-trip, the 0x7F space encoding, and whether `cwx sent=` actually
-   tracks progress the way `pending()` assumes.
+5. **Flex CWX keying: parked, not broken.** Exhausted on 2026-09-10 —
+   CWX is refused to any second client on this radio (see the verdict
+   table above). Everything the keyer owns is verified; the block is in
+   how the Flex shares CWX. Wire GPIO 33 to the radio's KEY jack for
+   local use. Reopen this only for remote operating, and start from
+   SmartSDR CAT's WinKeyer emulation rather than CWX.
 6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
    The remaining bits differ between WK revisions and guessing wrong would
    silently disable sidetone or key output. Revisit after testing with a

@@ -15,7 +15,7 @@ as a behavioural reference; the implementation here is original.
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
-| FlexRadio backend (discovery + `cwx`) | connects + subscribes (verified); keying untested — it transmits |
+| FlexRadio backend (discovery, bind, `cwx`) | connects, binds, sends — but the radio refuses CWX to a second client (see below) |
 | Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
 
 Display and Bluetooth keyboard are considered but not built — see
@@ -106,12 +106,19 @@ In Flex mode, buffered text goes to the radio with `cwx send` and the
 local key output is disabled to avoid keying the rig twice; sidetone stays
 on locally.
 
-**The slice must be in CW mode**, or CWX accepts the text and silently
-transmits nothing. And only one client may own the CW path — if another
-program (SmartSDR, SmartSDR CAT's WinKeyer emulation) holds it, the radio
-answers `500000C2 Cannot transmit since another client is transmitting or
-sending a CW/CWX message`. If the keyer reports "no progress from radio",
-one of those two is why.
+**Known limitation — CWX is refused to a second client.** Tested against
+a 6600 (API 1.4.0.0): with SmartSDR running it owns CWX and answers
+`500000C2 Cannot transmit since another client is transmitting or sending
+a CW/CWX message`; with SmartSDR closed the radio reports
+`tx_allowed=0` and nothing may transmit at all. Binding to the GUI client
+(`client bind`) is implemented and accepted by the radio, but does not
+unlock CWX. The same refusal occurs from a plain script with the keyer
+uninvolved, so this is the radio's behaviour, not the firmware's.
+
+**For a Flex in the same shack, wire the key output (GPIO 33) to the
+radio's KEY jack instead** — no contention, no latency, works whether or
+not SmartSDR is running. The CWX path is for remote operating; if you
+pursue it, start from SmartSDR CAT's WinKeyer emulation rather than CWX.
 
 Paddle keying deliberately stays on the local key output — real-time
 element timing over WiFi would carry the jitter. For a Flex in the same
