@@ -30,8 +30,21 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 ```
 
 1. First boot opens WiFi AP **`vu2cpl-esp32-winkeyer-setup`** (password
-   `vu2cpl1234`). Join it, pick your network. Creds persist in NVS. The
-   keyer works with no WiFi — onboarding is non-blocking by design.
+   `vu2cpl1234`). Join it from a laptop or phone; a captive portal opens
+   where you pick **your own network** and enter its password. Creds
+   persist in NVS. The portal does not time out, and the keyer keys
+   normally while it is open — onboarding is non-blocking by design.
+
+   Put the keyer on the **same subnet as the logging computer** (and the
+   radio, if using the Flex backend): `winkeyer.local` and Flex discovery
+   are both broadcast-based and do not cross subnets or VLANs.
+
+   `/wifi` shows the current network, `/wifi portal` reopens the portal,
+   `/wifi reset` clears the saved credentials and reboots.
+
+   **Security note:** the WinKeyer TCP port is unauthenticated — anyone on
+   that network can key the transmitter. Use a trusted LAN, not a guest or
+   open network.
 2. Copy `include/secrets.h.example` → `include/secrets.h` and set the MQTT
    role password. `secrets.h` is git-ignored.
 
@@ -104,7 +117,7 @@ buffered text.
 
 `/wpm N` `/mode a|b` `/swap` `/tune` `/pot on|off` `/ptt on|off`
 `/st N|on|off` `/backend local|flex` `/flex on|off|ip <addr>|auto`
-`/net` `/status`. Any other line is sent as CW.
+`/wifi [portal|reset]` `/net` `/status`. Any other line is sent as CW.
 
 ## MQTT
 

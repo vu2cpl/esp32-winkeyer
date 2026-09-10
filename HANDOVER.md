@@ -124,12 +124,30 @@ correct WinKeyer host behaviour.
   reservation off the I²C pins. Flashed and verified the protocol engine
   over serial.
 
+## Network placement
+
+The keyer must sit on the **same subnet/VLAN as the logging computer**,
+and as the Flex radio if that backend is used. Both `winkeyer.local`
+(mDNS) and Flex discovery are broadcast-based and do not cross subnets —
+an IoT-VLAN placement would break discovery even though the MQTT
+heartbeat would still work. The shack MQTT broker is on 192.168.1.10,
+so the shack/trusted LAN is the natural home.
+
+**The WinKeyer TCP port is unauthenticated** — anyone who can reach port
+8088 can key the transmitter. That is an argument for a trusted LAN, and
+against exposing it beyond one.
+
 ## Open items
 
 1. **WiFi onboarding is not done** — the board sits in the captive portal
    (`vu2cpl-esp32-winkeyer-setup` / `vu2cpl1234`). Until Manoj joins it to
    a network, the TCP transport, mDNS, MQTT and Flex paths are
    **implemented but unverified**. This is the next step and needs a human.
+   Portal timeout was 180 s, which strands an un-onboarded board; set to
+   0 (never) on 2026-09-10. Note macOS Sequoia's `system_profiler
+   SPAirPortDataType` no longer lists nearby networks, so it cannot be
+   used to check whether the AP is broadcasting — read the board's own
+   `/net` output instead.
 2. **On-air timing check** — bench testing is functional, not calibrated.
    Verify element timing against a scope or a known-good decoder.
 3. **Flex backend needs a radio** to verify: discovery parsing, `cwx`

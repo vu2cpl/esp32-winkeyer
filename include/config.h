@@ -12,7 +12,11 @@
 // enter its password; creds persist in NVS.
 #define WIFI_AP_NAME           "vu2cpl-esp32-winkeyer-setup"
 #define WIFI_AP_PASS           "vu2cpl1234"
-#define WIFI_PORTAL_TIMEOUT_S  180
+// 0 = the portal never times out. The portal is non-blocking here, so the
+// keyer keeps keying while it is up and there is nothing to reclaim by
+// closing it — whereas a timeout strands an un-onboarded board with no AP
+// to join, which is exactly when you need it most.
+#define WIFI_PORTAL_TIMEOUT_S  0
 
 // ── WinKeyer transport ────────────────────────────────────
 // Raw WinKeyer byte stream over TCP; the host-side bridge in tools/

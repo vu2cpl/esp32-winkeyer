@@ -15,6 +15,7 @@
 //    /wpm 25   /mode a|b   /swap        /tune       /pot on|off
 //    /st 700   /st on|off  /ptt on|off  /status     /net
 //    /backend local|flex   /flex on|off /flex ip <addr>
+//    /wifi     /wifi portal /wifi reset
 //    anything else is sent as CW.
 // ============================================================
 
@@ -138,12 +139,27 @@ void handleLine(char* line) {
                       Flex::enabled() ? "enabled" : "disabled",
                       Flex::radioIp().c_str(), Flex::connected() ? "yes" : "no");
       }
+    } else if (!strcasecmp(cmd, "wifi")) {
+      if (arg && !strcasecmp(arg, "reset")) {
+        wm.resetSettings();
+        Serial.println("[WiFi] credentials cleared — rebooting into the portal");
+        delay(300);
+        ESP.restart();
+      } else if (arg && !strcasecmp(arg, "portal")) {
+        wm.startConfigPortal(WIFI_AP_NAME, WIFI_AP_PASS);
+        Serial.printf("[WiFi] portal open: %s\n", WIFI_AP_NAME);
+      } else {
+        Serial.printf("[WiFi] %s ssid=%s ip=%s\n",
+                      WiFi.status() == WL_CONNECTED ? "connected" : "not connected",
+                      WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+        Serial.printf("[WiFi] setup AP: %s / %s\n", WIFI_AP_NAME, WIFI_AP_PASS);
+      }
     } else if (!strcasecmp(cmd, "net")) {
       printNet();
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /net /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /wifi /net /status");
     }
     return;
   }
