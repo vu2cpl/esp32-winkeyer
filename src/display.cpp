@@ -165,7 +165,7 @@ void drawMainLcd() {
   char l[24];
   const char* be = "LOCAL";
   if (WinKeyer::getBackend() == WK_BACKEND_FLEX)
-    be = !Flex::connected() ? "FLEX?" : (Flex::sliceReady() ? "FLEX" : "FLEX!");
+    be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
   const char* act = Keyer::tuning() ? "TUNE" : (Keyer::keyIsDown() ? "KEY" : "");
 
   if (lcdRows >= 4) {
@@ -269,7 +269,7 @@ void drawMain() {
   if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
     // One glyph carries the whole Flex story: '?' not connected,
     // '!' connected but the radio has no CW slice to key.
-    be = !Flex::connected() ? "FLEX?" : (Flex::sliceReady() ? "FLEX" : "FLEX!");
+    be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
   }
   char bere[10];
   snprintf(bere, sizeof bere, "%s%s", be, radioTag());
