@@ -108,6 +108,23 @@ uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
 // gets an answer, and loggers give up.
 bool quietBoot() { return hostBaud() <= 9600; }
 
+void restoreKeyer() {
+  Keyer::setWpm(loadU32("wpm", D_WPM));
+  Keyer::setMode(loadU32("mode", 1) ? KEYER_IAMBIC_B : KEYER_IAMBIC_A);
+  Keyer::setPaddleSwap(loadU32("swap", 0));
+  Keyer::setSidetone(loadU32("st", 1));
+  Keyer::setSidetoneHz(loadU32("sthz", D_STHZ));
+  Keyer::setPttEnabled(loadU32("ptt", 1));
+  Keyer::setPttLeadMs(loadU32("lead", D_LEAD));
+  Keyer::setPttTailMs(loadU32("tail", D_TAIL));
+  Flex::setPttTailMs(loadU32("tail", D_TAIL));
+  Keyer::setWeighting(loadU32("weight", D_WEIGHT));
+  Keyer::setRatio(loadU32("ratio", D_RATIO));
+  Keyer::setFarnsworth(loadU32("farns", D_FARNS));
+  Keyer::setPotRange(loadU32("potmin", D_POTMIN), loadU32("potrng", D_POTRNG));
+  Keyer::setPotEnabled(loadU32("poten", 0));
+}
+
 void begin() {
   Keyer::setWpm(loadU32("wpm", D_WPM));
   Keyer::setMode(loadU32("mode", 1) ? KEYER_IAMBIC_B : KEYER_IAMBIC_A);

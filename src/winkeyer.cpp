@@ -19,6 +19,7 @@
 #include "winkeyer.h"
 #include "keyer.h"
 #include "flex.h"
+#include "settings.h"
 
 namespace {
 
@@ -220,6 +221,7 @@ void execAdmin(uint8_t sub, const uint8_t* p, uint8_t n) {
     case 0x03:                        // host close
       resetToDefaults();
       hostIsOpen = false;
+      Settings::restoreKeyer();       // the host's overrides end with it
       break;
     case 0x04:                        // echo test
       if (n >= 1) emit(p[0]);
@@ -263,7 +265,11 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       if (n >= 2) {
         cfgLead = p[0]; cfgTail = p[1];
         Keyer::setPttLeadMs(p[0] * 10);
+        // Both tails, or the host moves the local PTT line while the radio
+        // keeps its own — the same split that made /tail look dead on the
+        // Flex backend. Session-scoped: not persisted, restored on close.
         Keyer::setPttTailMs(p[1] * 10);
+        Flex::setPttTailMs(p[1] * 10);
       }
       break;
     case 0x05:                        // speed pot range
@@ -477,6 +483,7 @@ bool    echoEnabled()  { return serialEcho; }
 bool hostOpen() { return hostIsOpen; }
 
 void closeHost() {
+  if (hostIsOpen) Settings::restoreKeyer();
   resetToDefaults();
   hostIsOpen = false;
   sink = nullptr;

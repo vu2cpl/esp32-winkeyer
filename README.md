@@ -279,7 +279,9 @@ tells "not sent" from "reported late".
 
 ## Settings web page
 
-`http://winkeyer.local/` (or the IP — `/net` prints it). Speed, mode,
+`http://winkeyer.local/` (or the IP — `/net` prints it). Every label with a
+dotted underline carries **hover help** — ranges, what a setting actually
+does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
 tail**, pot enable and range, display, backend, plus a send box and
 tune/stop. Live status LEDs for host, TCP, key, tune, pot, Flex and OLED,
@@ -320,6 +322,18 @@ Same trust posture as the WinKeyer TCP port: **no authentication**, so
 keep it on a trusted LAN. Visual style is borrowed from soft-MORCONI
 (`~/projects/Morconi`) — that project is a browser UI plus a Node bridge,
 so the look carried over and none of the code did.
+
+### Host overrides end with the session
+
+A WinKeyer host may set speed, mode, weighting and PTT lead/tail for the
+length of its session — that is the protocol working as intended. RUMlogNG,
+for instance, sets lead and tail to zero. Those values are **restored from
+NVS when the host closes or the transport drops**, so a logger can never
+leave the keyer reconfigured: without that, a session that set the tail to
+zero left it there until the next reboot.
+
+The web page shows the *effective* values, so while a logger is connected
+you are seeing the host's numbers, not your saved ones.
 
 ### Which settings stick
 

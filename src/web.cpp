@@ -84,7 +84,8 @@ button{cursor:pointer;background:linear-gradient(180deg,#44444a,#26262a);letter-
 button:hover{border-color:var(--amber);color:var(--amber)}
 button.hot{color:var(--red);border-color:#5a2420}
 .val{color:var(--amber);min-width:56px;font-size:13px}
-.hint{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.4}
+.row label[title]{border-bottom:1px dotted var(--dim);cursor:help}
+legend[title]{cursor:help}
 #msg{min-height:18px;font-size:12px;color:var(--green);margin-top:4px}
 #msg.err{color:var(--red)}
 .foot{margin-top:12px;font-size:11px;color:var(--dim);text-align:center}
@@ -104,58 +105,52 @@ button.hot{color:var(--red);border-color:#5a2420}
 <div class="speed"><b id="wpmBig">--</b><span>WPM</span><span id="src"></span></div>
 
 <fieldset><legend>KEYER</legend>
-<div class="row"><label>Speed</label>
+<div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A WinKeyer host or the speed pot can override this; only what you set here is saved.">Speed</label>
   <input type="range" id="wpm" min="5" max="60"><span class="val" id="wpmV"></span></div>
-<div class="row"><label>Mode</label>
+<div class="row"><label title="Iambic A releases both paddles to stop after the current element; iambic B sends one more. Swap exchanges dit and dah if the paddle is wired the other way round.">Mode</label>
   <select id="mode"><option value="a">Iambic A</option><option value="b">Iambic B</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="swap"> swap paddles</label></div>
-<div class="row"><label>Sidetone</label>
+<div class="row"><label title="Monitor tone pitch in Hz, 300-2000. Local only — it never reaches the air.">Sidetone</label>
   <input type="range" id="sthz" min="300" max="2000" step="10"><span class="val" id="sthzV"></span></div>
 </fieldset>
 
 <fieldset><legend>TIMING</legend>
-<div class="row"><label>Weight</label>
+<div class="row"><label title="Mark/space balance, 10-90, nominal 50. Higher makes elements longer and gaps shorter WITHOUT changing the WPM. Raise it a little if your fist sounds clipped on the air.">Weight</label>
   <input type="range" id="weight" min="10" max="90"><span class="val" id="weightV"></span></div>
-<div class="row"><label>Dah ratio</label>
+<div class="row"><label title="Dah length relative to a dit, 33-66, nominal 50 = the standard 3 dits. Away from 50 the CW stops being standard-weight, so move it only to match a fist you already like.">Dah ratio</label>
   <input type="range" id="ratio" min="33" max="66"><span class="val" id="ratioV"></span></div>
-<div class="row"><label>Farnsworth</label>
-  <input type="number" id="farns" min="0" max="60"><span class="val">WPM &mdash; 0 = off</span></div>
-<div class="hint">50 is nominal for both sliders. Weight shifts the mark/space
-balance without changing WPM; ratio changes dah length.</div>
+<div class="row"><label title="0 = off. Otherwise characters stay at the Speed above while the GAPS stretch to this slower WPM — the standard way to learn at speed. Must be 0 or 5-60; 1-4 is not a legal value.">Farnsworth</label>
+  <input type="number" id="farns" min="0" max="60"><span class="val">WPM</span></div>
 </fieldset>
 
-<fieldset><legend>PTT</legend>
-<div class="row"><label>Line</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled (GPIO32)</label>
+<fieldset><legend id="legPtt" title="">PTT</legend>
+<div class="row"><label title="PTT drives GPIO32 for an amp or sequencer and stays live on BOTH backends. Sidetone is the local monitor tone. Monitor sent text sounds buffered text locally on the Flex backend, where the radio makes the actual CW and the keyer would otherwise be silent.">Line</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> monitor sent text</label></div>
-<div class="row"><label>Lead-in</label>
-  <input type="number" id="lead" min="0" max="2000"><span class="val">ms before the first element</span></div>
-<div class="row"><label>Tail</label>
-  <input type="number" id="tail" min="0" max="2000"><span class="val">ms after the last</span></div>
-<div class="hint" id="pttNote"></div>
-<div class="hint">Click a number box and use &uarr;/&darr; to step by 1,
-Shift+&uarr;/&darr; by 10. The value is written once you pause, so holding a
-key costs one save, not one per repeat.</div>
+  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> monitor</label></div>
+<div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
+  <input type="number" id="lead" min="0" max="2000"><span class="val">ms</span></div>
+<div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
+  <input type="number" id="tail" min="0" max="2000"><span class="val">ms</span></div>
 </fieldset>
 
 <fieldset><legend>SPEED POT</legend>
-<div class="row"><label>Knob</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="pot"> enabled (GPIO34)</label></div>
-<div class="row"><label>Range</label>
+<div class="row"><label title="10k linear pot on GPIO34, wiper to the pin, 100nF to GND. Leave this OFF until one is actually wired: the pin floats and noise will drive your speed. The knob overrides a host-set speed the moment you turn it.">Knob</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="pot"> enabled</label></div>
+<div class="row"><label title="WPM at each end of the knob travel. Expect a small dead zone at the top: the ESP32 ADC saturates near 3.1 V rather than 3.3 V.">Range</label>
   <input type="number" id="potmin" min="5" max="59"> to
   <input type="number" id="potmax" min="6" max="60"><span class="val">WPM</span></div>
 </fieldset>
 
 <fieldset><legend>DISPLAY</legend>
-<div class="row"><label>Panel</label>
+<div class="row"><label title="Optional 128x64 OLED on I2C 21/22, probed at boot. SH1106 is nearly every 1.3 inch panel, SSD1306 nearly every 0.96 inch. They answer at the same address so this cannot be detected: if the image sits 2 px right with a garbage left edge, pick the other one. Run /i2c on the console to scan the bus.">Panel</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="disp"> enabled</label>
   <select id="dispctl"><option value="sh1106">SH1106 (1.3")</option>
   <option value="ssd1306">SSD1306 (0.96")</option></select></div>
 </fieldset>
 
-<fieldset><legend>SERIAL / USB</legend>
-<div class="row"><label>Host baud</label>
+<fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
+<div class="row"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
   <select id="baud">
     <option value="1200">1200 8N2 &mdash; WinKeyer standard</option>
     <option value="9600">9600 8N1</option>
@@ -164,17 +159,16 @@ key costs one save, not one per repeat.</div>
     <option value="57600">57600 8N1</option>
     <option value="115200">115200 8N1 &mdash; console</option>
   </select></div>
-<div class="hint" id="baudNote"></div>
 </fieldset>
 
 <fieldset><legend>BACKEND</legend>
-<div class="row"><label>Keying</label>
+<div class="row"><label title="Local keys the wire: KEY on GPIO33, PTT on GPIO32. FlexRadio keys the radio over the network instead and leaves GPIO33 idle so the rig is not keyed twice — it needs a slice in use and in CW mode or the radio transmits nothing and reports no error.">Keying</label>
   <select id="backend"><option value="local">Local key line</option>
   <option value="flex">FlexRadio (network)</option></select>
   <span class="val" id="flexip"></span></div>
 </fieldset>
 
-<fieldset><legend>SEND</legend>
+<fieldset><legend title="Type text and press Enter or SEND to transmit it. TUNE keys continuously for tuning an amp; STOP ends it. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
 <div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
   <button onclick="send()">SEND</button>
   <button onclick="post('/api/tune?v=on')">TUNE</button>
@@ -202,19 +196,16 @@ async function refresh(){
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
   $('flexip').textContent=s.flex.enabled?(s.flex.ip||'searching'):'';
-  $('baudNote').textContent = s.baud==1200
-    ? 'A logger opening this port as a WinKeyer expects 1200 8N2. The serial '
-      +'console runs at this rate too, so the boot log is trimmed to one line '
-      +'to keep the handshake fast — use this page for status.'
-    : 'Readable console rate. A logger looking for a WinKeyer will NOT talk to '
-      +'the port at this setting unless you can set its baud to match.';
-  $('pttNote').textContent = s.backend==='flex'
-    ? 'Backend is FlexRadio: Tail releases both the local PTT line (GPIO32) '
-      +'and the radio itself (xmit 0). Lead-in applies to GPIO32 only — still '
-      +'live here for an amp or sequencer — since the radio does its own T/R. '
-      +'The KEY line (GPIO33) is idle on this backend.'
-    : 'Backend is local: lead-in and tail both sequence the PTT line on GPIO32, '
-      +'around the KEY line on GPIO33.';
+  $('legSerial').title = s.baud==1200
+    ? 'Ready for a logger: 1200 8N2 is what a WinKeyer host expects.'
+    : 'Console rate. A logger looking for a WinKeyer will NOT talk to the port '
+      +'at this setting.';
+  $('legPtt').title = s.backend==='flex'
+    ? 'FlexRadio backend: Tail releases both the local PTT line and the radio '
+      +'(xmit 0). Lead-in drives GPIO32 only — still live for an amp — since '
+      +'the radio does its own T/R. KEY on GPIO33 is idle.'
+    : 'Local backend: lead-in and tail sequence PTT on GPIO32 around the KEY '
+      +'line on GPIO33.';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
     weight:s.weight,ratio:s.ratio,

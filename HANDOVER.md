@@ -471,6 +471,15 @@ makes the keyer feel slow.
     must NOT reach the key hook or the radio is keyed twice — hence
     `Keyer::setHookPaddleOnly()`. Watch out that `curIsAuto` is stale
     outside `startElement()`, which silently swallowed `tune` until fixed.
+  - **A logger could leave the keyer reconfigured.** RUMlogNG sets PTT
+    lead/tail to zero via WK command 0x04 — normal host behaviour — but
+    `resetToDefaults()` never restored the operator's values, so the zeros
+    survived the session and Manoj found lead/tail at 0 after a flash. Now
+    `Settings::restoreKeyer()` runs on host close AND on transport drop.
+    The same command also set only the keyer's tail and not Flex's, the
+    identical two-tails split as before: fixed in the protocol path too.
+  - Web page prose moved to hover help (dotted labels, `title=`), on
+    request — the panel had grown more explanation than controls.
   - **Settings left behind by testing** (they persist, so they are real):
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence

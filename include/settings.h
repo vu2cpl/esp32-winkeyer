@@ -34,6 +34,13 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen);
 
 void toJson(JsonDocument& doc);   // full current state, for the web UI
 
+// Put the operator's persisted keyer settings back. A WinKeyer host may
+// override speed, mode, weighting, PTT lead/tail and so on for the length
+// of its session — that is the protocol working as intended — but those
+// values must not outlive the session, or a logger that sets lead/tail to
+// zero leaves the keyer that way until the next reboot.
+void restoreKeyer();
+
 // Backend selection has three coupled side effects (which engine keys, whether
 // the local key line is live, where the keyer's key events are routed), so it
 // lives here rather than being repeated by every caller.
