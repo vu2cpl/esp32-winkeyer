@@ -160,12 +160,31 @@ void handleLine(char* line) {
                       WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
         Serial.printf("[WiFi] setup AP: %s / %s\n", WIFI_AP_NAME, WIFI_AP_PASS);
       }
+    } else if (!strcasecmp(cmd, "paddle")) {
+      // Bring-up diagnostic: reports the debounced levers for 10 s so a
+      // wiring fault can be told apart from a firmware problem. Blocks the
+      // host link while it runs — deliberate, it is a bench tool.
+      Serial.println("[PADDLE] squeeze each lever — 10 s (idle = both open)");
+      unsigned long until = millis() + 10000;
+      bool pd = false, ph = false, sawAny = false;
+      while (millis() < until) {
+        bool d = Keyer::paddleDit(), h = Keyer::paddleDah();
+        if (d != pd || h != ph) {
+          pd = d; ph = h;
+          if (d || h) sawAny = true;
+          Serial.printf("[PADDLE] dit=%s dah=%s\n", d ? "DOWN" : "up", h ? "DOWN" : "up");
+        }
+        delay(5);
+      }
+      Serial.println(sawAny ? "[PADDLE] levers detected — wiring is good"
+                            : "[PADDLE] nothing seen — check tip/ring to GPIO25/26 "
+                              "and sleeve to GND");
     } else if (!strcasecmp(cmd, "net")) {
       printNet();
     } else if (!strcasecmp(cmd, "status")) {
       printStatus();
     } else {
-      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /wifi /net /status");
+      Serial.println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /backend /flex /wifi /paddle /net /status");
     }
     return;
   }

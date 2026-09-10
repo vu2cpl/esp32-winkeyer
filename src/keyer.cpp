@@ -396,6 +396,8 @@ void pttManual(bool on) {
 bool busy()         { return state != ST_IDLE || queueDepth() > 0; }
 bool keyIsDown()    { return keyDownFlag; }
 bool paddleActive() { return dit || dah; }
+bool paddleDit()    { return dit; }
+bool paddleDah()    { return dah; }
 
 bool paddleBreakIn() {
   bool b = flagBreakIn;

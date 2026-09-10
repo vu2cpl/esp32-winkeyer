@@ -53,6 +53,8 @@ void   pttManual(bool on); // host-forced PTT (WK 0x18), independent of send act
 bool   busy();             // element in progress or buffer non-empty
 bool   keyIsDown();        // for WK status reporting
 bool   paddleActive();     // either paddle currently closed
+bool   paddleDit();        // debounced dit lever (after any swap)
+bool   paddleDah();        // debounced dah lever (after any swap)
 bool   paddleBreakIn();    // true once if paddle press aborted a buffered send
 
 }  // namespace Keyer
