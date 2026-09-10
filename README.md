@@ -112,9 +112,18 @@ Sidetone stays local and follows your own paddle timing, so your fist
 sounds right in the ear whatever the network is doing. The local key
 output is disabled in this mode so the rig is not keyed twice.
 
-Requirements: the slice must be in **CW mode**, and SmartSDR should be
-running (the radio needs a GUI client for a transmit context — with none
-connected it reports `tx_allowed=0` and nothing may transmit).
+**Requirements — both fail silently, with no error from the radio:**
+
+- SmartSDR must have **a slice in use, in CW mode**. With no slice the
+  radio simply transmits nothing. `/status` reports readiness, and the
+  keyer warns when you key without it.
+- SmartSDR (a GUI client) must be connected — with none the radio reports
+  `tx_allowed=0` and nothing may transmit at all.
+
+Tuning knobs, should keying misbehave on a different radio or firmware:
+`/flex cmd key|ptt` (which keying command), `/flex bind on|off`,
+`/flex ptt on|off` (whether we assert `xmit`). Defaults are what works on
+a 6600 running SmartSDR 4.2.20.
 
 The `backend` setting persists in NVS, so it survives a reboot.
 

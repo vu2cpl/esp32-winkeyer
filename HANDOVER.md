@@ -148,15 +148,39 @@ never the right mechanism.
 
 **How it works** (`pumpKeying()` in `src/flex.cpp`):
 
-1. `xmit 1` on the first element. A bare `cw key` does nothing, because
-   the radio only keys for whichever client holds the transmitter, and
-   `interlock.tx_client_handle` stays `0x00000000` until one asks.
-2. `cw key 1 time=0x…` / `cw key 0 time=0x…` per element. The `time=`
-   field is a timestamp: the radio *schedules* the edge instead of keying
-   on arrival, which is what keeps CW readable over a jittery link. This
-   is the mechanism Maestro and MORCONI use.
+1. `xmit 1` on the first element. A bare keying command does nothing,
+   because the radio only keys for whichever client holds the
+   transmitter, and `interlock.tx_client_handle` stays `0x00000000`
+   until one asks.
+2. Per element:
+
+       cw key <1|0> time=0x<16-bit ms> index=<decimal> client_handle=<GUI handle>
+
+   `time` is milliseconds as **16-bit** hex (rolls at 0xFFFF), `index` a
+   decimal counter, and `client_handle` the **GUI client's** handle — the
+   keying happens in that client's transmit context. The timestamps let
+   the radio schedule the edge rather than key on arrival, which is what
+   keeps CW readable over a jittery link. Same mechanism as Maestro and
+   MORCONI.
 3. `xmit 0` after a 400 ms tail — suppressed while the key is down, or a
    long element (or tune) drops PTT out from under itself.
+
+**Prerequisites, all of which fail silently:**
+
+- **A slice must be in use AND in CW mode.** With no slice the radio
+  transmits nothing and reports *no error at all*. This was the final
+  blocker and cost hours. The keyer now subscribes to slice status and
+  warns; `/status` shows readiness.
+- SmartSDR (a GUI client) must be connected — with none, the radio
+  reports `tx_allowed=0` and nothing may transmit.
+
+**`cw key` vs `cw ptt`:** FlexRadio's wiki documents `cw ptt [1|0] time=
+index=` as the keying command, and the radio accepts it without error —
+but it did **not** produce RF here. Only `cw key` did (6600, SmartSDR
+4.2.20). Both are switchable with `/flex cmd key|ptt`; `/flex bind` and
+`/flex ptt` toggle the other two variables. Those switches exist because
+only a power meter can settle which combination keys, and reflashing per
+guess is what made this slow.
 
 Sidetone stays local and is generated from the operator's own paddle
 timing, so the fist sounds right in the ear regardless of the link.
@@ -178,6 +202,14 @@ write.
   where keying goes and now persists in NVS (`wk`/`flexbe`); before that
   it silently reverted to local on every flash, which repeatedly made a
   working build look broken.
+- **No slice in use = no RF, no error.** Check `/status` first when
+  keying does nothing. Also check that a log line reports what was
+  actually sent: the keying log printed `cw key` regardless of the verb
+  in use for a while, which hid the one distinction that mattered.
+- **Only a power meter can confirm keying.** Interlock state moves for
+  PTT but is not proof of a carrier, and there is no RF reading over the
+  TCP API. Every "is it working" question in this session needed the
+  operator. Build the runtime toggles first next time.
 
 #### Superseded: earlier verdict on CWX as a second client
 
