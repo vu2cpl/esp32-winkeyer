@@ -15,7 +15,7 @@ as a behavioural reference; the implementation here is original.
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
-| FlexRadio backend (discovery, bind, `cwx`) | connects, binds, sends — but the radio refuses CWX to a second client (see below) |
+| FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
 
 Display and Bluetooth keyboard are considered but not built — see
@@ -101,24 +101,27 @@ broadcast, unlike mDNS. If the radio is on another segment, pin the IP.
 To find it, TCP-scan for port 4992; a Flex answers immediately with
 `V<version>` / `H<handle>`.
 
-In Flex mode, buffered text goes to the radio with `cwx send` and the
-**radio** generates the CW, so network jitter never reaches the air. The
-local key output is disabled to avoid keying the rig twice; sidetone stays
-on locally.
+**In Flex mode the paddle keys the radio over WiFi — no KEY or PTT wire.**
+The keyer asserts PTT (`xmit 1`), sends each element as `cw key 1/0` with
+a `time=` timestamp so the radio *schedules* the edge rather than keying
+on arrival, and releases PTT after a tail. That timestamp is what keeps
+the CW readable across a jittery link; it is the same mechanism Maestro
+and MORCONI use.
 
-**Known limitation — CWX is refused to a second client.** Tested against
-a 6600 (API 1.4.0.0): with SmartSDR running it owns CWX and answers
-`500000C2 Cannot transmit since another client is transmitting or sending
-a CW/CWX message`; with SmartSDR closed the radio reports
-`tx_allowed=0` and nothing may transmit at all. Binding to the GUI client
-(`client bind`) is implemented and accepted by the radio, but does not
-unlock CWX. The same refusal occurs from a plain script with the keyer
-uninvolved, so this is the radio's behaviour, not the firmware's.
+Sidetone stays local and follows your own paddle timing, so your fist
+sounds right in the ear whatever the network is doing. The local key
+output is disabled in this mode so the rig is not keyed twice.
 
-**For a Flex in the same shack, wire the key output (GPIO 33) to the
-radio's KEY jack instead** — no contention, no latency, works whether or
-not SmartSDR is running. The CWX path is for remote operating; if you
-pursue it, start from SmartSDR CAT's WinKeyer emulation rather than CWX.
+Requirements: the slice must be in **CW mode**, and SmartSDR should be
+running (the radio needs a GUI client for a transmit context — with none
+connected it reports `tx_allowed=0` and nothing may transmit).
+
+The `backend` setting persists in NVS, so it survives a reboot.
+
+Not used: `cwx send`. It sends *text* for the radio to key itself, which
+cannot carry a fist, and this radio refuses CWX to a second client
+anyway. Wiring GPIO 33 to the KEY jack still works and is the
+lowest-latency option, but is no longer necessary.
 
 Paddle keying deliberately stays on the local key output — real-time
 element timing over WiFi would carry the jitter. For a Flex in the same

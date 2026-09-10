@@ -24,6 +24,7 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 #include "config.h"
 #include "pins.h"
 #include "keyer.h"
@@ -62,6 +63,34 @@ bool mqttConnect() {
                   lastRc, lastRc == 5 ? " — bad credentials in secrets.h" : "");
   }
   return ok;
+}
+
+// ── Backend selection ─────────────────────────────────────
+// Switching backend has three coupled side effects, so they live in one
+// place rather than being repeated by the CLI and by boot-time restore.
+void applyBackend(bool useFlex, bool persist) {
+  WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
+  // On the Flex path the radio is keyed over the network; the local key
+  // line stays idle so the rig is not keyed twice. Sidetone stays local,
+  // generated from the operator's own paddle timing, so the fist sounds
+  // right in the ear regardless of what the link is doing.
+  Keyer::setKeyOutEnabled(!useFlex);
+  Flex::setDirectKeying(useFlex);
+  Keyer::setKeyEventHook(useFlex ? Flex::keyEvent : nullptr);
+  if (persist) {
+    Preferences p;
+    p.begin("wk", false);
+    p.putBool("flexbe", useFlex);
+    p.end();
+  }
+}
+
+bool loadBackend() {
+  Preferences p;
+  p.begin("wk", true);
+  bool useFlex = p.isKey("flexbe") ? p.getBool("flexbe", false) : false;
+  p.end();
+  return useFlex;
 }
 
 // ── Serial as a WinKeyer transport ────────────────────────
@@ -126,15 +155,8 @@ void handleLine(char* line) {
       Serial.printf("[KEYER] sidetone %s\n", arg);
     } else if (!strcasecmp(cmd, "backend") && arg) {
       bool useFlex = !strcasecmp(arg, "flex");
-      WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
-      // On the Flex path the radio is keyed over the network; the local key
-      // line stays idle so the rig is not keyed twice. Sidetone stays local,
-      // generated from the operator's own paddle timing, so the fist sounds
-      // right in the ear regardless of what the link is doing.
-      Keyer::setKeyOutEnabled(!useFlex);
-      Flex::setDirectKeying(useFlex);
-      Keyer::setKeyEventHook(useFlex ? Flex::keyEvent : nullptr);
-      Serial.printf("[WK] backend=%s (paddle keying %s)\n",
+      applyBackend(useFlex, true);
+      Serial.printf("[WK] backend=%s (paddle keying %s, saved)\n",
                     useFlex ? "flex" : "local",
                     useFlex ? "-> radio over network" : "-> local key output");
     } else if (!strcasecmp(cmd, "flex")) {
@@ -277,6 +299,12 @@ void setup() {
 
   Net::begin();
   Flex::begin();
+
+  // Restore the backend last: it needs Flex::begin() to have created the
+  // key queue before the hook can be attached.
+  bool useFlex = loadBackend();
+  applyBackend(useFlex, false);
+  Serial.printf("[WK] backend=%s (restored)\n", useFlex ? "flex" : "local");
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqtt);
