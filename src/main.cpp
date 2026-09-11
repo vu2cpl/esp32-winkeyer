@@ -448,6 +448,9 @@ void setup() {
   // measured at 307 ms average on the bench, on the same subnet. A keyer
   // is mains-powered and wants a responsive host link, so trade the ~20 mA.
   WiFi.setSleep(false);
+  // Ask the core to reconnect on its own as well. Belt and braces: the
+  // explicit retry in loop() is what actually guarantees it.
+  WiFi.setAutoReconnect(true);
 
   Net::begin();
   Flex::begin();
@@ -467,8 +470,15 @@ void setup() {
   // a power cable; with this it reboots itself and, crucially, records WHY
   // so the next boot can say so. 30 s is far longer than any legitimate
   // blocking call here (the MQTT connect is capped at 2 s).
-  esp_task_wdt_init(30, true);      // panic-and-reset on timeout
-  esp_task_wdt_add(NULL);           // NULL = the task calling this: loopTask
+  // The Arduino framework already inits the task WDT (5 s, panic on), so
+  // this init may be refused — and the return codes were being ignored,
+  // which meant claiming a watchdog was armed without ever checking. Say
+  // outright what actually happened.
+  esp_err_t wdtInit = esp_task_wdt_init(30, true);
+  esp_err_t wdtAdd  = esp_task_wdt_add(NULL);   // NULL = loopTask
+  Serial.printf("[BOOT] task watchdog: init=%s add=%s -> loopTask %s\n",
+                esp_err_to_name(wdtInit), esp_err_to_name(wdtAdd),
+                wdtAdd == ESP_OK ? "WATCHED" : "NOT watched");
 
   Keyer::chirp('R');      // "roger" — sidetone only, the board is up
 
@@ -495,6 +505,41 @@ void loop() {
     static uint8_t lastWpmToRadio = 0;
     uint8_t w = Keyer::getWpm();
     if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
+  }
+
+  // Get back on the network by ourselves.
+  //
+  // wm.autoConnect() runs ONCE, at boot, and nothing retried afterwards —
+  // so a dropped link (an AP glitch, roaming, a marginal signal) left the
+  // board off the network until somebody power-cycled it, while the keyer
+  // carried on working over USB. That presents as "the keyer crashed":
+  // unreachable, still enumerated, no panic, no watchdog, loop running.
+  {
+    static uint32_t downSince = 0, lastTry = 0;
+    static bool     wasUp = true;
+    bool up = (WiFi.status() == WL_CONNECTED);
+    if (up) {
+      if (!wasUp) {
+        Log::printf("[WiFi] reconnected as %s\n",
+                    WiFi.localIP().toString().c_str());
+      }
+      downSince = 0;
+    } else {
+      uint32_t now = millis();
+      if (!downSince) {
+        downSince = now;
+        Log::println("[WiFi] link lost — retrying");
+      }
+      // Give the core's own reconnect a moment first, then retry on a
+      // slow cadence so this never becomes a busy loop.
+      if (now - downSince > 10000 && now - lastTry > 15000) {
+        lastTry = now;
+        WiFi.reconnect();
+        Log::printf("[WiFi] reconnect attempt (down %us)\n",
+                    (unsigned)((now - downSince) / 1000));
+      }
+    }
+    wasUp = up;
   }
 
   if (Keyer::pttStuckWasCleared())
