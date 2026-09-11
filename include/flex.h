@@ -67,10 +67,14 @@ const char* keyVerb();
 bool sliceReady();
 
 // Operator-facing reason the radio will not transmit CW, or "" when it
-// will (or when not connected — that has its own indicator). Long form
-// for the web page, short form for the OLED header. Caller's buffer, as
-// the display task and the web handler run on different cores.
-void sliceWarning(char* out, size_t n, bool shortForm);
+// will (or when not connected — that has its own indicator). Caller's
+// buffer, as the display task and the web handler run on different cores.
+enum WarnForm : uint8_t {
+  WARN_LONG,    // web page sentence
+  WARN_SHORT,   // <= 18 chars: OLED title, 20x4 LCD row
+  WARN_TINY,    // <= 16 chars: 16x2 LCD row
+};
+void sliceWarning(char* out, size_t n, WarnForm form);
 
 // LAN scan. Discovery is a UDP broadcast and never leaves the keyer's own
 // subnet, so a radio on another segment is invisible to it. The command API

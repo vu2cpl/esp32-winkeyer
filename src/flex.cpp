@@ -343,17 +343,28 @@ void setKeyVerb(const char* verb) {
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
 
-void sliceWarning(char* out, size_t n, bool shortForm) {
+void sliceWarning(char* out, size_t n, WarnForm form) {
   out[0] = '\0';
   if (!connected() || sliceReady()) return;
-  if (!sliceInUse)
-    snprintf(out, n, shortForm ? "NO SLICE IN USE"
-                               : "No slice in use in SmartSDR — the radio will not transmit.");
-  else
-    snprintf(out, n, shortForm ? "SLICE %s, NOT CW"
-                               : "Radio slice is in %s, not CW — memories will not transmit. "
-                                 "Switch the slice to CW in SmartSDR.",
-             sliceMode[0] ? sliceMode : "?");
+  if (!sliceInUse) {
+    snprintf(out, n, form == WARN_LONG
+                       ? "No slice in use in SmartSDR — the radio will not transmit."
+                       : "NO SLICE IN USE");
+    return;
+  }
+  const char* m = sliceMode[0] ? sliceMode : "?";
+  switch (form) {
+    case WARN_LONG:
+      snprintf(out, n, "Radio slice is in %s, not CW — memories will not "
+                       "transmit. Switch the slice to CW in SmartSDR.", m);
+      break;
+    case WARN_SHORT:
+      snprintf(out, n, "SLICE %s, NOT CW", m);
+      break;
+    case WARN_TINY:   // 16 columns: "SLICE USB NOT CW" fits a 3-letter mode
+      snprintf(out, n, strlen(m) <= 3 ? "SLICE %s NOT CW" : "%s: NOT CW", m);
+      break;
+  }
 }
 
 void setBind(bool on) {

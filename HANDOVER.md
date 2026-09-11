@@ -679,9 +679,16 @@ makes the keyer feel slow.
     `Flex::sliceWarning()` now gives the reason with the mode name; the
     page shows an amber banner under the LEDs (`flex.slicewarn` in
     `/api/state`) and the OLED title reads e.g. `SLICE USB, NOT CW`.
-    Verified on hardware by Manoj. Not done: the HD44780 LCD (still only
-    `FLX!`), and tracking the TX slice specifically. The flags follow
-    whichever slice reported last, so two open slices can mislead.
+    Verified on hardware by Manoj. Then extended to the HD44780 LCD, with
+    Manoj choosing where it goes: 20x4 row 4 (dBm/tail) gives way; on the
+    16x2 it alternates with the IP every 2 s when not sending
+    (`lcdPhase()`, and it joins the redraw signature only on a 16x2 so
+    the OLED does not resend frames). Three lengths from
+    `Flex::sliceWarning()`: LONG (web), SHORT ≤18 (OLED, 20x4), TINY ≤16
+    (16x2). **LCD version flashed but NOT yet seen on a panel.** Manoj
+    will test later. Still not done: tracking the TX slice specifically.
+    The flags follow whichever slice reported last, so two open slices
+    can mislead.
   - **Restart hunt, external power only (no USB, 0 W so no RF):** 15 min,
     12 overs, no restart. One 3 s WiFi drop and a few ~1 s HTTP replies,
     all while keying. A drop mid-over would hold the radio in TX for

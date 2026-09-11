@@ -490,7 +490,7 @@ void toJson(JsonDocument& doc) {
   f["connected"] = Flex::connected();
   f["ip"]        = Flex::radioIp();
   f["slice"]     = Flex::sliceReady();
-  { char w[128]; Flex::sliceWarning(w, sizeof w, false); f["slicewarn"] = w; }
+  { char w[128]; Flex::sliceWarning(w, sizeof w, Flex::WARN_LONG); f["slicewarn"] = w; }
   f["cmd"]       = Flex::keyVerb();
   f["bind"]      = Flex::bindEnabled();
   f["xmit"]      = Flex::useXmit();

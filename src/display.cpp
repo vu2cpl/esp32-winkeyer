@@ -53,6 +53,8 @@ enum Kind : uint8_t { KIND_NONE, KIND_OLED, KIND_LCD };
 Kind               kind    = KIND_NONE;
 LiquidCrystal_I2C* lcd     = nullptr;
 uint8_t            lcdCols = 20, lcdRows = 4;
+// 16x2 row 2 alternates the IP with a slice warning, 2 s each.
+inline uint32_t lcdPhase() { return (millis() / 2000) & 1; }
 
 uint8_t       i2cAddr    = 0;
 bool          taskStarted = false;
@@ -89,8 +91,11 @@ uint32_t stateSig() {
   mix(Net::clientConnected());
   mix(Flex::connected());
   mix(Flex::sliceReady());
-  { char w[24]; Flex::sliceWarning(w, sizeof w, true);   // mode can change text
-    for (const char* p = w; *p; p++) mix((uint8_t)*p); }
+  { char w[24]; Flex::sliceWarning(w, sizeof w, Flex::WARN_SHORT);  // mode can change text
+    for (const char* p = w; *p; p++) mix((uint8_t)*p);
+    // The 16x2 alternates the warning with the IP, so it must redraw on
+    // each swap. Only there: the OLED would resend 1 KB for nothing.
+    if (*w && kind == KIND_LCD && lcdRows < 4) mix(lcdPhase()); }
   mix((uint32_t)WiFi.status());
   mix((uint32_t)WiFi.localIP());
   mix((uint32_t)((int)WiFi.RSSI() / 3));   // bucketed: RSSI jitters constantly
@@ -248,8 +253,14 @@ void drawMainLcd() {
     else
       snprintf(l, sizeof l, "join %s", WIFI_AP_NAME);
     lcdLine(2, l);
-    snprintf(l, sizeof l, "%ddBm  tail %ums", (int)WiFi.RSSI(),
-             Keyer::getPttTailMs());
+    // Row 4 is the least-needed line, so a slice warning takes it over.
+    char warn[24];
+    Flex::sliceWarning(warn, sizeof warn, Flex::WARN_SHORT);
+    if (*warn)
+      snprintf(l, sizeof l, "%s", warn);
+    else
+      snprintf(l, sizeof l, "%ddBm  tail %ums", (int)WiFi.RSSI(),
+               Keyer::getPttTailMs());
     lcdLine(3, l);
   } else {
     // 16x2: row 0 packs speed, mode, speed-source and backend into all 16
@@ -262,8 +273,13 @@ void drawMainLcd() {
              Keyer::getPotEnabled() ? "POT" : "FIX", be, radioTag());
     lcdLine(0, l);
 
+    // A slice warning alternates with the address rather than replacing it.
+    char warn[24];
+    Flex::sliceWarning(warn, sizeof warn, Flex::WARN_TINY);
     if (*act)
       snprintf(l, sizeof l, "%s", act);
+    else if (*warn && lcdPhase())
+      snprintf(l, sizeof l, "%s", warn);
     else if (WiFi.status() == WL_CONNECTED)
       snprintf(l, sizeof l, "%s", WiFi.localIP().toString().c_str());
     else
@@ -299,7 +315,7 @@ void drawMain() {
   // The title gives way to a slice warning: without a CW slice the radio
   // sends nothing and says nothing, and FLX! below is easy to miss.
   char warn[24];
-  Flex::sliceWarning(warn, sizeof warn, true);
+  Flex::sliceWarning(warn, sizeof warn, Flex::WARN_SHORT);
   oled->drawStr(0, 6, warn[0] ? warn : "WinKeyer");
   if (WiFi.status() == WL_CONNECTED) snprintf(buf, sizeof buf, "%ddBm", (int)WiFi.RSSI());
   else                               snprintf(buf, sizeof buf, "no wifi");

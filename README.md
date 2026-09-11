@@ -211,7 +211,7 @@ Every indicator:
 | `----` | no host session — placeholder, so the field keeps its width |
 | `+NET` | a TCP client is connected over WiFi as well |
 | `-52dBm` | WiFi signal; `no wifi` if the link is down |
-| `SLICE USB, NOT CW` | (OLED, replaces the `WinKeyer` title) the Flex's slice is in another mode; `NO SLICE IN USE` if there is none |
+| `SLICE USB, NOT CW` | the Flex's slice is in another mode; `NO SLICE IN USE` if there is none. OLED: replaces the `WinKeyer` title. 20x4: replaces row 4 (dBm/tail). 16x2: alternates with the IP every 2 s when not sending, as `SLICE USB NOT CW` (`DIGU: NOT CW` for 4-letter modes) |
 
 The radio number is attached to the backend as one token — `LOCAL1`,
 `FLX2`, `FLXB` — rather than spaced, because the "both" letter `B` would
@@ -219,9 +219,9 @@ otherwise sit beside the iambic mode letter, which is also `A` or `B`.
 
 `FLX!` is the one worth knowing on sight: everything looks connected and
 the keyer reports no error, but SmartSDR has no slice in CW mode so nothing
-reaches the air. The OLED also spells it out in its title line, and the web
-page shows an amber banner naming the slice's mode. The 16x2/20x4 LCD shows
-only `FLX!`. Memories go to the radio as `cwx` text, which it sends only
+reaches the air. Every panel also spells it out with the slice's mode (see
+the table), and the web page shows an amber banner. Memories go to the
+radio as `cwx` text, which it sends only
 on a CW slice. The paddle's PTT still keys the radio in other modes, so
 this can look like "paddle works, memories don't".
 
