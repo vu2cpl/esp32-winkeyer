@@ -66,6 +66,12 @@ const char* keyVerb();
 // radio transmits nothing and reports no error at all.
 bool sliceReady();
 
+// Operator-facing reason the radio will not transmit CW, or "" when it
+// will (or when not connected — that has its own indicator). Long form
+// for the web page, short form for the OLED header. Caller's buffer, as
+// the display task and the web handler run on different cores.
+void sliceWarning(char* out, size_t n, bool shortForm);
+
 // LAN scan. Discovery is a UDP broadcast and never leaves the keyer's own
 // subnet, so a radio on another segment is invisible to it. The command API
 // is plain TCP, which a router forwards like anything else: scanStart()

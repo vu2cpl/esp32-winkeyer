@@ -55,6 +55,9 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 padding-bottom:10px;border-bottom:2px solid var(--bezel);margin-bottom:14px}
 .brand b{font-size:19px;letter-spacing:3px;color:var(--amber);text-shadow:0 0 12px rgba(255,170,34,.5)}
 .brand span{font-size:11px;color:var(--dim)}
+/* no display rule here, so the hidden attribute still hides it */
+.slicewarn{padding:9px 12px;margin:-6px 0 14px;border-radius:8px;font-size:13px;
+background:rgba(255,170,34,.12);border:1px solid var(--amber);color:var(--amber)}
 .leds{display:flex;gap:14px;flex-wrap:wrap;padding:10px 12px;margin-bottom:14px;
 background:var(--bezel);border-radius:8px;font-size:11px;letter-spacing:1px}
 .led{display:flex;align-items:center;gap:6px;color:var(--dim)}
@@ -107,6 +110,7 @@ legend[title]{cursor:help}
 <div class="led" id="l-flex"><i></i>FLEX</div>
 <div class="led" id="l-disp"><i></i>OLED</div>
 </div>
+<div class="slicewarn" id="slicewarn" hidden></div>
 
 <div class="speed"><b id="wpmBig">--</b><span>WPM</span><span id="src"></span></div>
 
@@ -294,6 +298,8 @@ async function refresh(){
   led('l-tune',s.tune,true);led('l-pot',s.pot);
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
+  const w=s.flex.slicewarn||'';
+  $('slicewarn').textContent='⚠ '+w; $('slicewarn').hidden=!w;
   $('flexState').textContent = !s.flex.enabled ? 'off'
       : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
       : 'searching';

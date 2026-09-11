@@ -89,6 +89,8 @@ uint32_t stateSig() {
   mix(Net::clientConnected());
   mix(Flex::connected());
   mix(Flex::sliceReady());
+  { char w[24]; Flex::sliceWarning(w, sizeof w, true);   // mode can change text
+    for (const char* p = w; *p; p++) mix((uint8_t)*p); }
   mix((uint32_t)WiFi.status());
   mix((uint32_t)WiFi.localIP());
   mix((uint32_t)((int)WiFi.RSSI() / 3));   // bucketed: RSSI jitters constantly
@@ -294,7 +296,11 @@ void drawMain() {
 
   // ── header: who we are, and how good the link is ──
   oled->setFont(u8g2_font_5x7_tf);
-  oled->drawStr(0, 6, "WinKeyer");
+  // The title gives way to a slice warning: without a CW slice the radio
+  // sends nothing and says nothing, and FLX! below is easy to miss.
+  char warn[24];
+  Flex::sliceWarning(warn, sizeof warn, true);
+  oled->drawStr(0, 6, warn[0] ? warn : "WinKeyer");
   if (WiFi.status() == WL_CONNECTED) snprintf(buf, sizeof buf, "%ddBm", (int)WiFi.RSSI());
   else                               snprintf(buf, sizeof buf, "no wifi");
   oled->drawStr(128 - oled->getStrWidth(buf), 6, buf);

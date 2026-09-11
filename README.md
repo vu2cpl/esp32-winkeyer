@@ -211,6 +211,7 @@ Every indicator:
 | `----` | no host session — placeholder, so the field keeps its width |
 | `+NET` | a TCP client is connected over WiFi as well |
 | `-52dBm` | WiFi signal; `no wifi` if the link is down |
+| `SLICE USB, NOT CW` | (OLED, replaces the `WinKeyer` title) the Flex's slice is in another mode; `NO SLICE IN USE` if there is none |
 
 The radio number is attached to the backend as one token — `LOCAL1`,
 `FLX2`, `FLXB` — rather than spaced, because the "both" letter `B` would
@@ -218,7 +219,11 @@ otherwise sit beside the iambic mode letter, which is also `A` or `B`.
 
 `FLX!` is the one worth knowing on sight: everything looks connected and
 the keyer reports no error, but SmartSDR has no slice in CW mode so nothing
-reaches the air.
+reaches the air. The OLED also spells it out in its title line, and the web
+page shows an amber banner naming the slice's mode. The 16x2/20x4 LCD shows
+only `FLX!`. Memories go to the radio as `cwx` text, which it sends only
+on a CW slice. The paddle's PTT still keys the radio in other modes, so
+this can look like "paddle works, memories don't".
 
 ### LCD power — read this before blaming the firmware
 
@@ -531,8 +536,11 @@ output is disabled in this mode so the rig is not keyed twice.
 **Requirements — both fail silently, with no error from the radio:**
 
 - SmartSDR must have **a slice in use, in CW mode**. With no slice the
-  radio simply transmits nothing. `/status` reports readiness, and the
-  keyer warns when you key without it.
+  radio simply transmits nothing. `/status` reports readiness, the web
+  page and OLED show a warning naming the slice's mode, and the console
+  warns when you key without it. The keyer follows the last slice the
+  radio reports, not specifically the TX slice, so with two slices open
+  the warning can be wrong.
 - SmartSDR (a GUI client) must be connected — with none the radio reports
   `tx_allowed=0` and nothing may transmit at all.
 

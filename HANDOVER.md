@@ -670,6 +670,23 @@ makes the keyer feel slow.
     the keyer. The second outage was a reset loop while paddling (29
     `rst:` lines in 8 s) — cause OPEN, see 11x. It is **not** the 11w
     brownout: the board has an external supply as well as USB.
+  - **Slice warning on the web page and OLED.** Manoj's memories played
+    sidetone but never transmitted, while the paddle still keyed PTT: the
+    slice was in LSB. `cwx` only sends on a CW slice, but `xmit 1` puts the
+    radio in TX in any mode, so "paddle works, memories don't" is what a
+    wrong mode looks like. The keyer knew (`slice:false`) and said so only
+    on the serial console, which is unplugged or muted in real use.
+    `Flex::sliceWarning()` now gives the reason with the mode name; the
+    page shows an amber banner under the LEDs (`flex.slicewarn` in
+    `/api/state`) and the OLED title reads e.g. `SLICE USB, NOT CW`.
+    Verified on hardware by Manoj. Not done: the HD44780 LCD (still only
+    `FLX!`), and tracking the TX slice specifically. The flags follow
+    whichever slice reported last, so two open slices can mislead.
+  - **Restart hunt, external power only (no USB, 0 W so no RF):** 15 min,
+    12 overs, no restart. One 3 s WiFi drop and a few ~1 s HTTP replies,
+    all while keying. A drop mid-over would hold the radio in TX for
+    its length — another stuck-PTT candidate. USB is plugged back in now,
+    so the next restart will say whether the USB lead matters.
 
 ## Network placement (measured 2026-09-10)
 

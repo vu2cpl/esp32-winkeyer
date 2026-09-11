@@ -82,6 +82,7 @@ bool          cfgBind = true;     // issue "client bind" to the GUI client
 const char*   cfgKeyVerb = "key";
 bool          sliceInUse = false;
 bool          sliceIsCw  = false;
+char          sliceMode[8] = "";  // as the radio names it: "LSB", "DIGU", ...
 uint32_t      lastWarnMs = 0;
 uint32_t      lastKeyMs = 0;
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
@@ -210,7 +211,10 @@ void onLine(const String& line) {
     if (body.startsWith("slice ")) {
       String v;
       if (kv(body, "in_use", v)) sliceInUse = (v == "1");
-      if (kv(body, "mode",   v)) sliceIsCw  = (v == "CW");
+      if (kv(body, "mode",   v)) {
+        sliceIsCw = (v == "CW");
+        strlcpy(sliceMode, v.c_str(), sizeof sliceMode);
+      }
     }
 
     // A non-GUI client cannot transmit in its own right — the radio only
@@ -338,6 +342,19 @@ void setKeyVerb(const char* verb) {
 }
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
+
+void sliceWarning(char* out, size_t n, bool shortForm) {
+  out[0] = '\0';
+  if (!connected() || sliceReady()) return;
+  if (!sliceInUse)
+    snprintf(out, n, shortForm ? "NO SLICE IN USE"
+                               : "No slice in use in SmartSDR — the radio will not transmit.");
+  else
+    snprintf(out, n, shortForm ? "SLICE %s, NOT CW"
+                               : "Radio slice is in %s, not CW — memories will not transmit. "
+                                 "Switch the slice to CW in SmartSDR.",
+             sliceMode[0] ? sliceMode : "?");
+}
 
 void setBind(bool on) {
   cfgBind = on;
