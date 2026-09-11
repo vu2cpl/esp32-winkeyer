@@ -70,6 +70,12 @@ void onMqtt(char* topic, byte* payload, unsigned int len) {
 }
 
 bool mqttConnect() {
+  // Open the TCP socket ourselves with a short cap. PubSubClient's own
+  // connect uses WiFiClient's 3 s default, and a broker that isn't there
+  // (wrong MQTT_HOST, broker down) then blocks loop() — which also sends
+  // the Flex its key-ups and `xmit 0` — for the whole wait, once a minute.
+  // PubSubClient skips its connect when the socket is already up.
+  if (!net.connected() && !net.connect(MQTT_HOST, MQTT_PORT, 500)) return false;
   // LWT: broker publishes this retained if we drop off uncleanly.
   bool ok = mqtt.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS,
                          T_STATUS, 1, true, "{\"event\":\"offline\"}");
@@ -578,11 +584,15 @@ void loop() {
   // WinKeyer host link is not being serviced — a logger sees the keyer stall.
   // So: never attempt it while CW is in flight, cap the wait, and back off
   // when the broker keeps refusing instead of stalling every 5 s forever.
+  // "In flight" includes the PTT tail: busy() is already false there while
+  // the line and the radio are still keyed, and a stall in the tail held
+  // the Flex in transmit after the operator had stopped sending.
   if (WiFi.status() == WL_CONNECTED) {
     if (!mqtt.connected()) {
       static unsigned long lastTry = 0;
       static uint32_t      backoff = 5000;
-      bool quiet = !Keyer::busy() && !WinKeyer::hostOpen();
+      bool quiet = !Keyer::busy() && !Keyer::pttIsOn() &&
+                   !Flex::transmitting() && !WinKeyer::hostOpen();
       if (quiet && millis() - lastTry > backoff) {
         lastTry = millis();
         if (mqttConnect()) backoff = 5000;
@@ -594,7 +604,6 @@ void loop() {
 
   if (millis() - lastBeat > 10000) {
     lastBeat = millis();
-    digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
     StaticJsonDocument<256> doc;
     doc["event"]    = "heartbeat";
     doc["uptime_s"] = millis() / 1000;

@@ -14,7 +14,7 @@
 #define PIN_PTT_OUT      32   // active high → NPN/optocoupler to rig PTT
 #define PIN_SIDETONE      4   // LEDC PWM → passive piezo
 #define PIN_SPEED_POT    34   // ADC1_CH6, input-only; 10 k pot wiper, 3V3–GND
-#define PIN_STATUS_LED    2   // onboard LED
+#define PIN_STATUS_LED    2   // onboard LED — lit while the key is down
 
 // I²C — SSD1306 OLED. These are the ESP32's default I²C pins and every
 // OLED library assumes them, which is why the OTRSP block was moved off

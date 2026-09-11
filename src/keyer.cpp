@@ -184,6 +184,7 @@ void keyDown() {
     if (cfgRadio & 1) digitalWrite(PIN_KEY_OUT,  HIGH);
     if (cfgRadio & 2) digitalWrite(PIN_KEY_OUT2, HIGH);
   }
+  digitalWrite(PIN_STATUS_LED, HIGH);   // follows every element, any backend
   bool was = keyDownFlag;
   keyDownFlag = true;
   lastKeyDownMs = millis();
@@ -193,6 +194,7 @@ void keyDown() {
 void keyUp() {
   digitalWrite(PIN_KEY_OUT,  LOW);   // drop both regardless of selection:
   digitalWrite(PIN_KEY_OUT2, LOW);   // a line must never be left keyed
+  digitalWrite(PIN_STATUS_LED, LOW);
   bool was = keyDownFlag;
   keyDownFlag = false;
   toneOff();

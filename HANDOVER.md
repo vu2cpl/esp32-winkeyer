@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-11 (day) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -41,7 +41,7 @@ implemented — see "Flex backend" below.
 | Sidetone | 4 | LEDC PWM → passive piezo |
 | Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
 | Display SDA / SCL | 21 / 22 | OLED (SH1106/SSD1306 0x3C-0x3D) or HD44780 LCD backpack (16x2/20x4, 0x27-0x3F); family auto-detected |
-| Status LED | 2 | onboard |
+| Status LED | 2 | onboard — lit while the key is down |
 | KEY / PTT out 2 | 18 / 19 | radio 2; `/radio 1\|2\|both` |
 | FSK out | 27 | RTTY keying line, mark = idle, invertible |
 
@@ -638,6 +638,37 @@ makes the keyer feel slow.
     within 0.3–1 s of the radio. The one hang seen was already in progress
     when logging started (radio TRANSMITTING src=SWCW with the keyer idle,
     released ~6 s later), so its cause is unknown.
+- **2026-09-12** — **Onboard LED shows keying; MQTT can no longer stall
+  the loop; a dead keyer leaves the Flex transmitting.**
+  - **GPIO2 LED follows the key** — set in `keyDown()`/`keyUp()` beside the
+    sidetone, so it tracks every element on every backend. The 10 s
+    heartbeat toggle was removed (it would have left the LED lit at
+    random); the MQTT heartbeat message is unchanged. Verified with a
+    5-blink boot test that the devkit's only LED is on GPIO2.
+  - **`secrets.h` had no `MQTT_HOST`**, so the build used the public-repo
+    placeholder `192.168.1.10`, which does not exist. Every 60 s (the
+    backoff cap) `mqttConnect()` sat in WiFiClient's 3 s TCP connect,
+    blocking `loop()` — which is also where `Flex::poll()` sends key-ups
+    and `xmit 0`. `tools/flex-ptt-watch.py` showed an HTTP timeout at :04
+    past every minute for 30 min. The retry guard checked only
+    `Keyer::busy()`, which is already false in the PTT tail, so a retry
+    could start while the radio was still keyed and hold it for the stall.
+    Fix: the socket is opened with a 500 ms cap before `mqtt.connect()`
+    (PubSubClient skips its own connect when the socket is up), and the
+    guard also requires `!Keyer::pttIsOn() && !Flex::transmitting()`.
+    After: 738 polls over 150 s, zero timeouts, worst 73 ms. `secrets.h`
+    now sets the real `MQTT_HOST` (local only — never commit it; this repo
+    is public); `[MQTT] connected` as `iot`.
+    The broker ACL needed `topic write shack/esp32-winkeyer/#` under
+    `iot` — `iot` cannot write `shack/` by default and the broker drops
+    such publishes silently. Publish flow not yet confirmed from a reader.
+  - **A dead keyer leaves the Flex in TX, indefinitely.** Twice this
+    session the keyer went down mid-over and the radio stayed
+    `TRANSMITTING src=SW` until an `xmit 0` was sent from another API
+    client. The radio's interlock reports `timeout=0` — no TX time-out —
+    so nothing radio-side releases it. The keyer's own backstops die with
+    the keyer. See 11w/11x: the second outage was a POWERON boot loop
+    (29 resets in 8 s) while paddling, i.e. the known brownout.
 
 ## Network placement (measured 2026-09-10)
 
@@ -803,6 +834,13 @@ against exposing it beyond one.
     matched a flash. RSSI −77. Too short to clear it; keep watching
     `uptime` and `resetreason`.
 
+    **Recurred 2026-09-12:** while paddling on the Flex backend the board
+    went into a POWERON boot loop (29 `rst:` lines in 8 s, caught with
+    DTR/RTS held off), and earlier the same session dropped off the
+    network mid-over. Both times the radio was left transmitting. Manoj
+    also saw the new keying LED flash once then go dark — the reset, not
+    the LED. Whether the 470–1000 µF capacitor (11w) is fitted: ask.
+
 11u. **OPEN: the web server stalls for 1–2 s at regular intervals** on the
     old board (2026-09-11): `/api/state` timed out at :03 past the minute
     for several minutes running, and roughly every 10 s just after boot.
@@ -844,6 +882,15 @@ against exposing it beyond one.
     Checking needs a real `cwx send` (it transmits). Matters only with an
     amp or sequencer on GPIO32.
 
+    **2026-09-12: two stuck-PTT mechanisms found, neither proven to be
+    Manoj's intermittent report.** (1) A 60 s MQTT retry blocking `loop()`
+    during the PTT tail — fixed, see What changed. A 30-min paddle capture
+    before the fix showed every over releasing correctly (radio READY,
+    local line ~0.3 s later), so it is a timing-window bug, not every-over.
+    (2) **The keyer dying mid-over** (brownout, 11w) leaves the radio in
+    TX with no time-out. Voiced, not done: set a TX time-out in the Flex's
+    interlock settings — the only backstop that survives a dead keyer.
+
 11z. **OPEN AND ACTIVE: the display hangs the board.** Confirmed
     2026-09-11 — with the OLED enabled the board hangs during display
     init and never reaches the web server or the host link; with it
@@ -857,10 +904,12 @@ against exposing it beyond one.
     rendering (1 KB frames) fails; the 20x4 LCD, whose frames are ~80
     bytes, was reliable on the same wiring.
 
-    **The fix is physical and has not been tried yet: 4.7 kΩ pull-ups from
-    SDA and SCL to 3V3**, plus fresh jumpers. The 1.3" module likely has
-    weak pull-ups or none, and the ESP32's internal ~45 kΩ cannot drive
-    long frames cleanly.
+    **Correction 2026-09-12: 4.7 kΩ pull-ups on SDA/SCL were fitted long
+    ago** — this item wrongly said they were untried. Missing pull-ups are
+    therefore ruled out. Not yet examined: whether two tasks touch `Wire`
+    at once (the display task on core 0 against probe/`/i2c` elsewhere),
+    which can deadlock the ESP32 I²C driver silently. The display came up
+    and ran on every boot on 2026-09-12, so the hang may not be current.
 
     **`Wire.setTimeOut(50)` did NOT prevent it** — U8g2 does not appear to
     go through the path that timeout covers. Do not mistake that for a

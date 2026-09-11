@@ -71,8 +71,10 @@ share factory serial `0001`, so the wrong board would be flashed silently.
    **Security note:** the WinKeyer TCP port is unauthenticated — anyone on
    that network can key the transmitter. Use a trusted LAN, not a guest or
    open network.
-2. Copy `include/secrets.h.example` → `include/secrets.h` and set the MQTT
-   role password. `secrets.h` is git-ignored.
+2. Copy `include/secrets.h.example` → `include/secrets.h` and set
+   `MQTT_HOST` plus the MQTT role account and password. `secrets.h` is
+   git-ignored. Leave `MQTT_HOST` out and the build uses the placeholder
+   in `config.h`, which is almost certainly not your broker.
 
 ## Wiring
 
@@ -84,7 +86,7 @@ share factory serial `0001`, so the wrong board would be flashed silently.
 | PTT out | 32 | active high → PC817 opto (330 Ω) or NPN → rig PTT |
 | Sidetone | 4 | passive piezo to GND |
 | Speed pot | 34 | ADC1, 10 k **linear** pot across 3V3–GND, wiper to 34; **enable with `/pot on`** |
-| Status LED | 2 | onboard |
+| Status LED | 2 | onboard — lit while the key is down |
 | OLED SDA | 21 | 128x64 I²C panel, optional |
 | OLED SCL | 22 | |
 | KEY out 2 | 18 | radio 2 KEY, same drive as radio 1 |
@@ -680,7 +682,12 @@ the keyer permanently reconfigured. CLI and web page both go through
 
 ## MQTT
 
-- Broker: `192.168.1.10:1883` (auth required — role account in `secrets.h`).
+- Broker: `MQTT_HOST` in `secrets.h` (`config.h` default `192.168.1.10` is a
+  placeholder); auth required — role account in `secrets.h`. The account
+  needs **write** on `shack/esp32-winkeyer/#`, or the broker accepts the
+  login and silently drops every publish.
+- A broker that is down or unreachable costs nothing: the connect is capped
+  at 500 ms and never attempted while CW or PTT is active.
 - Status: `shack/esp32-winkeyer/status` (retained; LWT `{"event":"offline"}`),
   heartbeat carries WPM, busy, backend, host/TCP/Flex connection state.
 
