@@ -873,6 +873,33 @@ against exposing it beyond one.
     port to read it. Next: log the ROM `rst:` lines with DTR/RTS held off
     through a paddle session until it happens again.
 
+    **Caught again 00:53:21 (USB + external supply, 0 W so no RF, PTT
+    output wired to nothing):** mid-over, radio left TX. Serial with
+    DTR/RTS held off: 33 resets in 6 s, every one cut off right after the
+    ROM printed `ets Jul 29 2019` / `rst:` — before the reason, before any
+    firmware runs. So: **EN or the chip's supply, not software.** Loop
+    lasted ~30 s, then it recovered alone. The macOS USB log shows the
+    CP2102 stayed enumerated throughout — no USB dropout. External power
+    only: 15 min / 12 overs clean (thin — the USB crashes came after 5+
+    min of sending).
+
+    **01:19–01:21:** RUMlogNG held the port 01:19:08→01:20:40 (found by
+    an `lsof` poller); the keyer went silent 4 s after RUMlogNG closed it,
+    then Manoj unplugged USB and it was still not answering at 01:22 on
+    external power. A port close changes DTR/RTS, which reach EN through
+    the auto-reset circuit, so a logger closing the port can reset the
+    board. That alone does not explain staying down, nor the earlier
+    crashes, which had no known opener (the poller only started 00:55).
+
+    **Still unknown, ask Manoj:** where the external supply connects
+    (5V/VIN or 3V3) and what it is; what else is wired to the keyer.
+    Voiced, not done: a 1–10 µF cap EN→GND, the standard fix for devkits
+    that reset on EN noise; a long external-only run; watching for any
+    process that opens the port while it happens. Tools used (scratch,
+    not in repo): an HTTP uptime watcher that reports restarts with their
+    reset reason, an `lsof` port-opener poller, and a pyserial capture
+    with `dtr=rts=False` set before `open()`.
+
 11u. **OPEN: the web server stalls for 1–2 s at regular intervals** on the
     old board (2026-09-11): `/api/state` timed out at :03 past the minute
     for several minutes running, and roughly every 10 s just after boot.
