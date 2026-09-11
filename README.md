@@ -61,7 +61,9 @@ share factory serial `0001`, so the wrong board would be flashed silently.
 
    Put the keyer on the **same subnet as the logging computer** (and the
    radio, if using the Flex backend): `winkeyer.local` and Flex discovery
-   are both broadcast-based and do not cross subnets or VLANs.
+   are both broadcast-based and do not cross subnets or VLANs. For the
+   radio there is a way round it — **Find radio** on the web page (see
+   FlexRadio below).
 
    `/wifi` shows the current network, `/wifi portal` reopens the portal,
    `/wifi reset` clears the saved credentials and reboots.
@@ -501,8 +503,17 @@ arrives, and back to the CLI on host close.
 
 **Discovery only works on the radio's own subnet** — it is a raw UDP
 broadcast, unlike mDNS. If the radio is on another segment, pin the IP.
-To find it, TCP-scan for port 4992; a Flex answers immediately with
-`V<version>` / `H<handle>`.
+
+**Find radio** on the web page does that for you. It tries every address
+in one /24 for the SmartSDR API port (TCP 4992) — a plain TCP connection,
+which a router forwards where a broadcast is dropped — and lists what
+answers as `IP · model · nickname` buttons; click one to set Radio IP.
+Leave its box blank to scan the keyer's own subnet, or type the radio's
+first three octets (`192.168.1`). About 15 s per /24, in a background
+task so keying is unaffected. It is read-only on the radio: connect, read
+the `V<version>` greeting that marks a Flex, ask `info`, disconnect.
+`POST /api/flexscan?net=192.168.1` starts one; `GET /api/flexscan`
+reports progress and results.
 
 **In Flex mode the paddle keys the radio over WiFi — no KEY or PTT wire.**
 The keyer asserts PTT (`xmit 1`), sends each element as `cw key 1/0` with
@@ -575,7 +586,8 @@ tells "not sent" from "reported late".
 dotted underline carries **hover help** — ranges, what a setting actually
 does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
-tail**, pot enable and range, display, backend, plus a send box and
+tail**, pot enable and range, display, backend (with a **Find radio**
+LAN scan for the Flex), plus a send box and
 tune/stop. Live status LEDs for host, TCP, key, tune, pot, Flex and OLED,
 polled once a second.
 

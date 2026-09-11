@@ -66,6 +66,24 @@ const char* keyVerb();
 // radio transmits nothing and reports no error at all.
 bool sliceReady();
 
+// LAN scan. Discovery is a UDP broadcast and never leaves the keyer's own
+// subnet, so a radio on another segment is invisible to it. The command API
+// is plain TCP, which a router forwards like anything else: scanStart()
+// sweeps one /24 for port 4992 in a background task and asks whatever
+// answers what it is. Read-only on the radio — it opens a connection,
+// reads the greeting, asks "info", and closes.
+struct ScanHit {
+  char ip[16];
+  char model[24];
+  char name[32];     // radio nickname, else callsign
+};
+bool    scanStart(const char* prefix);   // "192.168.1"; "" = keyer's own /24
+bool    scanRunning();
+uint8_t scanTried();                     // hosts done, 0..254
+String  scanNet();                       // the /24 being / last scanned
+String  scanError();                     // "" unless the sweep gave up
+uint8_t scanHits(ScanHit* out, uint8_t max);
+
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm

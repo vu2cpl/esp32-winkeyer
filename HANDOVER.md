@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-11 (overnight) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-11 (day) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -289,14 +289,16 @@ so do not subscribe to it.
 - **Discovery does not reach it.** The radio is on the 192.168.1.x
   segment, the keyer is on 192.168.10.x, and discovery is a raw UDP
   broadcast. It will never be auto-found from where the keyer sits — set
-  it explicitly: `/flex ip 192.168.1.50`. The setting persists in NVS
-  and reconnects across reboots.
+  it explicitly: `/flex ip 192.168.1.50`, or use **Find radio** on the
+  web page (added 2026-09-11), which TCP-scans a /24 from the keyer
+  itself. The setting persists in NVS and reconnects across reboots.
 - **`client program <name>` is rejected** by 1.4.0.0 with error
   `10000002 unknown client program`. Removed — the subscription is what
   matters and it succeeds.
 - Finding it: nothing broadcast, so the radio was located by TCP-scanning
   the shack subnets for port 4992. A Flex answers immediately with
-  `V<version>` / `H<handle>`, which makes it unmistakable.
+  `V<version>` / `H<handle>`, which makes it unmistakable. That manual
+  scan is now built in (Find radio, `Flex::scanStart()`).
 - **Not yet tested: actually sending CW.** `cwx send` keys the
   transmitter and puts a signal on the air under Manoj's callsign, so
   that test needs him present and the radio set up deliberately (dummy
@@ -587,6 +589,41 @@ makes the keyer feel slow.
     pot range is **12-40 WPM**, not the 10-35 default. `/pot 10 35` to
     restore. Speed and mode were also written during the persistence
     test.
+- **2026-09-11 (day)** — **Find radio: a LAN scan for the Flex**, plus the
+  old board brought back.
+  - Manoj had to type the radio's IP: discovery listens for a UDP
+    broadcast and the radio (192.168.1.x) and keyer (192.168.10.x) are on
+    different segments, so it could never hear one. `Flex::scanStart()`
+    sweeps a /24 for TCP 4992 in its own task (core 0, prio 1): six
+    non-blocking connects at a time, 300 ms per batch — lwIP has 16
+    sockets and the firmware already holds several, and a host that cannot
+    get a socket is retried rather than skipped. A host with 4992 open
+    must greet with `V` to count; then `info` gives model and nickname.
+    Web: a Find radio row under Radio IP, `/api/flexscan` POST/GET.
+    Verified on hardware: `192.168.1.50 · FLEX-6600 · 6600` found and
+    adopted in one click.
+  - **Bug caught on hardware, not the stub:** the first build listed the
+    radio with a blank model. The radio's greeting is ~1.4 KB (`V`, `H`,
+    a client-connected message, then radio status), the read buffer was
+    768 bytes, and the read stopped when it filled — before the `info`
+    reply arrived. The buffer now slides.
+  - **Old board (the original ESP32) was stale flash, not dead.** It
+    boot-looped on USB (31 resets in 12 s) and still looped on an
+    external supply — but there as `rst:0x3 SW_RESET`, never reaching
+    `setup()`. A full `pio run -t erase` and reflash fixed it on both
+    supplies. A normal flash only rewrites the regions it touches; old
+    content elsewhere was tripping the bootloader. **Try an erase before
+    retiring a board.** The erase wipes WiFi credentials and all NVS, so
+    it comes back as the setup AP with default settings (txpower 11).
+  - **Memory-play PTT: not reproduced.** After one report of PTT staying
+    on after a memory, the keyer (`/api/state` at 5 Hz) and the radio (a
+    read-only API subscription: interlock + `cwx sent=`) were logged on
+    one clock through 7 memory plays and a paddle session. Every time the
+    radio unkeyed **0.67 s after its last character** — its own CWX
+    `break_in_delay` (782 ms), not us — and the local sidetone copy ended
+    within 0.3–1 s of the radio. The one hang seen was already in progress
+    when logging started (radio TRANSMITTING src=SWCW with the keyer idle,
+    released ~6 s later), so its cause is unknown.
 
 ## Network placement (measured 2026-09-10)
 
@@ -604,7 +641,8 @@ Measured rather than assumed:
   not — that was wrong for this LAN.)
 - **Flex discovery will not.** It is a raw UDP broadcast and is not
   reflected the way mDNS is. If the radio sits on another segment, skip
-  discovery and pin the address with `/flex ip <addr>`.
+  discovery: **Find radio** on the web page scans a /24 over TCP, or pin
+  the address with `/flex ip <addr>`.
 - **MQTT reaches the broker but is rejected `rc=5` (unauthorized)** — so
   `include/secrets.h` still holds the example password, not the real
   `iot` role password. Reachability is not the problem, even across
@@ -743,6 +781,30 @@ against exposing it beyond one.
     not enumerate at all), the devkit's 3V3 regulator under WiFi current
     spikes, a breadboard short, RF ingress on the USB lead during TX.
 
+    **Update 2026-09-11 (day): the ORIGINAL board is back in service**
+    after an erase fixed its boot loop (see What changed), deliberately
+    in the configuration that used to fail: **USB power only, WiFi at
+    full 19 dBm, the original cable**. Through ~10 min of memory plays,
+    paddling and scans it showed no unexplained reset — every restart
+    matched a flash. RSSI −77. Too short to clear it; keep watching
+    `uptime` and `resetreason`.
+
+11u. **OPEN: the web server stalls for 1–2 s at regular intervals** on the
+    old board (2026-09-11): `/api/state` timed out at :03 past the minute
+    for several minutes running, and roughly every 10 s just after boot.
+    That is loop() blocked, and loop() is also what sends the radio
+    `xmit 0` — a stall during keying would read as a late PTT release.
+    Suspect a blocking reconnect (MQTT, whose password is still the
+    placeholder, or `Flex::tryConnect()`'s blocking `tcp.connect`).
+    Unconfirmed. Also noticed: two elements share `id="flexip"` on the
+    page (the Radio IP input and an unused span in the Keying row) —
+    harmless today because the input comes first.
+
+11v. **Find radio defaults to the keyer's own /24**, which is exactly the
+    subnet a routed radio is not on. Manoj typed `192.168.1` and it worked.
+    Voiced, parked at his request: scan own + 192.168.0 + 192.168.1 when
+    blank, or remember the last subnet that found a radio.
+
 11y. **OPEN: the local PTT line releases far too late on the Flex backend.**
     Observed releasing ~20 s after a transmission against a 250 ms tail.
     The radio's own `xmit` released correctly; only GPIO32 hung on. That
@@ -757,6 +819,16 @@ against exposing it beyond one.
     the path that actually uses our `xmit` (buffered text goes via
     `cwx send` and the radio keys itself), so it is the likely source of
     the original stuck-PTT report and it has never been tested.
+
+    **New evidence 2026-09-11: for memories the line barely comes on at
+    all.** Logged at 5 Hz through 7 memory plays, `ptton` was true only
+    for a moment at the start of each, while the radio transmitted for up
+    to 11 s. The line follows `Flex::pending()` = queuedIdx − sentIdx, so
+    pending is collapsing to zero almost at once. Guess, unverified:
+    the `cwx send` reply carries the buffer index of the block's FIRST
+    character, not its last, so the first `cwx sent=` catches up with it.
+    Checking needs a real `cwx send` (it transmits). Matters only with an
+    amp or sequencer on GPIO32.
 
 11z. **OPEN AND ACTIVE: the display hangs the board.** Confirmed
     2026-09-11 — with the OLED enabled the board hangs during display

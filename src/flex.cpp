@@ -26,6 +26,8 @@
 #include "keyer.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <lwip/sockets.h>
+#include <errno.h>
 #include <Preferences.h>
 #include "config.h"
 
@@ -549,6 +551,251 @@ int pending() {
     return 0;
   }
   return (int)d;
+}
+
+}  // namespace Flex
+
+// ============================================================
+//  LAN scan — find a radio that discovery cannot reach
+//
+//  Discovery listens for a UDP broadcast, and broadcasts stop at the subnet
+//  edge: with the keyer on one VLAN and the radio on another it listens
+//  forever. The SmartSDR API is ordinary TCP on 4992, which a router
+//  forwards like anything else, so sweep a /24 for it instead.
+//
+//  Non-blocking connects, a few at a time. lwIP has 16 sockets and the web
+//  server, host link, radio link, MQTT and the discovery listeners already
+//  hold some of them — the window is kept small rather than fast, and a
+//  host that cannot get a socket is retried, not skipped, so the radio can
+//  never be missed for want of one. ~15 s for a /24; in its own task so
+//  loop() and the keyer never wait on it.
+// ============================================================
+
+namespace {
+
+constexpr int      SCAN_WINDOW   = 6;
+constexpr uint32_t SCAN_WAIT_MS  = 300;   // per batch; a LAN answers in <10 ms
+constexpr uint8_t  SCAN_MAX_HITS = 4;
+
+portMUX_TYPE     scanMux = portMUX_INITIALIZER_UNLOCKED;
+volatile bool    scanBusy = false;
+volatile uint8_t scanDone = 0;
+uint8_t          scanNHits = 0;
+Flex::ScanHit    scanList[SCAN_MAX_HITS];
+char             scanPfx[16] = "";
+const char*      scanErr = "";
+
+// Value of key= in an "info" reply — comma-separated, values may be quoted.
+void infoField(const char* s, const char* key, char* out, size_t len) {
+  out[0] = '\0';
+  size_t kl = strlen(key);
+  for (const char* p = s; (p = strstr(p, key)) != nullptr; p++) {
+    if (p != s && p[-1] != ',' && p[-1] != '|' && p[-1] != ' ') continue;
+    if (p[kl] != '=') continue;
+    p += kl + 1;
+    if (*p == '"') p++;
+    size_t n = 0;
+    while (*p && *p != '"' && *p != ',' && *p != '\r' && *p != '\n' &&
+           n + 1 < len)
+      out[n++] = *p++;
+    out[n] = '\0';
+    return;
+  }
+}
+
+// Read into buf until `until` appears or the deadline passes. The radio's
+// greeting is ~1.4 KB (V, H, then a burst of status), bigger than buf, so
+// a full buffer slides rather than stops — keeping a short tail so a
+// marker split across two reads is still seen.
+bool readUntil(int fd, char* buf, size_t len, size_t& have,
+               const char* until, uint32_t deadline) {
+  const size_t keep = 8;
+  while ((int32_t)(millis() - deadline) < 0) {
+    if (have + 1 >= len) {
+      memmove(buf, buf + have - keep, keep);
+      have = keep;
+      buf[have] = '\0';
+    }
+    int r = recv(fd, buf + have, len - 1 - have, 0);
+    if (r > 0) {
+      have += r;
+      buf[have] = '\0';
+      if (strstr(buf, until)) return true;
+    } else if (r == 0) {
+      return false;                     // closed
+    } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      return false;
+    }
+  }
+  return false;
+}
+
+// A host has 4992 open — confirm it is a Flex and learn what it is. The
+// radio greets with "V<version>" the moment the socket opens; "info" gives
+// the model and nickname. Nothing here changes any radio state.
+bool identify(int fd, const char* ip, Flex::ScanHit& h) {
+  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
+  timeval tv{0, 200000};
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+
+  char buf[768];
+  size_t have = 0;
+  buf[0] = '\0';
+  if (!readUntil(fd, buf, sizeof buf, have, "\n", millis() + 800)) return false;
+  if (buf[0] != 'V') return false;      // something else lives on 4992
+
+  memset(&h, 0, sizeof h);
+  strlcpy(h.ip, ip, sizeof h.ip);
+  have = 0;
+  buf[0] = '\0';
+  const char q[] = "C1|info\n";
+  send(fd, q, sizeof q - 1, 0);
+  if (readUntil(fd, buf, sizeof buf, have, "R1|", millis() + 1500)) {
+    // Move the reply to the front so the rest of its line fits behind it
+    // (~370 bytes on a 6600) before looking for the end of it.
+    char* r = strstr(buf, "R1|");
+    have -= r - buf;
+    memmove(buf, r, have + 1);
+    if (!strchr(buf, '\n'))
+      readUntil(fd, buf, sizeof buf, have, "\n", millis() + 600);
+    r = buf;
+    infoField(r, "model", h.model, sizeof h.model);
+    infoField(r, "name", h.name, sizeof h.name);
+    if (!h.name[0]) infoField(r, "callsign", h.name, sizeof h.name);
+  }
+  return true;
+}
+
+void scanTask(void*) {
+  char ip[16];
+  String self = WiFi.localIP().toString();
+  int next = 1, starved = 0;
+
+  while (next <= 254) {
+    int fds[SCAN_WINDOW], n = 0;
+    char ips[SCAN_WINDOW][16];
+
+    while (n < SCAN_WINDOW && next <= 254) {
+      snprintf(ip, sizeof ip, "%s.%d", scanPfx, next);
+      if (self == ip) { next++; continue; }
+      int fd = socket(AF_INET, SOCK_STREAM, 0);
+      if (fd < 0) break;                // out of sockets: run what we have
+      fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+      sockaddr_in a = {};
+      a.sin_family = AF_INET;
+      a.sin_port   = htons(FLEX_API_PORT);
+      inet_pton(AF_INET, ip, &a.sin_addr);
+      if (connect(fd, (sockaddr*)&a, sizeof a) < 0 && errno != EINPROGRESS) {
+        close(fd);
+        next++;
+        continue;
+      }
+      fds[n] = fd;
+      strlcpy(ips[n], ip, sizeof ips[n]);
+      n++;
+      next++;
+    }
+
+    if (n == 0) {
+      // Every socket is taken. Wait for the rest of the firmware to hand
+      // one back; give up after 5 s rather than spin forever.
+      if (++starved > 25) { scanErr = "no free sockets"; break; }
+      vTaskDelay(pdMS_TO_TICKS(200));
+      continue;
+    }
+    starved = 0;
+
+    bool done[SCAN_WINDOW] = {}, open[SCAN_WINDOW] = {};
+    int left = n;
+    uint32_t t0 = millis();
+    while (left) {
+      uint32_t el = millis() - t0;
+      if (el >= SCAN_WAIT_MS) break;
+      fd_set w;
+      FD_ZERO(&w);
+      int mx = -1;
+      for (int i = 0; i < n; i++)
+        if (!done[i]) { FD_SET(fds[i], &w); if (fds[i] > mx) mx = fds[i]; }
+      timeval tv{0, (long)(SCAN_WAIT_MS - el) * 1000};
+      if (select(mx + 1, nullptr, &w, nullptr, &tv) <= 0) break;
+      for (int i = 0; i < n; i++) {
+        if (done[i] || !FD_ISSET(fds[i], &w)) continue;
+        int err = 0;
+        socklen_t l = sizeof err;
+        getsockopt(fds[i], SOL_SOCKET, SO_ERROR, &err, &l);
+        done[i] = true;
+        open[i] = (err == 0);
+        left--;
+      }
+    }
+
+    for (int i = 0; i < n; i++) {
+      Flex::ScanHit h;
+      if (open[i] && identify(fds[i], ips[i], h)) {
+        Log::printf("[FLEX] scan: %s at %s (%s)\n", h.model, h.ip, h.name);
+        portENTER_CRITICAL(&scanMux);
+        if (scanNHits < SCAN_MAX_HITS) scanList[scanNHits++] = h;
+        portEXIT_CRITICAL(&scanMux);
+      }
+      close(fds[i]);
+    }
+    scanDone = next - 1;
+  }
+
+  scanDone = 254;
+  Log::printf("[FLEX] scan of %s.x done — %u radio(s)%s%s\n", scanPfx,
+              scanNHits, scanErr[0] ? ", " : "", scanErr);
+  scanBusy = false;
+  vTaskDelete(nullptr);
+}
+
+}  // namespace
+
+namespace Flex {
+
+bool scanStart(const char* prefix) {
+  if (scanBusy || WiFi.status() != WL_CONNECTED) return false;
+  unsigned a, b, c;
+  char pfx[16];
+  if (prefix && *prefix) {
+    // Three octets; anything after them ("192.168.1.0/24", ".x") is ignored.
+    if (sscanf(prefix, "%u.%u.%u", &a, &b, &c) != 3 || a > 255 || b > 255 ||
+        c > 255)
+      return false;
+  } else {
+    IPAddress me = WiFi.localIP();
+    a = me[0]; b = me[1]; c = me[2];
+  }
+  snprintf(pfx, sizeof pfx, "%u.%u.%u", a, b, c);
+
+  portENTER_CRITICAL(&scanMux);
+  scanNHits = 0;
+  portEXIT_CRITICAL(&scanMux);
+  strlcpy(scanPfx, pfx, sizeof scanPfx);
+  scanErr  = "";
+  scanDone = 0;
+  scanBusy = true;
+  Log::printf("[FLEX] scanning %s.1-254 for port %d\n", scanPfx, FLEX_API_PORT);
+  // Core 0, lowest priority: the keyer runs on core 1 and must not notice.
+  if (xTaskCreatePinnedToCore(scanTask, "flexscan", 6144, nullptr, 1,
+                              nullptr, 0) != pdPASS) {
+    scanBusy = false;
+    return false;
+  }
+  return true;
+}
+
+bool    scanRunning() { return scanBusy; }
+uint8_t scanTried()   { return scanDone; }
+String  scanNet()     { return String(scanPfx); }
+String  scanError()   { return String(scanErr); }
+
+uint8_t scanHits(ScanHit* out, uint8_t max) {
+  portENTER_CRITICAL(&scanMux);
+  uint8_t n = scanNHits < max ? scanNHits : max;
+  for (uint8_t i = 0; i < n; i++) out[i] = scanList[i];
+  portEXIT_CRITICAL(&scanMux);
+  return n;
 }
 
 }  // namespace Flex

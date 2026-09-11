@@ -24,6 +24,7 @@
 #include "fsk.h"
 #include "memories.h"
 #include "winkeyer.h"
+#include "flex.h"
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
@@ -191,8 +192,13 @@ legend[title]{cursor:help}
 <div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
-<div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically. Leave blank to use discovery.">Radio IP</label>
+<div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically — use Find radio below. Leave blank to use discovery.">Radio IP</label>
   <input type="text" id="flexip" style="width:130px" placeholder="auto (discovery)"></div>
+<div class="row flexonly"><label title="Discovery only hears a radio on the keyer's own subnet — it listens for a UDP broadcast, and routers do not pass those between subnets or VLANs. SCAN tries every address in one /24 for the radio's API port (TCP 4992) instead, which does cross a router, and lists what answers; click one to use it. Leave the box blank to scan the keyer's own subnet, or type the first three numbers of the radio's (e.g. 192.168.1). Takes about 15 seconds. Read-only: it asks each radio what it is and disconnects.">Find radio</label>
+  <input type="text" id="scannet" style="width:100px">
+  <button onclick="scan()">SCAN</button>
+  <span class="val" id="scanState"></span>
+  <span id="scanHits"></span></div>
 <div class="row flexonly"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
 <div class="row flexonly"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
@@ -264,6 +270,21 @@ function buildMems(list){
       +'<button onclick="memPlay('+n+')">PLAY</button></div>';}).join('');
   list.forEach((t,i)=>$('m'+(i+1)).value=t);
 }
+function esc(t){return String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';')}
+async function scan(){
+  const r=await fetch('/api/flexscan?net='+encodeURIComponent($('scannet').value.trim()),{method:'POST'});
+  note(await r.text(),!r.ok); if(r.ok) pollScan();
+}
+async function pollScan(){
+  let j;try{j=await(await fetch('/api/flexscan')).json()}catch(e){setTimeout(pollScan,1000);return}
+  $('scanState').textContent=j.running?('scanning '+j.net+'.x \u2014 '+j.tried+'/254')
+    :j.err?('stopped: '+j.err):j.hits.length?'':'no radio on '+j.net+'.x';
+  $('scanHits').innerHTML=j.hits.map(h=>'<button onclick="useRadio(\''+esc(h.ip)+'\')">'
+    +esc(h.ip)+(h.model?' &middot; '+esc(h.model):'')+(h.name?' &middot; '+esc(h.name):'')
+    +'</button>').join(' ');
+  if(j.running) setTimeout(pollScan,700);
+}
+function useRadio(ip){$('flexip').value=ip;set('flexip',ip);note('radio IP set to '+ip)}
 function led(id,on,warn){const e=$(id);e.className='led'+(on?(warn?' warn':' on'):'')}
 async function refresh(){
   let s;try{s=await(await fetch('/api/state')).json()}catch(e){return}
@@ -294,6 +315,7 @@ async function refresh(){
   }
   $('flexbind').checked=s.flex.bind; $('flexxmit').checked=s.flex.xmit;
   if(editing!=='flexip') $('flexip').value=s.flex.ip||'';
+  if(s.ip) $('scannet').placeholder=s.ip.split('.').slice(0,3).join('.');
   {
     const u = s.uptime|0;
     const t = u < 90 ? u + 's' : u < 5400 ? Math.round(u/60) + 'm'
@@ -455,6 +477,43 @@ void handleFsk() {
   server.send(200, "text/plain", String("fsk: ") + t);
 }
 
+// Radio finder. POST starts a sweep of one /24 for the SmartSDR API port;
+// GET reports progress and what answered. Polled only while a scan runs,
+// so it stays out of /api/state and that document's size budget.
+void handleScanStart() {
+  String net = server.arg("net");
+  net.trim();
+  if (Flex::scanRunning()) {
+    server.send(409, "text/plain", "a scan is already running");
+    return;
+  }
+  if (!Flex::scanStart(net.c_str())) {
+    server.send(400, "text/plain", "subnet must be three octets, e.g. 192.168.1");
+    return;
+  }
+  server.send(200, "text/plain",
+              "scanning " + Flex::scanNet() + ".1-254 for a FlexRadio");
+}
+
+void handleScanState() {
+  DynamicJsonDocument doc(768);
+  doc["running"] = Flex::scanRunning();
+  doc["tried"]   = Flex::scanTried();
+  doc["net"]     = Flex::scanNet();
+  doc["err"]     = Flex::scanError();
+  JsonArray a = doc.createNestedArray("hits");
+  Flex::ScanHit h[4];
+  uint8_t n = Flex::scanHits(h, 4);
+  for (uint8_t i = 0; i < n; i++) {
+    JsonObject o = a.createNestedObject();
+    o["ip"] = h[i].ip; o["model"] = h[i].model; o["name"] = h[i].name;
+  }
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
 void handleTune() {
   bool on = server.arg("v") == "on";
   Keyer::tune(on);
@@ -479,6 +538,8 @@ void begin() {
   server.on("/api/tune",  HTTP_POST, handleTune);
   server.on("/api/fsk",   HTTP_POST, handleFsk);
   server.on("/api/mem",   HTTP_POST, handleMem);
+  server.on("/api/flexscan", HTTP_POST, handleScanStart);
+  server.on("/api/flexscan", HTTP_GET,  handleScanState);
   server.onNotFound([]() { server.send(404, "text/plain", "no such page"); });
   // Listening is deferred to poll(): WiFiManager is non-blocking, so at
   // setup() time there is usually no IP to bind to yet. Net::poll() brings

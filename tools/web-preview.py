@@ -53,6 +53,21 @@ STATE = {
 }
 
 
+# Fake radio finder: a sweep that takes ~6 s and finds one radio.
+SCAN = {"t0": 0.0, "net": ""}
+
+
+def scan_state():
+    import time
+    if not SCAN["t0"]:
+        return {"running": False, "tried": 0, "net": "", "err": "", "hits": []}
+    tried = min(254, int((time.time() - SCAN["t0"]) * 42))
+    hits = [{"ip": SCAN["net"] + ".50", "model": "FLEX-6600", "name": "SHACK"}] \
+        if tried >= 50 else []
+    return {"running": tried < 254, "tried": tried, "net": SCAN["net"],
+            "err": "", "hits": hits}
+
+
 def extract_page():
     src = open(WEB_CPP).read()
     m = re.search(r'R"HTML\((.*?)\)HTML"', src, re.S)
@@ -71,13 +86,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path.startswith("/api/state"):
+        if self.path.startswith("/api/flexscan"):
+            self._send(json.dumps(scan_state()).encode(), "application/json")
+        elif self.path.startswith("/api/state"):
             self._send(json.dumps(STATE).encode(), "application/json")
         else:
             # Re-read every request, so editing web.cpp and reloading is enough.
             self._send(extract_page(), "text/html")
 
     def do_POST(self):
+        if self.path.startswith("/api/flexscan"):
+            import time, urllib.parse
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            net = (q.get("net", [""])[0] or STATE["ip"].rsplit(".", 1)[0])
+            SCAN.update(t0=time.time(), net=".".join(net.split(".")[:3]))
+            self._send(f"scanning {SCAN['net']}.1-254 (preview stub)".encode(),
+                       "text/plain")
+            return
         self._send(b"ok (preview stub)", "text/plain")
 
     def log_message(self, *a):
