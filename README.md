@@ -560,6 +560,8 @@ buffered text.
 ./tools/wk-timing.py --text "CQ TEST"                # timestamped status
 ./tools/flex-check.py                                # why isn't it keying?
 ./tools/flex-check.py --key                          # ...and key it (TRANSMITS)
+./tools/flex-ptt-watch.py --keyer <ip> --radio <ip>  # keyer + radio PTT on one clock
+./tools/boot-listen.py /dev/cu.usbserial-0001        # is it boot-looping?
 ```
 
 **`flex-check.py` is the first thing to run when the Flex will not key.**
@@ -701,6 +703,8 @@ tools/wk-test.py       protocol test harness
 tools/wk-timing.py     timestamped status — "not sent" vs "reported late"
 tools/flex-check.py    Flex prerequisite diagnostic + keying test
 tools/web-preview.py   serve the settings page locally, before flashing
+tools/flex-ptt-watch.py  keyer state + radio interlock/cwx, one timeline
+tools/boot-listen.py   count ROM resets on the serial port (needs pyserial)
 flash.sh / monitor.sh  serial-port pickers (never pin the port)
 install.py             toolchain bootstrap, macOS/Pi branch
 ```

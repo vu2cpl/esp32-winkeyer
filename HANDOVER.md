@@ -316,6 +316,20 @@ mode, GUI client, interlock, break-in) and with `--key` drives a keying
 test and watches interlock for proof of transmission. Written after a
 session lost hours to "no slice in use", which the radio never mentions.
 
+**`tools/flex-ptt-watch.py` — use it for any stuck or late PTT report.**
+It polls the keyer's `/api/state` at 5 Hz and holds a read-only API
+session on the radio (subscriptions only — it cannot key), printing both
+on one clock: `busy`/`key`/`ptton`/`xmit` changes against interlock state
+and `cwx sent=` progress. It is what showed, 2026-09-11, that the radio
+unkeys 0.67 s after its last character on every memory (its own CWX
+break-in delay). A run of `err TimeoutError` on the KEYER side is loop()
+stalling, not the network.
+
+**`tools/boot-listen.py`** counts `rst:` lines at 115200 without driving
+DTR/RTS. Repeating `POWERON_RESET` points at the supply; repeating
+`SW_RESET` with no app output points at stale flash — **erase and reflash
+before retiring the board**. Needs pyserial (not in PlatformIO's penv).
+
 **`tools/wk-timing.py`** timestamps each status byte and counts KEYDOWN
 against the text's real element count. Fixed drain windows produce false
 negatives when a delayed burst lands outside its window — this was
