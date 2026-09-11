@@ -667,8 +667,9 @@ makes the keyer feel slow.
     `TRANSMITTING src=SW` until an `xmit 0` was sent from another API
     client. The radio's interlock reports `timeout=0` — no TX time-out —
     so nothing radio-side releases it. The keyer's own backstops die with
-    the keyer. See 11w/11x: the second outage was a POWERON boot loop
-    (29 resets in 8 s) while paddling, i.e. the known brownout.
+    the keyer. The second outage was a reset loop while paddling (29
+    `rst:` lines in 8 s) — cause OPEN, see 11x. It is **not** the 11w
+    brownout: the board has an external supply as well as USB.
 
 ## Network placement (measured 2026-09-10)
 
@@ -835,11 +836,18 @@ against exposing it beyond one.
     `uptime` and `resetreason`.
 
     **Recurred 2026-09-12:** while paddling on the Flex backend the board
-    went into a POWERON boot loop (29 `rst:` lines in 8 s, caught with
-    DTR/RTS held off), and earlier the same session dropped off the
+    went into a reset loop, and earlier the same session dropped off the
     network mid-over. Both times the radio was left transmitting. Manoj
     also saw the new keying LED flash once then go dark — the reset, not
-    the LED. Whether the 470–1000 µF capacitor (11w) is fitted: ask.
+    the LED. **Not a supply sag: the board runs from an external supply
+    plus USB to the Mac.** The loop was 29 `rst:` lines in ~2 KB of output
+    — ~70 bytes each, barely one ROM banner line, so the chip was being
+    reset before it could boot. That points at something driving **EN**
+    (an EN reset also reports POWERON): RF on EN / the USB lead while
+    transmitting, or the CP2102's DTR/RTS auto-reset being toggled. The
+    single `POWERON` actually read was most likely caused by opening the
+    port to read it. Next: log the ROM `rst:` lines with DTR/RTS held off
+    through a paddle session until it happens again.
 
 11u. **OPEN: the web server stalls for 1–2 s at regular intervals** on the
     old board (2026-09-11): `/api/state` timed out at :03 past the minute
