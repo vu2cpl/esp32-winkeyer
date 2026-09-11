@@ -451,6 +451,18 @@ void setup() {
   // Ask the core to reconnect on its own as well. Belt and braces: the
   // explicit retry in loop() is what actually guarantees it.
   WiFi.setAutoReconnect(true);
+  // Paddle keying sends a TCP packet per key EDGE — roughly 20 a second at
+  // 25 WPM — and each one is a WiFi transmit burst. Those bursts are short,
+  // sharp current draws, and on marginal USB power they brown the chip out:
+  // an hour idle is fine, two characters on the paddle is not, and the
+  // reset reason is power-on with no panic and no watchdog.
+  //
+  // Halving the transmit power roughly halves that peak draw. At the -62
+  // dBm this board sees there is signal to spare. The real fix is a bulk
+  // capacitor on 3V3 and a supply that can take the transient.
+  WiFi.setTxPower(WIFI_POWER_11dBm);
+  Log::printf("[WiFi] tx power set to %d (quarter-dBm units)\n",
+              (int)WiFi.getTxPower());
 
   Net::begin();
   Flex::begin();
@@ -503,8 +515,18 @@ void loop() {
   // work.
   if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
     static uint8_t lastWpmToRadio = 0;
-    uint8_t w = Keyer::getWpm();
-    if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
+    if (!Flex::connected()) {
+      // Flex::setWpm() drops the command when the link is down. Caching it
+      // as sent anyway meant the speed restored from NVS at boot — before
+      // the radio finishes connecting — was never delivered and never
+      // retried: the keyer said 20 WPM while the radio sent at whatever it
+      // had from a previous session. Forget it, so it is pushed again the
+      // moment the link is up.
+      lastWpmToRadio = 0;
+    } else {
+      uint8_t w = Keyer::getWpm();
+      if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
+    }
   }
 
   // Get back on the network by ourselves.
