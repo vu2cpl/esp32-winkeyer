@@ -460,9 +460,9 @@ void setup() {
   // Halving the transmit power roughly halves that peak draw. At the -62
   // dBm this board sees there is signal to spare. The real fix is a bulk
   // capacitor on 3V3 and a supply that can take the transient.
-  WiFi.setTxPower(WIFI_POWER_11dBm);
-  Log::printf("[WiFi] tx power set to %d (quarter-dBm units)\n",
-              (int)WiFi.getTxPower());
+  { char m[80]; Settings::apply("txpower",
+      String(Settings::txPower()).c_str(), m, sizeof m);
+    Log::printf("[WiFi] %s\n", m); }
 
   Net::begin();
   Flex::begin();

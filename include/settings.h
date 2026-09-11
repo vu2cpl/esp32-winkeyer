@@ -27,6 +27,7 @@ void begin();   // restore everything from NVS. Call after the modules' begin().
 uint32_t hostBaud();
 bool     quietBoot();   // true when the link is too slow for a chatty boot
 bool     displayEnabled();   // needed before Display::begin()
+uint32_t txPower();          // WiFi transmit power in dBm
 
 // Why the board last restarted, as a short string. Captured once at boot
 // and served from RAM: the reason is printed to serial exactly once, and

@@ -164,6 +164,18 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
+<div class="row"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
+  <select id="txpower">
+    <option value="19">19 dBm (full)</option>
+    <option value="17">17 dBm</option>
+    <option value="15">15 dBm</option>
+    <option value="13">13 dBm</option>
+    <option value="11">11 dBm (low draw)</option>
+    <option value="8">8 dBm</option>
+    <option value="5">5 dBm</option>
+    <option value="2">2 dBm (minimum)</option>
+  </select>
+  <span class="val" id="rssiVal"></span></div>
 <div class="row"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
   <select id="baud">
     <option value="1200">1200 8N2 &mdash; WinKeyer standard</option>
@@ -301,6 +313,7 @@ async function refresh(){
       +'line on GPIO33.';
   const fill={wpm:s.wpm,sthz:s.sthz,mode:s.mode,potmin:s.potmin,potmax:s.potmax,
     backend:s.backend,dispctl:s.dispctl,baud:String(s.baud),
+    txpower:String(s.txpower),
     pecho:(s.pecho==2?'auto':(s.pecho==1?'on':'off')),
     // The board sends a float, so 45.45 arrives as 45.45000076 and matches
     // no <option value>, leaving the select blank. Round to hundredths.
@@ -312,6 +325,7 @@ async function refresh(){
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
   $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
+  $('rssiVal').textContent = s.rssi + ' dBm rx';
   buildMems(s.mems||[]);
   if(editing!=='call') $('call').value=s.call||'';
   $('fskinv').checked=s.fskinv; $('fskdid').checked=s.fskdid;
@@ -354,7 +368,7 @@ $('call').onfocus=()=>editing='call';
 $('call').onblur =()=>{editing=null;post('/api/mem?call='+encodeURIComponent($('call').value))};
 $('flexip').onfocus=()=>editing='flexip';
 $('flexip').onblur =()=>{editing=null;set('flexip',$('flexip').value)};
-for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio','flexcmd'])
+for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio','flexcmd','txpower'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid',
                  'flex','flexbind','flexxmit'])

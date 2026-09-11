@@ -407,6 +407,37 @@ baud against a theoretical 2.81 s, and 1.77 s at 75 baud against 1.70 s.
 The 14-character message occupies 17 code times, which is the two shift
 characters `2` forces.
 
+## Power — read this if the keyer resets while you key
+
+The ESP32 draws its heaviest current in short WiFi transmit bursts, and
+paddle keying on the Flex backend sends a packet per key edge — roughly
+twenty bursts a second at 25 WPM. On a marginal supply the 3.3 V rail sags
+through those and the chip **browns out and restarts**.
+
+It is **intermittent**, which is what makes it hard to pin: in testing the
+same board and cable browned out within two characters of keying on one
+run and survived minutes of heavy paddling on the next. It does not track
+any one cable or power setting reliably — it tips over when several small
+things happen to line up (connector contact resistance, other load on the
+same USB bus or hub, how the cable is seated).
+
+How to recognise it: **the web page footer, or `/api/state`, reports
+`last reset: BROWNOUT (power)`.** That comes from the chip's own brownout
+detector, so it is conclusive. (A plain `power-on` is not — opening the
+serial port pulls EN on this devkit and reports the same.)
+
+What to do about it, in order of robustness:
+
+1. **Fit a 470–1000 µF capacitor across 3V3 and GND**, short leads, at the
+   board. This is the real fix: it adds margin without needing to know
+   which factor is marginal on a given day.
+2. **Power from a decent 5 V supply on VIN** rather than USB. An external
+   supply held full power through heavy keying in testing.
+3. **Lower the WiFi transmit power** — `/txpower 11`, or *WiFi power* on the
+   web page. That roughly halves the burst current. It costs range (it
+   affects how well the access point hears you, not how well you hear it),
+   so treat it as a workaround rather than a cure.
+
 ## Bench-testing the key and PTT lines
 
 The four outputs are plain active-high 3.3 V GPIOs, so an LED and a

@@ -19,6 +19,7 @@
 #include "net.h"
 #include "display.h"
 #include "fsk.h"
+#include <WiFi.h>
 #include <Preferences.h>
 
 namespace {
@@ -126,6 +127,8 @@ bool loadBackend() {
 const char* resetWhy = "?";
 void        setResetReason(const char* why) { resetWhy = why; }
 const char* resetReason() { return resetWhy; }
+
+uint32_t txPower() { return loadU32("txpower", 11); }
 
 uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
 
@@ -357,6 +360,27 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     WinKeyer::setMonitor(b); saveU32("monitor", b);
     snprintf(msg, msgLen, "sidetone monitor=%s", b ? "on" : "off");
 
+  } else if (!strcasecmp(key, "txpower")) {
+    // dBm. Lower draws less current in each WiFi transmit burst, which is
+    // what browns out a board on a marginal USB supply — paddle keying
+    // sends a packet per key edge, ~20 bursts a second. Lower also means
+    // less range, so this is a trade, not a free win.
+    static const struct { int dbm; wifi_power_t p; } LEVELS[] = {
+      { 2, WIFI_POWER_2dBm},   { 5, WIFI_POWER_5dBm},   { 8, WIFI_POWER_8_5dBm},
+      {11, WIFI_POWER_11dBm},  {13, WIFI_POWER_13dBm},  {15, WIFI_POWER_15dBm},
+      {17, WIFI_POWER_17dBm},  {19, WIFI_POWER_19_5dBm},
+    };
+    for (auto& l : LEVELS) {
+      if (n == l.dbm) {
+        WiFi.setTxPower(l.p);
+        saveU32("txpower", n);
+        snprintf(msg, msgLen, "wifi tx power=%d dBm (now %d quarter-dBm)",
+                 n, (int)WiFi.getTxPower());
+        return true;
+      }
+    }
+    return fail("txpower: 2|5|8|11|13|15|17|19 dBm");
+
   } else if (!strcasecmp(key, "baud")) {
     // Only rates a WinKeyer host or a human console would actually use.
     const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
@@ -428,6 +452,7 @@ void toJson(JsonDocument& doc) {
   doc["tail"]    = Keyer::getPttTailMs();
   doc["flextail"]= Flex::pttTailMs();   // proves the two are in step
   doc["baud"]    = hostBaud();
+  doc["txpower"] = txPower();
   doc["resetreason"] = resetReason();
   doc["uptime"]      = (uint32_t)(millis() / 1000);
   doc["echo"]    = WinKeyer::echoEnabled();

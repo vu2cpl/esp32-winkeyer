@@ -706,6 +706,30 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
+11w. **The resets were BROWNOUTS, and they are intermittent** (2026-09-11).
+    `last reset: BROWNOUT (power)` was reported by the chip's own detector,
+    so the diagnosis is not in doubt — but the trigger is. It was first
+    read as deterministic: paddle keying at full WiFi power died, reduced
+    power survived, an external supply survived, one cable was worse than
+    another. Then the same board and cable ran minutes of heavy paddling at
+    full power on USB with no reset. **Do not trust the earlier table.** It
+    was built on too few runs, and I told Manoj the capacitor had become
+    optional on the strength of it; that was wrong.
+
+    Mechanism: paddle keying on the Flex backend sends one TCP packet per
+    key EDGE — about twenty WiFi transmit bursts a second — and the rail
+    sags through them when the margin is thin. The margin varies with
+    contact resistance, other load on the USB bus, cable seating.
+
+    **Fix: 470–1000 µF across 3V3/GND at the board**, precisely because it
+    works without knowing which factor is marginal. `/txpower` is now a
+    persisted runtime setting (2–19 dBm) as a workaround and a diagnostic
+    lever. Still worth doing in firmware: coalesce key edges into fewer TCP
+    writes, which would cut the burst rate at the source.
+
+    The earlier cable swap and ESP32 swap were most likely both chasing
+    this, which is why neither gave a clean answer.
+
 11x. **HARDWARE: the board was swapped, and the cause is still unproven.**
     The original ESP32 began spontaneously restarting, always reporting
     `power-on` — never a panic, never a watchdog. Software cannot cause a
