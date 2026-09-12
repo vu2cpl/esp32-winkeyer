@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 830" width="1100" height="830" font-family="ui-monospace,Menlo,Consolas,monospace">
+  <rect width="1100" height="830" fill="#ffffff"/>
+
+  <text x="30" y="38" font-size="20" font-weight="bold" fill="#111">ESP32 WinKeyer — wiring, including the debug console</text>
+  <text x="30" y="60" font-size="12" fill="#555">VU2CPL · classic ESP32 devkit (ESP-WROOM-32, CP2102, USB-C) · pins from include/pins.h</text>
+
+  <!-- ================= ESP32 ================= -->
+  <rect x="400" y="120" width="300" height="430" rx="10" fill="#f4f4f6" stroke="#333" stroke-width="2"/>
+  <text x="550" y="148" font-size="16" font-weight="bold" text-anchor="middle" fill="#111">ESP32 devkit</text>
+  <text x="550" y="166" font-size="11" text-anchor="middle" fill="#666">ESP-WROOM-32 · 38-pin</text>
+
+  <!-- left pin labels -->
+  <text x="412" y="200" font-size="12" fill="#111">GPIO25  dit</text>
+  <text x="412" y="222" font-size="12" fill="#111">GPIO26  dah</text>
+  <text x="412" y="252" font-size="12" fill="#111">GPIO34  pot wiper</text>
+  <text x="412" y="282" font-size="12" fill="#111">GPIO4   sidetone</text>
+  <text x="412" y="312" font-size="12" fill="#111">GPIO21  SDA</text>
+  <text x="412" y="330" font-size="12" fill="#111">GPIO22  SCL</text>
+  <text x="412" y="360" font-size="12" fill="#111">GPIO2   LED (key)</text>
+
+  <!-- right pin labels -->
+  <text x="688" y="200" font-size="12" text-anchor="end" fill="#111">KEY 1  GPIO33</text>
+  <text x="688" y="222" font-size="12" text-anchor="end" fill="#111">PTT 1  GPIO32</text>
+  <text x="688" y="248" font-size="12" text-anchor="end" fill="#111">KEY 2  GPIO18</text>
+  <text x="688" y="270" font-size="12" text-anchor="end" fill="#111">PTT 2  GPIO19</text>
+  <text x="688" y="296" font-size="12" text-anchor="end" fill="#111">FSK    GPIO27</text>
+  <text x="688" y="330" font-size="12" text-anchor="end" fill="#111">TXD    GPIO1</text>
+  <text x="688" y="348" font-size="12" text-anchor="end" fill="#111">RXD    GPIO3</text>
+  <text x="688" y="392" font-size="12" text-anchor="end" fill="#111">USB-C (CP2102)</text>
+  <text x="688" y="430" font-size="12" text-anchor="end" fill="#111">5V / VIN</text>
+  <text x="688" y="448" font-size="12" text-anchor="end" fill="#111">GND</text>
+  <text x="550" y="500" font-size="12" text-anchor="middle" fill="#0a7">WiFi</text>
+  <text x="550" y="520" font-size="11" text-anchor="middle" fill="#666">winkeyer.local</text>
+
+  <!-- ================= paddle ================= -->
+  <rect x="60" y="170" width="210" height="70" rx="8" fill="#fff" stroke="#333"/>
+  <text x="165" y="196" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">Iambic paddle</text>
+  <text x="165" y="216" font-size="11" text-anchor="middle" fill="#555">tip=dit ring=dah sleeve=GND</text>
+  <text x="165" y="232" font-size="11" text-anchor="middle" fill="#555">internal pull-ups, no parts needed</text>
+  <line x1="270" y1="196" x2="400" y2="196" stroke="#333" stroke-width="1.5"/>
+  <line x1="270" y1="214" x2="400" y2="218" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= pot ================= -->
+  <rect x="60" y="262" width="210" height="62" rx="8" fill="#fff" stroke="#333"/>
+  <text x="165" y="285" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">Speed pot 10k lin</text>
+  <text x="165" y="303" font-size="11" text-anchor="middle" fill="#555">3V3 — wiper — GND</text>
+  <text x="165" y="318" font-size="11" text-anchor="middle" fill="#555">100nF wiper→GND (PWM hash)</text>
+  <line x1="270" y1="290" x2="400" y2="250" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= piezo ================= -->
+  <rect x="60" y="342" width="210" height="46" rx="8" fill="#fff" stroke="#333"/>
+  <text x="165" y="363" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">Passive piezo</text>
+  <text x="165" y="379" font-size="11" text-anchor="middle" fill="#555">sidetone, to GND</text>
+  <line x1="270" y1="364" x2="400" y2="280" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= display ================= -->
+  <rect x="60" y="406" width="210" height="74" rx="8" fill="#fff" stroke="#333"/>
+  <text x="165" y="428" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">I²C panel</text>
+  <text x="165" y="446" font-size="11" text-anchor="middle" fill="#555">OLED SH1106/SSD1306 0x3C</text>
+  <text x="165" y="461" font-size="11" text-anchor="middle" fill="#555">or HD44780 backpack 0x27</text>
+  <text x="165" y="475" font-size="11" text-anchor="middle" fill="#a00">LCD needs 5V — level-shift SDA/SCL</text>
+  <line x1="270" y1="440" x2="400" y2="320" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= rig ================= -->
+  <rect x="830" y="170" width="230" height="120" rx="8" fill="#fff" stroke="#333"/>
+  <text x="945" y="194" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">Rig 1 / Rig 2 (wired)</text>
+  <text x="945" y="214" font-size="11" text-anchor="middle" fill="#555">KEY + PTT via PC817 opto</text>
+  <text x="945" y="230" font-size="11" text-anchor="middle" fill="#555">(330 Ω) or NPN — active high</text>
+  <text x="945" y="252" font-size="11" text-anchor="middle" fill="#555">FSK line for RTTY</text>
+  <text x="945" y="274" font-size="11" text-anchor="middle" fill="#777">not used on the Flex backend</text>
+  <line x1="700" y1="196" x2="830" y2="196" stroke="#333" stroke-width="1.5"/>
+  <line x1="700" y1="218" x2="830" y2="210" stroke="#333" stroke-width="1.5"/>
+  <line x1="700" y1="248" x2="830" y2="232" stroke="#333" stroke-width="1.5"/>
+  <line x1="700" y1="270" x2="830" y2="246" stroke="#333" stroke-width="1.5"/>
+  <line x1="700" y1="296" x2="830" y2="258" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= Mac: logger path ================= -->
+  <rect x="830" y="340" width="230" height="96" rx="8" fill="#eef6ff" stroke="#1a5fb4" stroke-width="2"/>
+  <text x="945" y="364" font-size="13" font-weight="bold" text-anchor="middle" fill="#1a5fb4">Mac — logger</text>
+  <text x="945" y="384" font-size="11" text-anchor="middle" fill="#333">RUMlogNG, WinKeyer</text>
+  <text x="945" y="400" font-size="11" text-anchor="middle" fill="#333">1200 baud 8N2</text>
+  <text x="945" y="420" font-size="11" text-anchor="middle" fill="#333">/dev/cu.usbserial-0001</text>
+  <line x1="700" y1="392" x2="830" y2="392" stroke="#1a5fb4" stroke-width="2.5"/>
+  <text x="765" y="386" font-size="11" text-anchor="middle" fill="#1a5fb4">USB-C</text>
+
+  <!-- ================= FTDI: debug console ================= -->
+  <rect x="770" y="530" width="300" height="150" rx="8" fill="#fff8e6" stroke="#b06000" stroke-width="2"/>
+  <text x="920" y="554" font-size="13" font-weight="bold" text-anchor="middle" fill="#b06000">Debug console — 2nd USB-serial</text>
+  <text x="920" y="574" font-size="11" text-anchor="middle" fill="#333">FT232R, 3.3 V logic · listen-only</text>
+  <text x="790" y="600" font-size="12" fill="#111">FTDI RX  ←── ESP32 TXD (GPIO1)</text>
+  <text x="790" y="620" font-size="12" fill="#111">FTDI GND ←── ESP32 GND</text>
+  <text x="790" y="640" font-size="12" fill="#a00">FTDI TX  ✗ NOT CONNECTED</text>
+  <text x="790" y="660" font-size="10.5" fill="#555">two TX on one RXD would fight; and nothing</text>
+  <text x="790" y="674" font-size="10.5" fill="#555">can then be injected into the logger's session</text>
+  <line x1="700" y1="330" x2="740" y2="330" stroke="#b06000" stroke-width="2.5"/>
+  <line x1="740" y1="330" x2="740" y2="590" stroke="#b06000" stroke-width="2.5"/>
+  <line x1="740" y1="590" x2="770" y2="590" stroke="#b06000" stroke-width="2.5"/>
+  <circle cx="700" cy="330" r="4" fill="#b06000"/>
+
+  <!-- ================= power ================= -->
+  <rect x="830" y="456" width="230" height="66" rx="8" fill="#fff" stroke="#333"/>
+  <text x="945" y="478" font-size="13" font-weight="bold" text-anchor="middle" fill="#111">Power — USB-C only</text>
+  <text x="945" y="496" font-size="11" text-anchor="middle" fill="#555">as tested; no external supply, no mods</text>
+  <text x="945" y="512" font-size="11" text-anchor="middle" fill="#555">5V→VIN + 470–1000 µF: only if it browns out</text>
+  <line x1="700" y1="434" x2="830" y2="480" stroke="#333" stroke-width="1.5"/>
+
+  <!-- ================= network ================= -->
+  <rect x="300" y="572" width="400" height="122" rx="8" fill="#eefbf2" stroke="#0a7" stroke-width="2"/>
+  <text x="500" y="596" font-size="13" font-weight="bold" text-anchor="middle" fill="#067">Shack LAN (WiFi)</text>
+  <text x="500" y="618" font-size="11" text-anchor="middle" fill="#333">FlexRadio API — TCP 4992 (keying, cwx, interlock)</text>
+  <text x="500" y="636" font-size="11" text-anchor="middle" fill="#333">Settings page — TCP 80 · WinKeyer — TCP 8088</text>
+  <text x="500" y="654" font-size="11" text-anchor="middle" fill="#333">MQTT — TCP 1883</text>
+  <text x="500" y="678" font-size="10.5" text-anchor="middle" fill="#a00">8088 and 80 are unauthenticated — trusted LAN only</text>
+  <line x1="500" y1="550" x2="500" y2="572" stroke="#0a7" stroke-width="2.5"/>
+
+  <!-- ================= the warning ================= -->
+  <rect x="30" y="716" width="1040" height="94" rx="8" fill="#fff0f0" stroke="#a00" stroke-width="1.5"/>
+  <text x="44" y="740" font-size="12" font-weight="bold" fill="#a00">Why there are two serial paths</text>
+  <text x="44" y="761" font-size="11" fill="#333">The devkit's CP2102 drives EN and IO0 through the auto-reset transistors. RTS asserted with DTR</text>
+  <text x="44" y="779" font-size="11" fill="#333">deasserted holds the ESP32 in reset — measured. A logger on that port can therefore stop the keyer</text>
+  <text x="44" y="797" font-size="11" fill="#333">mid-over, leaving a networked radio transmitting. The second adapter reads the console without that risk.</text>
+</svg>

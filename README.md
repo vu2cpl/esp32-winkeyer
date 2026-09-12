@@ -106,6 +106,10 @@ share factory serial `0001`, so the wrong board would be flashed silently.
 
 ## Wiring
 
+**Schematic: [`docs/wiring.svg`](docs/wiring.svg)** — the whole station on
+one page, including the second USB-serial adapter used as a listen-only
+debug console and why it exists.
+
 | Signal | GPIO | Notes |
 |---|---|---|
 | Paddle dit (tip) | 25 | internal pullup, paddle closes to GND |
@@ -122,6 +126,15 @@ share factory serial `0001`, so the wrong board would be flashed silently.
 | FSK out | 27 | RTTY keying line, mark = idle (invertible) |
 
 Paddles need no external parts.
+
+**Debug console (optional, and very useful).** A second USB-serial adapter,
+3.3 V, wired **RX ← GPIO1 (TXD)** and **GND ← GND**, with its **TX left
+disconnected**. That last point matters twice: two transmitters on one RXD
+line would fight, and with no TX wire nothing can be injected into a
+logger's session. It gives a console to watch while a logger owns the
+board's own USB port — which is how the crash backtrace that ended a day of
+mystery resets was finally captured. The console is muted at 1200 baud, so
+set `/baud 115200` from the web page when you want it to talk.
 
 **Speed pot.** CW end to 3V3, wiper to GPIO 34, CCW end to GND, plus a
 100 nF ceramic from wiper to GND at the pot — GPIO 34 is an unbuffered
