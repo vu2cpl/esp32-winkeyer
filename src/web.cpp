@@ -205,6 +205,10 @@ legend[title]{cursor:help}
   <span id="scanHits"></span></div>
 <div class="row flexonly"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
+<div class="row flexonly"><label title="The radio starts sending a few hundred ms after it is handed the text — network, then its own CW start — while the local sidetone copy starts at once, so the sidetone runs AHEAD of the air. This holds the copy back to match. Auto uses the delay the keyer measures from cwx send to the radio actually transmitting; set a number to override, 0 to disable.">Sidetone delay</label>
+  <input type="number" id="mondelay" min="0" max="2000" placeholder="auto">
+  <label style="flex:0 0 auto"><input type="checkbox" id="mondelayauto"> auto</label>
+  <span class="val" id="mondelayNow"></span></div>
 <div class="row flexonly"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
   <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="flexbind"> bind GUI</label>
@@ -352,6 +356,11 @@ async function refresh(){
   for(const k in fill) if(editing!==k) $(k).value=fill[k];
   $('swap').checked=s.swap;$('pot').checked=s.pot;$('disp').checked=s.disp;
   $('ptt').checked=s.ptt;$('st').checked=s.st;$('monitor').checked=s.monitor;
+  {const auto_=s.mondelay<0; $('mondelayauto').checked=auto_;
+   $('mondelay').disabled=auto_;
+   if(editing!=='mondelay') $('mondelay').value=auto_?'':s.mondelay;
+   $('mondelayNow').textContent=(s.mondelaynow||0)+' ms'+
+     (auto_?' (measured '+(s.flexlatency||0)+')':'');}
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
   $('rssiVal').textContent = s.rssi + ' dBm rx';
   buildMems(s.mems||[]);
@@ -391,6 +400,10 @@ function bindNum(id,min,max){
   };
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
+bindNum('mondelay',0,2000);
+// The tickbox is the mode; the box is the manual value it falls back to.
+$('mondelayauto').onchange=e=>set('mondelay',
+  e.target.checked ? 'auto' : ($('mondelay').value||'0'));
 bindNum('potmin',5,59); bindNum('potmax',6,60);
 $('call').onfocus=()=>editing='call';
 $('call').onblur =()=>{editing=null;post('/api/mem?call='+encodeURIComponent($('call').value))};

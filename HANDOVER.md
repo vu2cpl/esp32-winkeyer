@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 (midday) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 (early afternoon) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -803,6 +803,36 @@ makes the keyer feel slow.
   - Flashing over the FTDI adapter: `--before no_reset --after no_reset`,
     with BOOT held and RST tapped by hand. PlatformIO's own upload works
     too and gets the offsets right, which matters now the table changed.
+
+- **2026-09-12 (early afternoon)** — **console leak closed properly, and
+  the sidetone now tracks the radio.**
+  - **The console leak took three goes, and the first two were wrong.**
+    (1) Muting `Log::` was not enough: the boot banner, reset reason and
+    watchdog line printed through `Serial` directly, and the **ESP core's
+    own logger** writes to the UART without passing through `Log::` at all
+    — that is where `E (1816) task_wdt: ...` in RUMlogNG's CW window came
+    from. `Log::setMuted()` now drives `esp_log_level_set()` too. (2) "Any
+    printable byte means a human is typing" was a bad heuristic: WinKeyer
+    traffic is full of ordinary text, so the logger's own data un-muted the
+    console. Gone; `/log on` is the only way in. Policy now: **1200 baud ⇒
+    console silent from the first character**, any other rate ⇒ console on.
+    What remains is the ROM banner at 115200 on every reset — a character
+    or two of noise at 1200, and not suppressible in firmware.
+  - **Sidetone delay, measured not guessed.** Manoj heard the sidetone
+    ~0.5 s ahead of the air and asked whether the board could work the
+    delay out itself. It can: `cwx send` → interlock TRANSMITTING is
+    exactly the start latency. Smoothed (`startLatency`), only timed when
+    the radio was idle first, and applied by holding the monitor copy in a
+    small queue (`monQ`). **Measured 229 ms** on this radio/WiFi.
+    `/mondelay auto|0..2000`, persisted, with the web page showing both the
+    applied and the measured value. Manoj: "almost perfect".
+  - RUMlogNG lost its session across every reflash and does NOT re-open it
+    by itself — it sits on the port doing nothing, so nothing keys. **Fully
+    quit and restart it after a flash**, not just the CW window. Its
+    settings (echo, Farnsworth) go with the session, which is why echo
+    vanished mid-session.
+  - `tools/wk-test.py --serial <port> --baud 1200` proves the protocol
+    end-to-end in seconds, and is how the keyer was cleared of blame.
 
 ## Network placement (measured 2026-09-10)
 

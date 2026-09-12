@@ -157,6 +157,37 @@ inline void echoPush(char c) {
 }
 inline void echoReset() { echoHead = echoTail = 0; }
 
+// The RADIO generates the CW, so it starts a few hundred ms after we hand
+// the text over — network, then its own CW start — while a local monitor
+// copy starts at once. The sidetone therefore runs AHEAD of the air, which
+// Manoj hears as an echo that finishes early. Hold the copy by an operator-
+// set delay so the two line up. 0 = straight through, as before.
+// 0 = straight through, MON_DELAY_AUTO = follow the measured radio latency,
+// anything else = that many milliseconds.
+static const uint16_t MON_DELAY_AUTO = 0xFFFF;
+uint16_t cfgMonDelayMs = MON_DELAY_AUTO;
+inline uint16_t monDelayNow() {
+  if (cfgMonDelayMs == MON_DELAY_AUTO) return Flex::startLatencyMs();
+  return cfgMonDelayMs;
+}
+struct MonChar { char c; uint32_t due; };
+MonChar  monQ[128];
+uint16_t monHead = 0, monTail = 0;
+inline uint16_t monCount() { return (uint16_t)(monTail - monHead); }
+inline void monPush(char c) {
+  const uint16_t d = monDelayNow();
+  if (!d) { Keyer::sendChar(c); return; }
+  if (monCount() >= sizeof(monQ) / sizeof(monQ[0])) return;   // sidetone only
+  monQ[monTail % (sizeof(monQ) / sizeof(monQ[0]))] = { c, millis() + d };
+  monTail++;
+}
+inline void monReset() { monHead = monTail = 0; }
+void monPump() {
+  const uint16_t N = sizeof(monQ) / sizeof(monQ[0]);
+  while (monCount() && (int32_t)(millis() - monQ[monHead % N].due) >= 0)
+    Keyer::sendChar(monQ[monHead++ % N].c);
+}
+
 uint8_t  modeReg    = 0x00;
 WkBackend backend   = WK_BACKEND_LOCAL;
 
@@ -322,7 +353,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
-      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); echoReset(); }
+      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); echoReset(); monReset(); }
       break;
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
@@ -405,7 +436,7 @@ void pump() {
       if (flexLen >= sizeof(flexOut) - 1) break;
       bufDrop();
       flexOut[flexLen++] = (char)b;
-      if (monitorLocal) Keyer::sendChar((char)b);   // sidetone only
+      if (monitorLocal) monPush((char)b);           // sidetone only, delayed
       if (serialEcho) echoPush((char)b);            // echoed as the radio sends it
     }
     flushFlex();
@@ -512,6 +543,7 @@ void pumpPaddleEcho() {
 
 void poll() {
   pump();
+  monPump();
   pumpEcho();
   pumpPaddleEcho();
   emitStatus(false);
@@ -523,7 +555,7 @@ void sendText(const char* text) {
   if (backend == WK_BACKEND_FLEX) {
     Flex::send(text);                       // the radio generates the CW
     if (monitorLocal)                       // ...and we make the sidetone
-      for (const char* p = text; *p; p++) Keyer::sendChar(*p);
+      for (const char* p = text; *p; p++) monPush(*p);
   } else {
     for (const char* p = text; *p; p++) Keyer::sendChar(*p);
     Keyer::sendChar(' ');
@@ -544,6 +576,10 @@ bool    paddleEchoActive() {
 
 uint8_t modeRegister() { return modeReg; }
 bool    echoEnabled()  { return serialEcho; }
+
+void     setMonitorDelayMs(uint16_t ms) { cfgMonDelayMs = ms; if (!ms) monReset(); }
+uint16_t monitorDelayMs()               { return cfgMonDelayMs; }
+uint16_t monitorDelayNowMs()            { return monDelayNow(); }
 
 bool hostOpen() { return hostIsOpen; }
 

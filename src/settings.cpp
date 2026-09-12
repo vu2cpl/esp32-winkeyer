@@ -12,6 +12,7 @@
 // ============================================================
 
 #include "settings.h"
+#include "log.h"
 #include "config.h"
 #include "keyer.h"
 #include "winkeyer.h"
@@ -189,6 +190,8 @@ void begin() {
   Display::setController(ctl.length() ? ctl.c_str() : "sh1106");
   Display::setEnabled(loadU32("dispen", 1));
   WinKeyer::setMonitor(loadU32("monitor", 1));
+  // Default AUTO: the keyer measures the radio's start delay itself.
+  WinKeyer::setMonitorDelayMs((uint16_t)loadU32("mondelay", 0xFFFF));
   WinKeyer::setPaddleEcho(loadU32("pecho", 2));
   Keyer::setRadio(loadU32("radio", 1));
   // Flex keying details. These were CLI-only and unpersisted, so they had
@@ -381,6 +384,21 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     }
     return fail("txpower: 2|5|8|11|13|15|17|19 dBm");
 
+  } else if (!strcasecmp(key, "mondelay")) {
+    // Holds the local sidetone copy of RADIO-generated text, so it stops
+    // running ahead of the air. "auto" follows the measured latency.
+    if (!strcasecmp(val, "auto")) {
+      WinKeyer::setMonitorDelayMs(0xFFFF);
+      saveU32("mondelay", 0xFFFF);
+      snprintf(msg, msgLen, "sidetone delay: auto (now %u ms)",
+               (unsigned)WinKeyer::monitorDelayNowMs());
+      return true;
+    }
+    if (n < 0 || n > 2000) return fail("mondelay: auto, or 0..2000 ms");
+    WinKeyer::setMonitorDelayMs((uint16_t)n);
+    saveU32("mondelay", n);
+    snprintf(msg, msgLen, "sidetone delay: %d ms%s", n, n ? "" : " (off)");
+    return true;
   } else if (!strcasecmp(key, "baud")) {
     // Only rates a WinKeyer host or a human console would actually use.
     const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
@@ -393,6 +411,9 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     Serial.flush();                       // get the reply out at the old rate
     Serial.end();
     Serial.begin(n, n == 1200 ? SERIAL_8N2 : SERIAL_8N1);
+    // 1200 means a logger owns this port: console quiet. A console rate
+    // means a human does: console on. Typing on the CLI overrides either.
+    Log::setMuted(quietBoot());
 
   } else if (!strcasecmp(key, "backend")) {
     bool useFlex = !strcasecmp(val, "flex");
@@ -457,6 +478,10 @@ void toJson(JsonDocument& doc) {
   doc["uptime"]      = (uint32_t)(millis() / 1000);
   doc["echo"]    = WinKeyer::echoEnabled();
   doc["monitor"] = WinKeyer::monitor();
+  doc["mondelay"]   = WinKeyer::monitorDelayMs() == 0xFFFF
+                        ? -1 : (int)WinKeyer::monitorDelayMs();   // -1 = auto
+  doc["mondelaynow"]= WinKeyer::monitorDelayNowMs();
+  doc["flexlatency"]= Flex::startLatencyMs();
   doc["pecho"]   = WinKeyer::paddleEcho();
   doc["pechoon"] = WinKeyer::paddleEchoActive();
   doc["radio"]   = Keyer::getRadio();

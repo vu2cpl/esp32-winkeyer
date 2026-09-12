@@ -47,6 +47,13 @@ void sendText(const char* text);
 void setMonitor(bool on);
 bool monitor();
 
+// Hold the local sidetone copy of radio-generated text by this many ms, so
+// it lines up with the air instead of running ahead of it. 0 = no delay.
+// 0xFFFF means "auto": follow Flex::startLatencyMs().
+void     setMonitorDelayMs(uint16_t ms);
+uint16_t monitorDelayMs();      // the setting (0xFFFF = auto)
+uint16_t monitorDelayNowMs();   // what is actually being applied
+
 // Echo of characters sent on the PADDLE (mode register bit 6), so a logger
 // captures hand-sent text. 0 off, 1 forced on, 2 follow the host — RUMlogNG
 // never sets the bit, hence the override.

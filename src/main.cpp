@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
+#include <esp_log.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
@@ -246,6 +247,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "radio")  && arg) { setting("radio", arg);
     } else if (!strcasecmp(cmd, "pecho")  && arg) { setting("pecho", arg);
     } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
+    } else if (!strcasecmp(cmd, "mondelay") && arg) { setting("mondelay", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
     } else if (!strcasecmp(cmd, "ratio")  && arg) { setting("ratio", arg);
@@ -327,7 +329,7 @@ void handleLine(char* line) {
       printStatus();
     } else {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
-                     "      /weight /ratio /farns /lead /tail /baud /monitor /pecho\n"
+                     "      /weight /ratio /farns /lead /tail /baud /monitor /mondelay /pecho\n"
                      "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
                      "      /radio 1|2|both   /mem N [text]   /call <sign>\n"
                      "      /backend /flex /wifi /paddle /net /status");
@@ -351,7 +353,10 @@ void pollSerial() {
       if (!WinKeyer::hostOpen()) {      // host closed — hand the port back to the CLI
         serialWkMode = false;
         len = 0;
-        Log::setMuted(false);
+        // NOT unconditionally on: the logger usually still holds the port
+        // after closing its session, and anything printed now is text in
+        // its CW window.
+        Log::setMuted(Settings::quietBoot());
         Log::println("\n[WK] serial host closed — CLI active");
       }
       continue;
@@ -401,6 +406,16 @@ void setup() {
   uint32_t baud = Settings::hostBaud();
   Serial.begin(baud, baud == 1200 ? SERIAL_8N2 : SERIAL_8N1);
   quiet = Settings::quietBoot();
+  // BEFORE the first print. At the WinKeyer rate this port belongs to a
+  // logger, and every character we emit is text in its CW window — boot
+  // lines included, on every restart. /api/state carries all of it, and
+  // "/log on" turns the console on for anyone who wants it here.
+  Log::setMuted(quiet);
+  // The core's own logger writes to this UART directly — "E (1816)
+  // task_wdt: ..." and friends never pass through Log::, so muting Log was
+  // never going to stop them reaching a logger's CW window. Silence the
+  // whole ESP log at the WinKeyer rate; "/log on" brings both back.
+  if (quiet) esp_log_level_set("*", ESP_LOG_NONE);
   if (quiet) {
     // Every character here is one the host waits through before its
     // handshake is answered. One line, then silence.
@@ -427,7 +442,10 @@ void setup() {
       case ESP_RST_DEEPSLEEP:why = "deep sleep";            break;
       default:               why = "unknown";               break;
     }
-    Serial.printf("[BOOT] last reset: %s\n", why);
+    // Through Log, not Serial: this used to print regardless of the quiet
+    // rule and so leaked into a logger's CW window after every restart.
+    // The same value is in /api/state as "resetreason".
+    Log::printf("[BOOT] last reset: %s\n", why);
     Settings::setResetReason(why);   // so it can be asked for over HTTP
   }
 
@@ -501,7 +519,7 @@ void setup() {
   esp_err_t wdtInit = esp_task_wdt_init(&wdtCfg);
   if (wdtInit == ESP_ERR_INVALID_STATE) wdtInit = esp_task_wdt_reconfigure(&wdtCfg);
   esp_err_t wdtAdd  = esp_task_wdt_add(NULL);   // NULL = loopTask
-  Serial.printf("[BOOT] task watchdog: init=%s add=%s -> loopTask %s\n",
+  Log::printf("[BOOT] task watchdog: init=%s add=%s -> loopTask %s\n",
                 esp_err_to_name(wdtInit), esp_err_to_name(wdtAdd),
                 wdtAdd == ESP_OK ? "WATCHED" : "NOT watched");
 

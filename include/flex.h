@@ -66,6 +66,11 @@ const char* keyVerb();
 // radio transmits nothing and reports no error at all.
 bool sliceReady();
 
+// Measured delay between handing the radio text and it starting to
+// transmit — the network hop plus the radio's own CW start. 0 until a
+// transmission has been timed. Used to align the local sidetone copy.
+uint16_t startLatencyMs();
+
 // Operator-facing reason the radio will not transmit CW, or "" when it
 // will (or when not connected — that has its own indicator). Caller's
 // buffer, as the display task and the web handler run on different cores.

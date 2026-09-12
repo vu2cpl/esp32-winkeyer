@@ -98,6 +98,13 @@ uint32_t      radioTxSince = 0;
 // sending — a memory plays with nothing keyed on our side, which must
 // never be mistaken for a stuck transmitter.
 uint32_t      lastCwxMs    = 0;
+// How long the radio takes to START sending after we hand it text: the
+// network hop plus its own CW start. Measured from "cwx send" to the
+// interlock going TRANSMITTING, and only when the radio was idle first, so
+// back-to-back messages do not measure zero. The sidetone copy is held by
+// this so it stops running ahead of the air.
+uint32_t      cwxSendAt    = 0;
+uint16_t      startLatency = 0;
 bool          forcedThisTx = false;   // one rescue per stuck transmission
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
@@ -227,7 +234,21 @@ void onLine(const String& line) {
       if (kv(body, "state", v)) {
         bool was = radioTx;
         radioTx = (v == "TRANSMITTING");
-        if (radioTx && !was) { radioTxSince = millis(); forcedThisTx = false; }
+        if (radioTx && !was) {
+          radioTxSince = millis();
+          forcedThisTx = false;
+          // The measurement: text out → transmitter on. Ignore absurd gaps,
+          // which mean the transmission was not the one we queued.
+          if (cwxSendAt) {
+            uint32_t d = millis() - cwxSendAt;
+            cwxSendAt = 0;
+            if (d <= 3000) {
+              // Smoothed: one slow packet should not move the sidetone.
+              startLatency = startLatency ? (uint16_t)((startLatency * 3 + d) / 4)
+                                          : (uint16_t)d;
+            }
+          }
+        }
         if (!radioTx) forcedThisTx = false;
       }
       if (kv(body, "source", v)) radioTxIsCw = (v == "SWCW");
@@ -395,6 +416,7 @@ void setKeyVerb(const char* verb) {
 }
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
+uint16_t    startLatencyMs() { return startLatency; }
 
 void sliceWarning(char* out, size_t n, WarnForm form) {
   out[0] = '\0';
@@ -652,6 +674,8 @@ void send(const char* text) {
   String out;
   for (const char* p = text; *p; p++) out += (*p == ' ') ? (char)0x7F : *p;
   sendCmd("cwx send " + out);
+  // Only time a start, not a continuation.
+  if (!radioTx && pending() == 0) cwxSendAt = millis();
   lastCwxMs = millis();          // the radio is about to be busy sending
   queuedIdx += strlen(text);          // provisional until the reply lands
   busyUntil = millis() + estimateMs(strlen(text)) + 5000;

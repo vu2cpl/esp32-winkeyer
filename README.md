@@ -320,6 +320,17 @@ its own reset pin. Fixes, in order of preference:
 
 ## Sharing the port with a logger
 
+**At 1200 baud the console is silent by default**, because that rate means
+a logger owns the port: every character the keyer prints lands in the
+logger's CW window as text. That covers the boot log, the reset reason, the
+watchdog line and the ESP core's own logger (`E (1816) task_wdt: ...`),
+which writes to the UART without passing through `Log::` — muting one and
+not the other is why an early attempt still leaked. `/log on` turns it back
+on; `/baud 115200` means "a human is here" and leaves it on. One thing
+firmware cannot suppress: the ROM's own boot banner is printed at 115200
+before any of our code runs, so a port opened at 1200 sees a character or
+two of noise after every reset.
+
 The console and the WinKeyer protocol share one serial port, so **while a
 host session is open the console goes silent** (`src/log.cpp`). A `[FLEX]`
 line written during a session is not a log message to the logger — it is
@@ -575,6 +586,21 @@ output is disabled in this mode so the rig is not keyed twice.
   the warning can be wrong.
 - SmartSDR (a GUI client) must be connected — with none the radio reports
   `tx_allowed=0` and nothing may transmit at all.
+
+**Sidetone delay (`/mondelay`, default auto).** The radio generates
+buffered CW itself, so it starts a few hundred ms after being handed the
+text — the network hop plus its own CW start — while the local monitor copy
+starts at once. The sidetone therefore runs AHEAD of the air, which sounds
+like the radio unkeying early. The keyer times that gap itself (from
+`cwx send` to the interlock reporting TRANSMITTING, smoothed, and only when
+the radio was idle first) and holds the monitor copy by it: measured 229 ms
+on a 6600 over WiFi here. `/mondelay 250` pins a value instead, `/mondelay 0`
+disables it. The first transmission after a reset has nothing measured yet.
+
+The monitor copy also ignores weighting and Farnsworth, because the radio
+has neither — it exposes speed, iambic, break_in and qsk, nothing else. A
+logger that sets Farnsworth (RUMlogNG sets 20 every session) would otherwise
+stretch the sidetone against an unstretched transmission.
 
 Tuning knobs, should keying misbehave on a different radio or firmware:
 `/flex cmd key|ptt` (which keying command), `/flex bind on|off`,
