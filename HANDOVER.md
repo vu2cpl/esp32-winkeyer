@@ -1166,6 +1166,35 @@ makes the keyer feel slow.
     Same mechanics as 12e — record the value for the status dump, do not
     apply it — and the same one-line way back.
 
+12g. **A real K1EL WinKeyer will be available to probe** — Manoj, 2026-09-12:
+    *"When I am back will let you probe a real winkeyer."* Every protocol
+    question this firmware has had to guess at can be settled by asking the
+    genuine article, so do not spend the session on whatever seems
+    interesting at the time. The list, in the order the answers matter:
+
+    1. **`0x0F` load-defaults field order** — the one known gap (12f):
+       RUMlogNG never sends it, so ours has never met a real host and this
+       file's mapping may simply be wrong. Best experiment: send a
+       load-defaults packet of 15 *distinctive* values, then read them back
+       with admin "get values" (`0x00 0x07`), which returns 15 bytes. The
+       round trip names every field without needing the datasheet.
+    2. **`0x09` pin configuration bits** — what each bit actually drives.
+       Set them one at a time and watch the real keyer's KEY and PTT pins
+       (an ESP input or a meter). We act on bit 0 only and deliberately
+       ignore the rest; this says whether that is right.
+    3. **Echo timing** — when a real WK emits an echoed character relative
+       to sending it. Ours paces echo against the radio on the Flex path
+       (item 12a's open report), and there is no reference for "correct".
+    4. **Status byte semantics** — exactly which bits move, and when, across
+       buffer full/empty, break-in, and PTT.
+    5. **Speed pot reporting** — when it sends unsolicited pot bytes, and
+       what it does at the ends of the range.
+
+    `tools/wk-test.py --serial <port> --baud 1200` already speaks the
+    protocol and is the natural harness: point it at the real keyer instead
+    of ours. **Capture the raw bytes both ways and commit the log**, so the
+    next question does not need the hardware back.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
