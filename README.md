@@ -278,13 +278,31 @@ The **SERIAL / USB** panel on the web page sets the same thing, and is the
 escape hatch if you pick a rate you cannot monitor at — WiFi is unaffected
 by the serial rate.
 
-**Known limitation of this board.** Opening the port pulses DTR/RTS, which
-resets the ESP32, and the ROM bootloader always prints its startup banner
-at 115200 regardless of the firmware setting. A logger sitting at 1200
-therefore sees a burst of garbage before the handshake. It is noise ahead
-of the session, not a protocol fault, and cannot be fixed in firmware —
-only by disabling the auto-reset circuit in hardware, or by moving to the
-ESP32-S3 env, whose native USB has no DTR-driven reset.
+**Known limitation of this board, and it is worse than noise.** The USB
+chip's DTR and RTS lines drive the ESP32's EN (reset) and GPIO0 through the
+devkit's auto-reset transistors. Two consequences, both measured here:
+
+- **Opening or closing the port resets the board.** The ROM then prints its
+  banner at 115200 whatever the firmware's rate is, so a logger sitting at
+  1200 sees a burst of garbage before the handshake. Noise, not a fault.
+- **`RTS` asserted while `DTR` is not holds EN low — the board stays dead**
+  until the lines change. Silent: no boot banner, no WiFi, no app. A logger
+  that parks the lines that way stops the keyer mid-over, and on the Flex
+  backend the radio is left transmitting because the key-up never goes out.
+  Measured 2026-09-12 with all four combinations; only that one kills it.
+
+A real K1EL WinKeyer ignores DTR/RTS, so loggers drive them freely — this
+is a devkit problem, not a logger bug, and no firmware can defend against
+its own reset pin. Fixes, in order of preference:
+
+1. **Disable the auto-reset link to EN.** Find the two `J3Y` transistors by
+   the USB chip, identify by continuity which one's top leg (collector)
+   reaches the `EN` header pin, and lift that leg. Flashing then needs
+   BOOT held while EN is tapped. Bring the cut ends to a jumper if you want
+   auto-flash back for development.
+2. **Give the logger a serial adapter with only TX/RX/GND wired** to the
+   keyer, DTR/RTS unconnected. No soldering on the devkit, but a second lead.
+3. **Move to the ESP32-S3 env**, whose native USB has no DTR-driven reset.
 
 ## Sharing the port with a logger
 

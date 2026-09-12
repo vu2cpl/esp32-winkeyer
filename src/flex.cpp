@@ -31,6 +31,8 @@
 #include <Preferences.h>
 #include "config.h"
 
+namespace Flex { void sendKeyUp(); }   // defined with the keying code below
+
 namespace {
 
 WiFiUDP    udpNew, udpOld;
@@ -85,6 +87,13 @@ bool          sliceIsCw  = false;
 char          sliceMode[8] = "";  // as the radio names it: "LSB", "DIGU", ...
 uint32_t      lastWarnMs = 0;
 uint32_t      lastKeyMs = 0;
+// What the RADIO says it is doing. Our own bookkeeping can be right while
+// the radio is still transmitting — a key-up that never arrived leaves no
+// trace on this side — so the interlock is the only honest witness.
+bool          radioTx      = false;   // interlock state=TRANSMITTING
+bool          radioTxIsCw  = false;   // ...with source=SWCW, i.e. our keying
+uint32_t      radioTxSince = 0;
+bool          forcedThisTx = false;   // one rescue per stuck transmission
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
 struct KeyEvt { bool down; uint32_t at; };
@@ -208,6 +217,17 @@ void onLine(const String& line) {
     // Track whether there is a slice to key on at all. A radio with no
     // slice in use transmits nothing and reports no error, which is an
     // hour of debugging if the keyer stays silent about it.
+    if (body.startsWith("interlock ")) {
+      String v;
+      if (kv(body, "state", v)) {
+        bool was = radioTx;
+        radioTx = (v == "TRANSMITTING");
+        if (radioTx && !was) { radioTxSince = millis(); forcedThisTx = false; }
+        if (!radioTx) forcedThisTx = false;
+      }
+      if (kv(body, "source", v)) radioTxIsCw = (v == "SWCW");
+    }
+
     if (body.startsWith("slice ")) {
       String v;
       if (kv(body, "in_use", v)) sliceInUse = (v == "1");
@@ -279,6 +299,12 @@ void tryConnect() {
   subscribed = false;
   boundClientId = "";
   queuedIdx = sentIdx = 0;
+  // A link that dropped mid-element never delivered its key-up, and the
+  // radio is still keyed. Say so now. Only the key-up: "xmit 0" or a
+  // "cwx clear" here could cut short a transmission from SmartSDR or MSHV.
+  keyIsDown = false;
+  xmitOn    = false;
+  Flex::sendKeyUp();
 }
 
 }  // namespace
@@ -374,6 +400,17 @@ void setBind(bool on) {
 }
 bool bindEnabled() { return cfgBind; }
 
+// A key-up in the same form the elements use. "xmit 0" does NOT clear a
+// key the radio still believes is down: it stays in TX on source=SWCW.
+void sendKeyUp() {
+  if (!tcp.connected()) return;
+  tcp.printf("C%lu|cw %s 0 time=0x%04X index=%u client_handle=%s\n",
+             (unsigned long)seq++, cfgKeyVerb,
+             (unsigned)(millis() & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
+             guiHandle.length() ? guiHandle.c_str() : "0x0");
+  keyIsDown = false;
+}
+
 // Drain queued key transitions onto the socket. Called every loop pass.
 //
 // A bare "cw key" does nothing: the radio only keys for whichever client
@@ -454,16 +491,40 @@ void pumpKeying() {
   // notices. After this long with no key event at all, release regardless
   // of what the state machine believes.
   bool stuck = lastKeyMs && (millis() - lastKeyMs > 5000);
-  if (xmitOn && ((quiet && !keyIsDown) || stuck)) {
-    tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
-    xmitOn = false;
+  // Gated on EITHER flag: a lost key-up can leave the radio keyed while
+  // xmitOn is already false, and that used to mean nothing ever released.
+  if ((xmitOn || keyIsDown) && ((quiet && !keyIsDown) || stuck)) {
+    sendKeyUp();              // first, and always — see sendKeyUp()
+    if (xmitOn) {
+      tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
+      xmitOn = false;
+    }
     if (stuck) {
-      keyIsDown = false;      // the state machine was wrong; correct it
-      Log::println("[FLEX] xmit 0 — FORCED, no key event for 5 s "
+      sendCmd("cwx clear");   // and drop anything the radio never sent
+      queuedIdx = sentIdx = 0;
+      busyUntil = 0;
+      Log::println("[FLEX] FORCED release, no key event for 5 s "
                    "(a key-up was lost)");
     } else if (logKeying) {
-      Log::println("[FLEX] xmit 0 (PTT release)");
+      Log::println("[FLEX] release (key up + xmit 0)");
     }
+  }
+
+  // Catch-all, and the only one that sees a key-up lost in flight: the
+  // radio says it is transmitting CW while nothing here is keying it.
+  // Rescue once per transmission, and never touch a TX we did not cause
+  // (source is SWCW only for CW keying — not MSHV, not a GUI client).
+  if (radioTx && radioTxIsCw && !forcedThisTx &&
+      !keyIsDown && !xmitOn && pending() == 0 &&
+      millis() - radioTxSince > 5000 &&
+      (!lastKeyMs || millis() - lastKeyMs > 5000)) {
+    forcedThisTx = true;
+    sendKeyUp();
+    sendCmd("cwx clear");
+    queuedIdx = sentIdx = 0;
+    busyUntil = 0;
+    Log::println("[FLEX] radio still transmitting CW with the keyer idle — "
+                 "forced key up + cwx clear");
   }
 }
 
@@ -510,6 +571,7 @@ void poll() {
     // No "client program" here: SmartSDR 1.4.0.0 rejects it with
     // 10000002 "unknown client program", and it buys us nothing —
     // the subscription is what actually matters.
+    sendCmd("sub tx all");         // interlock: what the RADIO is doing
     sendCmd("sub cwx all");
     sendCmd("sub client all");     // so we can find a GUI client to bind to
     sendCmd("sub slice all");      // to warn when there is nothing to key on
@@ -574,6 +636,7 @@ int pending() {
   if (busyUntil && (int32_t)(millis() - busyUntil) > 0) {
     Log::println("[FLEX] no progress from radio — clearing pending "
                    "(slice not in CW mode? another client transmitting?)");
+    sendCmd("cwx clear");   // the radio can sit in TX on an unsent buffer
     queuedIdx = sentIdx = 0;
     busyUntil = 0;
     return 0;

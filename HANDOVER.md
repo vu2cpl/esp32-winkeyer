@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 (morning) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -694,6 +694,40 @@ makes the keyer feel slow.
     all while keying. A drop mid-over would hold the radio in TX for
     its length — another stuck-PTT candidate. USB is plugged back in now,
     so the next restart will say whether the USB lead matters.
+
+- **2026-09-12 (morning)** — **the resets are the USB port's control
+  lines, and a release fix for stuck PTT.**
+  - **ROOT CAUSE of every unexplained reset and most stuck PTT: `RTS`
+    asserted with `DTR` deasserted holds EN low.** Measured by holding the
+    port and stepping all four combinations, checking liveness over WiFi
+    after each: (0,0) up, (1,0) up, **(0,1) DEAD**, (1,1) up. In the dead
+    state the chip prints NOTHING (not even a ROM banner — so it is reset,
+    not download mode) and boots normally the instant the lines change.
+    Every other combination change causes a reset pulse, so a logger
+    opening or closing the port reboots the keyer. RUMlogNG holds the port
+    while it has a WinKeyer session; a real K1EL ignores DTR/RTS, so this
+    is a devkit problem, not a logger bug. **No firmware can defend against
+    its own reset pin** — 11w's brownout theory and the "EN noise" theory
+    are both dead. Fix options are in README (disable the auto-reset link
+    to EN; or a serial adapter with only TX/RX/GND; or the S3 env).
+  - **Stuck PTT had a second, independent cause, now fixed.** The release
+    path only ever sent `xmit 0`, which does NOT clear a key the radio
+    thinks is still down (interlock `source=SWCW`), and the whole release
+    was gated on `xmitOn` — so when a key-up was lost, the keyer's own
+    state said "idle" and nothing ever released the radio. Caught live at
+    09:20 with the keyer idle and the radio transmitting; `cwx clear`
+    returned `2875,2894`, i.e. 19 characters the radio never sent. Now:
+    every release sends a real `cw <verb> 0` first; the 5 s backstop fires
+    on `xmitOn || keyIsDown`, adding `cwx clear`; a new watchdog subscribes
+    to `sub tx all` and, if the radio reports transmitting CW while the
+    keyer is idle for 5 s, forces a key-up and `cwx clear` (once per
+    transmission, and only for `source=SWCW`, so MSHV and SmartSDR are
+    untouched); and a reconnect sends a key-up, since a link that dropped
+    mid-element never delivered one. Verified once on hardware (clean
+    release at 09:29:10); the watchdog path has NOT yet been seen firing.
+  - `tools/flex-ptt-watch.py` plus a scratch HTTP uptime watcher and an
+    `lsof` port-opener poller are what made this visible. The port poller
+    is what caught RUMlogNG holding the port across a failure.
 
 ## Network placement (measured 2026-09-10)
 
