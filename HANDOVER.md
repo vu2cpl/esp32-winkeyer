@@ -1103,10 +1103,17 @@ makes the keyer feel slow.
     0→71 with `echo` following. His stored 20 is left at 0 — it looks like a
     leftover from the era when the host could write it.
 
-    **Still the host's, not yet discussed: `0x09` pin configuration**, whose
-    bit 0 enables the PTT line. A logger clearing it turns the PTT output
-    off for the whole session. Same family as lead/tail; nobody has seen it
-    happen here.
+    **`0x09` pin configuration stays the host's, by decision** — Manoj,
+    asked directly: *"ptt and key, let it be settable from rumlog"*. Bit 0
+    enables the PTT line, so a logger can switch the output off for its
+    session; that is restored from NVS on close like every other session
+    setting. The other bits of that command differ between WK revisions and
+    are still ignored on purpose — acting on them would silently kill the
+    sidetone or the key output.
+
+    Key output enable is not a host command at all: it follows the backend
+    (`Keyer::setKeyOutEnabled()` from `applyBackend()`), idle on Flex so the
+    rig is not keyed twice.
 
     The original analysis follows.
 

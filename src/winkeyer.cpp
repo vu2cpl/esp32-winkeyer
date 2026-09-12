@@ -354,6 +354,10 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       // Only bit 0 (PTT enable) is acted on — the remaining bits differ
       // between WK revisions and getting them wrong would silently
       // disable the operator's sidetone or key output.
+      // Deliberately NOT in the operator-owned set of 0x0D: Manoj's call,
+      // 2026-09-12 — "ptt and key, let it be settable from rumlog". A logger
+      // turning the PTT line off for its session is a thing a logger is
+      // entitled to do; it is restored from NVS when the session closes.
       if (n) Keyer::setPttEnabled((p[0] & 0x01) != 0);
       break;
     case 0x0A:                        // clear buffer

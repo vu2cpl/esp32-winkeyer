@@ -816,6 +816,7 @@ host's.**
 | Speed (`0x02`, `0x1C`, `0x0F` b1) | Sidetone pitch (`0x01`) |
 | Serial echo, paddle echo (`0x0E` bits 2, 6) | PTT lead-in and tail (`0x04`, `0x0F` b7/b8) |
 | Speed pot range (`0x05`, `0x0F` b3/b4) | Farnsworth (`0x0D`, `0x0F` b5) |
+| PTT line enable (`0x09` bit 0) | |
 | | Weighting (`0x03`, `0x0F` b6) |
 | | Dit/dah ratio (`0x17`, `0x0F` b10) |
 | | Iambic A/B and paddle swap (`0x0E` bits 5:4, 3) |
