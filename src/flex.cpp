@@ -93,6 +93,11 @@ uint32_t      lastKeyMs = 0;
 bool          radioTx      = false;   // interlock state=TRANSMITTING
 bool          radioTxIsCw  = false;   // ...with source=SWCW, i.e. our keying
 uint32_t      radioTxSince = 0;
+// Last sign of life from the radio's own CW sender: a "cwx sent=" report,
+// or the moment we handed it text. While this is fresh the radio IS
+// sending — a memory plays with nothing keyed on our side, which must
+// never be mistaken for a stuck transmitter.
+uint32_t      lastCwxMs    = 0;
 bool          forcedThisTx = false;   // one rescue per stuck transmission
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
@@ -210,9 +215,9 @@ void onLine(const String& line) {
     if (bar < 0) return;
     String body = line.substring(bar + 1);
     int k = body.indexOf("sent=");
-    if (k >= 0) sentIdx = body.substring(k + 5).toInt();
+    if (k >= 0) { sentIdx = body.substring(k + 5).toInt(); lastCwxMs = millis(); }
     int e = body.indexOf("erase_stop=");
-    if (e >= 0) sentIdx = body.substring(e + 11).toInt();
+    if (e >= 0) { sentIdx = body.substring(e + 11).toInt(); lastCwxMs = millis(); }
 
     // Track whether there is a slice to key on at all. A radio with no
     // slice in use transmits nothing and reports no error, which is an
@@ -274,11 +279,26 @@ void onLine(const String& line) {
   }
 }
 
+// Read in BLOCKS, never a byte at a time. Every tcp.read() is a separate
+// lwip_recv, and this Arduino core (2.0.17) can double-free a pbuf inside
+// WiFiClientRxBuffer when the socket is torn down mid-read. That is a real
+// crash, not a theory: 2026-09-12, "assert failed: pbuf_free ... p->ref > 0",
+// backtrace WiFiClient::read() <- Flex::poll() <- loop(), after the radio's
+// status burst that follows a memory. One read per 256 bytes instead of one
+// per byte shrinks the window enormously and costs nothing. It does NOT fix
+// the library — a core upgrade would — so treat a recurrence as that bug.
 void pollSocket() {
-  while (tcp.available()) {
-    char c = tcp.read();
-    if (c == '\n') { onLine(rxLine); rxLine = ""; }
-    else if (c != '\r' && rxLine.length() < 400) rxLine += c;
+  uint8_t buf[256];
+  while (tcp.connected()) {
+    int avail = tcp.available();
+    if (avail <= 0) break;
+    int n = tcp.read(buf, avail < (int)sizeof buf ? avail : (int)sizeof buf);
+    if (n <= 0) break;                 // closed or failed under us
+    for (int i = 0; i < n; i++) {
+      char c = (char)buf[i];
+      if (c == '\n') { onLine(rxLine); rxLine = ""; }
+      else if (c != '\r' && rxLine.length() < 400) rxLine += c;
+    }
   }
 }
 
@@ -289,7 +309,14 @@ void tryConnect() {
   lastConnectTry = millis();
 
   Log::printf("[FLEX] connecting to %s:%d… ", ip.c_str(), FLEX_API_PORT);
-  if (!tcp.connect(ip.c_str(), FLEX_API_PORT)) {
+  // WITH A TIMEOUT. WiFiClient's default runs to tens of seconds, and this
+  // is called from loop() — which also carries the host link, the web page
+  // and the key drain. A radio that has gone unreachable (a WiFi wobble is
+  // enough) then parks loop() long enough to trip the 30 s task watchdog,
+  // and the board resets mid-over with the radio left transmitting. Seen
+  // 2026-09-12: reset reason "task WATCHDOG". The 5 s retry spacing above
+  // is what paces the attempts; this only bounds each one.
+  if (!tcp.connect(ip.c_str(), FLEX_API_PORT, 1500)) {
     Log::println("failed");
     return;
   }
@@ -510,13 +537,29 @@ void pumpKeying() {
     }
   }
 
+  // The radio has stopped transmitting and stopped reporting progress, so
+  // whatever it was sending is finished — however our provisional count
+  // compares. Without this, pending() stays above zero after a memory (the
+  // "cwx send" reply indexes the block's FIRST character), the local PTT
+  // line is held on a buffer that no longer exists, and only the keyer's
+  // 10 s backstop drops it: "PTT was stuck with no keying", seen 11:05:57.
+  if (!radioTx && pending() > 0 && lastCwxMs && millis() - lastCwxMs > 1000) {
+    queuedIdx = sentIdx = 0;
+    busyUntil = 0;
+  }
+
   // Catch-all, and the only one that sees a key-up lost in flight: the
   // radio says it is transmitting CW while nothing here is keying it.
   // Rescue once per transmission, and never touch a TX we did not cause
   // (source is SWCW only for CW keying — not MSHV, not a GUI client).
+  // pending() is NOT enough on its own: for buffered text it collapses to
+  // zero almost at once (see HANDOVER 11y), so a memory playing normally
+  // looks idle from here. The radio's own progress reports are the
+  // difference between "still sending" and "stuck".
   if (radioTx && radioTxIsCw && !forcedThisTx &&
       !keyIsDown && !xmitOn && pending() == 0 &&
       millis() - radioTxSince > 5000 &&
+      (!lastCwxMs  || millis() - lastCwxMs  > 5000) &&
       (!lastKeyMs || millis() - lastKeyMs > 5000)) {
     forcedThisTx = true;
     sendKeyUp();
@@ -609,6 +652,7 @@ void send(const char* text) {
   String out;
   for (const char* p = text; *p; p++) out += (*p == ' ') ? (char)0x7F : *p;
   sendCmd("cwx send " + out);
+  lastCwxMs = millis();          // the radio is about to be busy sending
   queuedIdx += strlen(text);          // provisional until the reply lands
   busyUntil = millis() + estimateMs(strlen(text)) + 5000;
 }
@@ -633,7 +677,13 @@ int pending() {
   // anything if it cannot transmit at all — a slice in the wrong mode, an
   // interlock, another client holding the transmitter. Without a backstop
   // the host reads BUSY forever and a logger hangs waiting for the keyer.
-  if (busyUntil && (int32_t)(millis() - busyUntil) > 0) {
+  // BOTH conditions, or a long message dies mid-word: the estimate is made
+  // per "cwx send", and a logger hands a memory over in small pieces, so
+  // the deadline expires while the radio is still happily playing out the
+  // accumulated buffer. Seen 2026-09-12 as "cwx erase=" chopping the tail
+  // off every memory. The radio's own progress reports are the authority.
+  if (busyUntil && (int32_t)(millis() - busyUntil) > 0 &&
+      (!lastCwxMs || millis() - lastCwxMs > 5000)) {
     Log::println("[FLEX] no progress from radio — clearing pending "
                    "(slice not in CW mode? another client transmitting?)");
     sendCmd("cwx clear");   // the radio can sit in TX on an unsent buffer

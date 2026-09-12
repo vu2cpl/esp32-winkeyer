@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 (morning) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 (late morning) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -728,6 +728,49 @@ makes the keyer feel slow.
   - `tools/flex-ptt-watch.py` plus a scratch HTTP uptime watcher and an
     `lsof` port-opener poller are what made this visible. The port poller
     is what caught RUMlogNG holding the port across a failure.
+
+- **2026-09-12 (late morning)** — **the mystery deaths were an lwIP crash,
+  and three keying bugs found by watching the radio.**
+  - **CRASH, root cause, with a decoded backtrace:**
+    `assert failed: pbuf_free ... (p->ref > 0)` →
+    `WiFiClient::read()` → `Flex::pollSocket()` → `loop()`. The socket was
+    read **one byte at a time** (`while (tcp.available()) tcp.read()`), and
+    Arduino core **2.0.17**'s `WiFiClientRxBuffer` can double-free a pbuf
+    when the socket is torn down mid-read. It fired after the radio's
+    status burst that follows a memory. Both read loops are now block
+    reads with a `connected()` guard and a `n <= 0` bail —
+    `Flex::pollSocket()` and `Net::poll()`. **This narrows the window; it
+    does not fix the library. A recurrence means the core upgrade is the
+    real fix.** Presents as: board stops dead, radio left transmitting, no
+    reboot, RST needed — indistinguishable from the DTR/RTS reset fault
+    without a console, which is why both hid behind one symptom for a day.
+  - **How to catch it again:** `/baud 115200` (web page or
+    `POST /api/set?k=baud&v=115200`), hold the FTDI port with a capture
+    script, reproduce, then decode with
+    `xtensa-esp32-elf-addr2line -pfiaC -e .pio/build/esp32-winkeyer/firmware.elf <addrs>`.
+    At 1200 baud the panic never finishes printing — we got the assert
+    line and no backtrace, twice. A logger holding the port hides it
+    entirely.
+  - **`Flex::tryConnect()` had no connect timeout.** WiFiClient's default
+    runs to tens of seconds, in `loop()`; a wobble on a weak link parked
+    the whole keyer and the **30 s task watchdog** reset the board (seen:
+    reset reason `task WATCHDOG`). Now `tcp.connect(ip, port, 1500)`.
+    Same bug as the MQTT connect fixed earlier the same day — when one
+    turns up, grep for the others.
+  - **`cwx clear` must never fire on a live message.** The morning's
+    backstops cleared the radio's buffer on a deadline, and a logger hands
+    a memory over in pieces, so the deadline expired mid-send: the radio
+    logged `cwx erase=2981,2985` and every memory lost its tail. Both
+    clear paths now also require **no `cwx sent=` progress for 5 s**
+    (`lastCwxMs`). Verified: no `erase` since.
+  - **Stuck local PTT (item 11y) — cause found and fixed.** `pending()`
+    stays above zero after a memory because the `cwx send` reply indexes
+    the block's FIRST character, so the line was held until the keyer's
+    10 s backstop dropped it — `[KEYER] PTT was stuck with no keying`,
+    logged at 11:05:57 and 11:06:32. Now the radio's own interlock ends
+    it: not transmitting + no progress for 1 s ⇒ `queuedIdx = sentIdx = 0`.
+  - Console at 1200 8N2 is what a logger needs; 115200 is what debugging
+    needs. It is a runtime setting — switch it over HTTP, no reflash.
 
 ## Network placement (measured 2026-09-10)
 

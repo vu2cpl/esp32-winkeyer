@@ -76,8 +76,15 @@ void poll() {
     WinKeyer::closeHost();
   }
 
-  while (client && client.connected() && client.available()) {
-    WinKeyer::feed((uint8_t)client.read(), tcpSink);
+  // Block reads, not byte-at-a-time: see the comment on Flex::pollSocket().
+  // Same library, same pbuf double-free if the socket goes away mid-read.
+  uint8_t buf[128];
+  while (client && client.connected()) {
+    int avail = client.available();
+    if (avail <= 0) break;
+    int n = client.read(buf, avail < (int)sizeof buf ? avail : (int)sizeof buf);
+    if (n <= 0) break;
+    for (int i = 0; i < n; i++) WinKeyer::feed(buf[i], tcpSink);
   }
 }
 

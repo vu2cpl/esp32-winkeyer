@@ -90,6 +90,16 @@ volatile uint16_t tMarkDit = 60, tMarkDah = 180;   // key-down durations
 volatile uint16_t tGapElem = 60;                   // inter-element space
 volatile uint16_t tGapChar = 120;                  // *additional* after a character
 volatile uint16_t tGapWord = 240;                  // *additional* for a space
+// The same timings with the operator's flavour removed — weight 50, ratio
+// 50, no Farnsworth. Used ONLY for the local sidetone copy of text the
+// FlexRadio is transmitting: the radio has no weighting or Farnsworth (it
+// exposes speed/iambic/break_in/qsk and nothing else), so a sidetone made
+// with them drifts against the air. Manoj's 33 WPM + Farnsworth 20 ran the
+// sidetone ~1 s behind a 21-character memory, which sounds exactly like the
+// radio unkeying early. Paddle sending is untouched: there the radio follows
+// our elements, so weight and Farnsworth really are on the air.
+volatile uint16_t tMarkDitP = 60, tMarkDahP = 180;
+volatile uint16_t tGapElemP = 60, tGapCharP = 120, tGapWordP = 240;
 
 void recalc() {
   uint16_t unit = 1200 / (cfgWpm ? cfgWpm : 20);
@@ -106,6 +116,15 @@ void recalc() {
   if (cfgFarns >= 5 && cfgFarns < cfgWpm) gapUnit = 1200 / cfgFarns;
   tGapChar = gapUnit * 2;
   tGapWord = gapUnit * 4;
+
+  // Plain profile: what the radio will actually send at this speed.
+  tMarkDitP = unit;
+  tGapElemP = unit;
+  if (tMarkDitP < 5) tMarkDitP = 5;
+  if (tGapElemP < 5) tGapElemP = 5;
+  tMarkDahP = (uint16_t)(unit * 3);
+  tGapCharP = (uint16_t)(unit * 2);
+  tGapWordP = (uint16_t)(unit * 4);
 }
 
 // ── Cross-task signalling ──
@@ -176,6 +195,17 @@ bool hookPaddleOnly = false;
 // locally for sidetone must not reach it — see setHookPaddleOnly().
 inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
 
+// True when this element is only a sidetone copy of text the radio is
+// generating — the one case where the operator's weighting and Farnsworth
+// must be ignored, so the sound matches the air. Same condition as
+// hookWanted()'s exclusion, by construction.
+inline bool monitorOnly() { return hookPaddleOnly && curIsAuto; }
+inline uint16_t markDit()  { return monitorOnly() ? tMarkDitP : tMarkDit; }
+inline uint16_t markDah()  { return monitorOnly() ? tMarkDahP : tMarkDah; }
+inline uint16_t gapElem()  { return monitorOnly() ? tGapElemP : tGapElem; }
+inline uint16_t gapChar()  { return monitorOnly() ? tGapCharP : tGapChar; }
+inline uint16_t gapWord()  { return monitorOnly() ? tGapWordP : tGapWord; }
+
 // ── Low-level outputs ─────────────────────────────────────
 void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
 void toneOff() { ledcWriteTone(SIDETONE_CH, 0); }
@@ -226,7 +256,7 @@ void startElement(bool isDah, bool isAuto) {
   if (isDah) memDah = false; else memDit = false;
   keyDown();
   state   = ST_KEYDOWN;
-  timerMs = isDah ? tMarkDah : tMarkDit;
+  timerMs = isDah ? markDah() : markDit();
 }
 
 void goIdle() {
@@ -255,7 +285,7 @@ void decideNext() {
     pattern = nullptr;
     if (mergeNext) { mergeNext = false; decideNext(); return; }
     state = ST_GAP;
-    timerMs = tGapChar;
+    timerMs = gapChar();
     return;
   }
 
@@ -265,7 +295,7 @@ void decideNext() {
     if (c == KEYER_MERGE_MARK) { mergeNext = true; continue; }
     if (c == ' ') {                    // word gap, on top of the character gap
       state = ST_GAP;
-      timerMs = tGapWord;
+      timerMs = gapWord();
       return;
     }
     pattern = morseFor(c);
@@ -383,7 +413,7 @@ void keyerTask(void*) {
       pattern = nullptr;
       mergeNext = false;
       flagBreakIn = true;
-      if (curIsAuto && state == ST_KEYDOWN) { keyUp(); state = ST_GAP; timerMs = tGapElem; }
+      if (curIsAuto && state == ST_KEYDOWN) { keyUp(); state = ST_GAP; timerMs = gapElem(); }
     }
 
     // Tune mode overrides everything.
@@ -432,7 +462,7 @@ void keyerTask(void*) {
         if (timerMs == 0) {
           keyUp();
           state = ST_GAP;
-          timerMs = tGapElem;          // inter-element space
+          timerMs = gapElem();         // inter-element space
         }
         break;
 
