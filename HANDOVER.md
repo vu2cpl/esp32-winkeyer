@@ -1087,6 +1087,30 @@ makes the keyer feel slow.
     exactly the path item 12c's backstop bug used to break — the zero lead
     is why that bug never bit him here.
 
+12f. **TODO, raised 2026-09-12 (evening): should the rest of the CW values
+    be the operator's too, Farnsworth included?** Manoj's question after
+    12e. Not implemented — deciding which is his call, and each one flipped
+    is one more place this keyer stops behaving like a WinKeyer.
+
+    What a logger can still change, and what it costs:
+
+    | Host cmd | Sets | Keep host control? |
+    |---|---|---|
+    | `0x02` (+`0x0F` b1) | speed WPM | **yes** — loggers change speed per QSO and per F-key, and the pot already overrides it the moment it moves |
+    | `0x0D` (+`0x0F` b5) | Farnsworth | **no** — RUMlogNG sets 20 every session; that is a personal sending style, and it is what made the fist sound wrong here before |
+    | `0x03` (+`0x0F` b6) | weighting | **no** — fist |
+    | `0x17` (+`0x0F` b10) | dit/dah ratio | **no** — fist |
+    | `0x0E` bits 5:4, 3 | iambic A/B, paddle swap | **no** — that is the paddle in the operator's hand, and swap wired the wrong way is unusable |
+    | `0x0E` bits 2, 6 | serial echo, paddle echo | **yes** — protocol behaviour the logger needs, not fist |
+    | `0x05` (+`0x0F` b3/b4) | speed pot range | open question — it is the operator's knob, but a logger that reads pot bytes back expects its own range |
+
+    The pattern from 12e: **anything that shapes the fist or the local
+    monitor is the operator's; anything the logger needs to drive a QSO or
+    read back is the host's.** Applying that rule flips Farnsworth,
+    weighting, ratio, mode and swap, and leaves speed and the echo bits.
+    Same mechanics as 12e — record the value for the status dump, do not
+    apply it — and the same one-line way back.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
