@@ -342,6 +342,21 @@ unkeys 0.67 s after its last character on every memory (its own CWX
 break-in delay). A run of `err TimeoutError` on the KEYER side is loop()
 stalling, not the network.
 
+**`tools/ptt-check.py`** drives the keyer through its own API on the local
+backend and polls `/api/state` at 10 Hz: the lead-in over after a long
+idle, a message stopped mid-flight, tune stopped, a memory reporting itself
+in `memplay`. Every one of those was a fault that looked like "the LED
+flickered" or "the STOP worked" from outside (items 12c, 12d). No paddle,
+no logger, no radio; it restores the backend it found, but it does key
+GPIO33/32.
+
+**`tools/host-watch.py`** prints every setting a host can reach as it
+changes, including `pincfg` and `hostdef` — the raw bytes of the two
+commands whose bit layout is not obvious from outside. It is what found
+that RUMlogNG zeroes PTT timing and the pin configuration at session open
+(12e, 12f). **Close and RE-OPEN the session** when using it: that is when a
+logger sends its defaults, and a mid-session toggle can send nothing at all.
+
 **`tools/uptime-watch.py`** polls `/api/state` and prints only events —
 restarts (with the reset reason), outages and their length, stalls. "The
 board died" is useless; "uptime 225 -> 2 at 12:31:35, reason PANIC" is not.
@@ -1192,7 +1207,8 @@ makes the keyer feel slow.
 
     `tools/wk-test.py --serial <port> --baud 1200` already speaks the
     protocol and is the natural harness: point it at the real keyer instead
-    of ours. **Capture the raw bytes both ways and commit the log**, so the
+    of ours. `tools/host-watch.py` is the other half — run it against OUR
+    keyer with the same logger attached and compare what each one is told. **Capture the raw bytes both ways and commit the log**, so the
     next question does not need the hardware back.
 
 ## Network placement (measured 2026-09-10)
