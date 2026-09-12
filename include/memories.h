@@ -23,6 +23,10 @@ void   begin();
 bool   set(uint8_t slot, const char* text);   // 1..COUNT; "" clears
 String get(uint8_t slot);
 bool   play(uint8_t slot);                    // false if empty or out of range
+// Which slot is playing right now, 0 for none. The page turns that row's
+// PLAY into STOP, so it has to be the slot itself and not just "busy" —
+// six STOP buttons, or one on the wrong row, is worse than none.
+uint8_t playing();
 
 void   setCall(const char* call);
 String call();

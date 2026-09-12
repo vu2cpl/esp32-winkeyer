@@ -308,8 +308,17 @@ void execAdmin(uint8_t sub, const uint8_t* p, uint8_t n) {
 
 void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
   switch (cmd) {
-    case 0x01:                        // sidetone frequency: 4000/N Hz
-      if (n && p[0]) Keyer::setSidetoneHz(4000 / p[0]);
+    case 0x01:                        // sidetone control
+      // K1EL: the LOW NIBBLE is N, tone = 4000/N; bit 7 means paddle-only
+      // sidetone. Dividing by the whole byte read the flag bits as part of
+      // N, so a host sending 0x85 (paddle-only, N=5) asked for 30 Hz and
+      // got the floor, and anything with a small N ran to the ceiling.
+      // Session-scoped like every other host setting: the operator's tone
+      // comes back from NVS when the session closes or the board reboots.
+      if (n) {
+        uint8_t sn = p[0] & 0x0F;
+        if (sn) Keyer::setSidetoneHz(4000 / sn);
+      }
       break;
     case 0x02:                        // set speed
       if (n && p[0]) { cfgSpeed = p[0]; Keyer::setWpm(p[0]); }

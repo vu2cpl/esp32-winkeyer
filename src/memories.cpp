@@ -1,5 +1,6 @@
 #include "memories.h"
 #include "winkeyer.h"
+#include "keyer.h"
 #include "log.h"
 #include <Preferences.h>
 
@@ -14,8 +15,11 @@ const char* NS = "wkmsg";
 String cache[Memories::COUNT + 1];   // 1-based; [0] unused
 String callCache;
 bool   loaded = false;
+// The slot last started, held only while it is still going out.
+uint8_t lastPlayed = 0;
 
 String slotKey(uint8_t slot) { return String("m") + slot; }
+
 
 // Expand %C to the operator's callsign. Kept deliberately small: a full
 // macro language belongs in the logger, which already has one — this is
@@ -75,9 +79,17 @@ String get(uint8_t slot) {
   return cache[slot];
 }
 
+uint8_t playing() {
+  // Anything the keyer is doing ends the claim, including the operator
+  // breaking in on the paddle — the memory is aborted by that anyway.
+  if (!Keyer::busy()) lastPlayed = 0;
+  return lastPlayed;
+}
+
 bool play(uint8_t slot) {
   String raw = get(slot);
   if (!raw.length()) return false;
+  lastPlayed = slot;
   String out = expand(raw, call());
   // Through the backend router, never straight to the keyer: on the Flex
   // path the radio generates the CW and a direct send would be silent.

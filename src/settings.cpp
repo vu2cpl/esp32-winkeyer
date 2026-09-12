@@ -15,6 +15,7 @@
 #include "log.h"
 #include "config.h"
 #include "keyer.h"
+#include "memories.h"
 #include "winkeyer.h"
 #include "flex.h"
 #include "net.h"
@@ -235,13 +236,13 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
       Keyer::setSidetone(b); saveU32("st", b);
       snprintf(msg, msgLen, "sidetone=%s", b ? "on" : "off");
     } else {
-      if (n < 300 || n > 2000) return fail("sidetone: on|off or 300..2000 Hz");
+      if (n < 300 || n > 1000) return fail("sidetone: on|off or 300..1000 Hz");
       Keyer::setSidetoneHz(n); saveU32("sthz", n);
       snprintf(msg, msgLen, "sidetone=%d Hz", n);
     }
 
   } else if (!strcasecmp(key, "sthz")) {
-    if (n < 300 || n > 2000) return fail("sthz: 300..2000");
+    if (n < 300 || n > 1000) return fail("sthz: 300..1000");
     Keyer::setSidetoneHz(n); saveU32("sthz", n);
     snprintf(msg, msgLen, "sidetone=%d Hz", n);
 
@@ -497,6 +498,7 @@ void toJson(JsonDocument& doc) {
   doc["potmin"]  = Keyer::getPotMin();
   doc["potmax"]  = Keyer::getPotMin() + Keyer::getPotRange();
   doc["busy"]    = Keyer::busy();
+  doc["memplay"] = Memories::playing();   // 0, or the slot going out now
   doc["key"]     = Keyer::keyIsDown();
   // NOT "ptt": that key is the enable SETTING, and reusing it here made
   // the web checkbox mirror the live line instead — so it read false almost

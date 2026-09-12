@@ -1016,6 +1016,32 @@ makes the keyer feel slow.
     - `tools/web-preview.py` had no `txpower` in its stub, so the WiFi power
       select rendered blank in the preview and looked like a page bug.
 
+    Second round, same evening, all flashed and checked on the board:
+
+    - **STOP is now per control, not per page.** TUNE becomes STOP while
+      tuning, each memory's PLAY becomes STOP while THAT memory is going
+      out, and the text SEND keeps the rest (`busy && !tune && !memplay`).
+      Manoj's steer: the stop for a memory must not appear on the text send
+      button. Needs `Memories::playing()` — the slot last started, cleared
+      the moment `Keyer::busy()` goes false — exposed as `memplay` in
+      `/api/state`. "Busy" alone cannot say WHICH row to mark.
+    - **Sidetone range is 300-1000 Hz** (was 300-2000), default 600
+      unchanged. 2000 was there because the host command can ask for it;
+      the cost was that everything anyone uses, 500-800, sat in the first
+      quarter of the slider.
+    - **The host sidetone command was reading its flag bits as part of the
+      frequency.** K1EL 0x01: the LOW NIBBLE is N, tone = 4000/N, and bit 7
+      means paddle-only sidetone. `4000 / p[0]` on the whole byte sent
+      0x85 (paddle-only, N=5) to 30 Hz — the floor — and a small N to the
+      ceiling. Masked to `p[0] & 0x0F`.
+    - **Manoj's stored tone was above the new ceiling**: the board booted
+      reading 1000 (clamped), so NVS held 2000. Set back to 600 over the
+      API and stable since. How 2000 got SAVED is not established — the
+      host command only writes RAM, so it took a slider click on the page
+      as well. **If it runs to the top again the moment a logger connects,
+      the host command is the culprit and its tone should be made
+      session-only or ignored outright.**
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was

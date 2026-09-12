@@ -183,8 +183,8 @@ legend[title]{cursor:help}
 <div class="row"><label title="Iambic A releases both paddles to stop after the current element; iambic B sends one more. Swap exchanges dit and dah if the paddle is wired the other way round.">Mode</label>
   <select id="mode"><option value="a">Iambic A</option><option value="b">Iambic B</option></select>
   <label style="flex:0 0 auto"><input type="checkbox" id="swap"> swap paddles</label></div>
-<div class="row"><label title="Monitor tone pitch in Hz, 300-2000. Local only — it never reaches the air.">Sidetone</label>
-  <input type="range" id="sthz" min="300" max="2000" step="10"><span class="val" id="sthzV"></span></div>
+<div class="row"><label title="Monitor tone pitch in Hz, 300-1000, default 600. Local only — it never reaches the air. A logger can ask for another pitch over the host link (the command sends 4000/N); that lasts its session and is clamped to this range.">Sidetone</label>
+  <input type="range" id="sthz" min="300" max="1000" step="10"><span class="val" id="sthzV"></span></div>
 </fieldset>
 
 <fieldset><legend>TIMING</legend>
@@ -301,7 +301,7 @@ legend[title]{cursor:help}
 <fieldset><legend title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
 <div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
   <button id="sendBtn" onclick="sendOrStop()">SEND</button>
-  <button onclick="post('/api/tune?v=on')">TUNE</button></div>
+  <button id="tuneBtn" onclick="tuneOrStop()">TUNE</button></div>
 <div id="msg"></div>
 </fieldset>
 
@@ -335,7 +335,20 @@ function sendOrStop(){
 function fskSendOrStop(){
   if(stopping('fskBtn')){post('/api/fsk?stop=1');setBtn('fskBtn',false);return}
   fsksend()}
-function memPlay(n){post('/api/mem?play='+n)}
+function memPlay(n){post('/api/mem?play='+n);setMemBtn(n)}
+// The STOP for a memory belongs on that memory's own row, not on the text
+// SEND button: they are different things to stop, and a STOP on the row you
+// did not press is a click nobody makes with confidence.
+function setMemBtn(active){for(let n=1;n<=6;n++){const b=$('p'+n);if(!b)continue;
+  const on=(n===active);b.textContent=on?'STOP':'PLAY';b.classList.toggle('hot',on)}}
+function memPlayOrStop(n){
+  if(stopping('p'+n)){post('/api/send?stop=1');setMemBtn(0);return}
+  memPlay(n)}
+function tuneOrStop(){
+  if(stopping('tuneBtn')){post('/api/tune?v=off');setTuneBtn(false);return}
+  post('/api/tune?v=on');setTuneBtn(true)}
+function setTuneBtn(on){const b=$('tuneBtn');
+  b.textContent=on?'STOP':'TUNE';b.classList.toggle('hot',on)}
 function memSave(n){post('/api/mem?n='+n+'&t='+encodeURIComponent($('m'+n).value))}
 let memsBuilt=false;
 function buildMems(list){
@@ -346,7 +359,7 @@ function buildMems(list){
     return '<div class="row mem"><label style="flex:0 0 24px">F'+n+'</label>'
       +'<input type="text" id="m'+n+'" style="flex:1;width:auto;min-width:0">'
       +'<button onclick="memSave('+n+')">SAVE</button>'
-      +'<button onclick="memPlay('+n+')">PLAY</button></div>';}).join('');
+      +'<button id="p'+n+'" onclick="memPlayOrStop('+n+')">PLAY</button></div>';}).join('');
   list.forEach((t,i)=>$('m'+(i+1)).value=t);
 }
 function esc(t){return String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';')}
@@ -438,8 +451,11 @@ async function refresh(){
   if(editing!=='call') $('call').value=s.call||'';
   $('fskinv').checked=s.fskinv; $('fskdid').checked=s.fskdid;
   $('fskState').textContent = s.fskbusy ? 'SENDING' : '';
-  // Tune counts: it is the other thing the button has to be able to end.
-  setBtn('sendBtn', !!(s.busy || s.tune));
+  // Each button ends what it started, so only one STOP is ever on screen:
+  // tune has its own, a memory's lives on its row, and SEND keeps the rest.
+  setTuneBtn(!!s.tune);
+  setMemBtn(s.memplay||0);
+  setBtn('sendBtn', !!(s.busy && !s.tune && !s.memplay));
   setBtn('fskBtn',  !!s.fskbusy);
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';

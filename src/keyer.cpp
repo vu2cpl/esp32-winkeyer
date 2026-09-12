@@ -546,7 +546,12 @@ void      setPaddleSwap(bool s) { cfgSwap = s; }
 bool      getPaddleSwap() { return cfgSwap; }
 void      setSidetone(bool en) { cfgSidetone = en; if (!en) toneOff(); }
 bool      getSidetone() { return cfgSidetone; }
-void      setSidetoneHz(uint16_t hz) { cfgToneHz = constrain(hz, (uint16_t)300, (uint16_t)2000); }
+// 300-1000 Hz. The upper bound used to be 2000 because that is what the
+// host command can ask for (it sends 4000/N, so N=2 means 2000), but a
+// tone nobody wants to listen to is not worth a range that squeezes the
+// 500-800 anyone actually uses into a quarter of the slider. A host
+// asking for more is clamped, and that setting dies with its session.
+void      setSidetoneHz(uint16_t hz) { cfgToneHz = constrain(hz, (uint16_t)300, (uint16_t)1000); }
 uint16_t  getSidetoneHz() { return cfgToneHz; }
 void      setPttEnabled(bool en) {
   cfgPtt = en;

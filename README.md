@@ -24,7 +24,7 @@ as a behavioural reference; the implementation here is original.
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
 | HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
 | Settings web page at `winkeyer.local` | working; one screen without scrolling from ~880x1150 upwards |
-| SEND / STOP as one button on the page | working; STOP clears the radio's buffer too, and ends tune |
+| SEND / STOP as one button on the page | working; per control — text, tune, each memory, FSK |
 | Persisted settings (NVS) | working, verified across a hard reset |
 | Message memories (6) with `%C` expansion | working from the web page and a logger |
 | RTTY FSK on GPIO27 | implemented, polarity unverified on air |
@@ -456,8 +456,10 @@ change.
 /mem                # list all six
 ```
 
-The web page has a MEMORIES panel with SAVE and PLAY per slot. No GPIO
-cost — front-panel buttons can be wired to these later.
+The web page has a MEMORIES panel with SAVE and PLAY per slot; the PLAY of
+the slot that is going out turns into a red STOP, so the stop is on the row
+you pressed rather than somewhere else on the page. No GPIO cost —
+front-panel buttons can be wired to these later.
 
 **Anything that originates text must go through `WinKeyer::sendText()`**,
 not `Keyer::sendChar()`. On the Flex backend the radio generates the CW and
@@ -697,7 +699,8 @@ tells "not sent" from "reported late".
 ## Serial CLI
 
 `/wpm N` `/mode a|b` `/swap` `/tune` `/pot on|off` `/pot <min> <max>`
-`/ptt on|off` `/st N|on|off` `/disp on|off` `/disp sh1106|ssd1306`
+`/ptt on|off` `/st N|on|off` (pitch 300-1000 Hz, default 600)
+`/disp on|off` `/disp sh1106|ssd1306`
 `/weight N` `/ratio N` `/farns N` `/lead N` `/tail N`
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
 `/i2c` `/net` `/status`. Any other line is sent as CW.
@@ -709,9 +712,14 @@ dotted underline carries **hover help** — ranges, what a setting actually
 does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
 tail**, pot enable and range, display, backend (with a **Find radio**
-LAN scan for the Flex), plus a send box and
-tune/stop. Live status LEDs for host, TCP, key, tune, pot, Flex and OLED,
-polled once a second.
+LAN scan for the Flex), plus a send box and tune. Live status LEDs for
+host, TCP, key, tune, pot, Flex and OLED, polled once a second.
+
+**Every button that starts something is its own STOP.** SEND, TUNE, a
+memory's PLAY and the FSK send all turn into a red STOP while that thing is
+transmitting, and go back when it ends — so exactly one STOP is on screen at
+a time, on the thing you started. Stopping text or a memory clears the
+radio's buffer as well as the keyer's.
 
 Timing settings, all persisted and all validated the same way from the
 CLI and the page:
