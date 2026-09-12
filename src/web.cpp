@@ -46,37 +46,63 @@ const char PAGE[] PROGMEM = R"HTML(<!DOCTYPE html>
 :root{--chassis:#2d2d30;--dark:#1a1a1c;--bezel:#0a0a0b;--label:#d8cfb8;
 --dim:#8a8275;--amber:#ffaa22;--green:#2aff5a;--red:#ff2a1a;--off:#3a1a18}
 *{box-sizing:border-box}
-body{margin:0;padding:18px;background:#0c0c0e radial-gradient(ellipse at top,#1a1a1c,#050505);
+body{margin:0;padding:8px;background:#0c0c0e radial-gradient(ellipse at top,#1a1a1c,#050505);
 color:var(--label);font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;min-height:100vh}
-.rig{max-width:720px;margin:0 auto;padding:16px;border-radius:12px;
+/* Panels tile into as many columns as the window allows, so the whole
+   console fits one screen on a desktop and falls back to a single column
+   on a phone. auto-fit + minmax does that without a breakpoint per size. */
+.rig{max-width:1500px;margin:0 auto;padding:10px;border-radius:12px;
+display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+gap:6px 12px;align-items:start;
 background:linear-gradient(180deg,#4a4a50 0%,#2d2d30 30%,#1f1f22 100%);
 box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 24px 48px rgba(0,0,0,.7)}
+/* Full-width furniture: the header, the lamps, a warning, the big speed
+   readout and the footer read across the whole console, not per column. */
+.rig>.brand,.rig>.leds,.rig>.slicewarn,.rig>.speed,.rig>.foot{grid-column:1/-1}
+/* The backend panel carries the most rows; give it two columns when there
+   is room, and let it collapse with everything else when there is not. */
+@media(min-width:1040px){
+  .wide{grid-column:span 2}
+  /* Lamps and the speed readout share one line instead of taking two. */
+  .rig>.leds{grid-column:1/-2}
+  .rig>.speed{grid-column:-2/-1;margin-bottom:0}
+}
 .brand{display:flex;justify-content:space-between;align-items:baseline;
-padding-bottom:10px;border-bottom:2px solid var(--bezel);margin-bottom:14px}
+padding-bottom:8px;border-bottom:2px solid var(--bezel);margin-bottom:4px}
 .brand b{font-size:19px;letter-spacing:3px;color:var(--amber);text-shadow:0 0 12px rgba(255,170,34,.5)}
 .brand span{font-size:11px;color:var(--dim)}
 /* no display rule here, so the hidden attribute still hides it */
 .slicewarn{padding:9px 12px;margin:-6px 0 14px;border-radius:8px;font-size:13px;
 background:rgba(255,170,34,.12);border:1px solid var(--amber);color:var(--amber)}
-.leds{display:flex;gap:14px;flex-wrap:wrap;padding:10px 12px;margin-bottom:14px;
+.leds{display:flex;gap:14px;flex-wrap:wrap;padding:8px 12px;margin-bottom:2px;
 background:var(--bezel);border-radius:8px;font-size:11px;letter-spacing:1px}
 .led{display:flex;align-items:center;gap:6px;color:var(--dim)}
 .led i{width:9px;height:9px;border-radius:50%;background:var(--off);display:inline-block}
 .led.on i{background:var(--green);box-shadow:0 0 8px var(--green)}
 .led.warn i{background:var(--amber);box-shadow:0 0 8px var(--amber)}
-.speed{background:var(--bezel);border-radius:8px;padding:12px 16px;margin-bottom:14px;
+.speed{background:var(--bezel);border-radius:8px;padding:8px 16px;margin-bottom:2px;
 display:flex;align-items:baseline;gap:12px}
-.speed b{font-size:44px;color:var(--amber);text-shadow:0 0 16px rgba(255,170,34,.45);line-height:1}
+.speed b{font-size:34px;color:var(--amber);text-shadow:0 0 16px rgba(255,170,34,.45);line-height:1}
 .speed span{color:var(--dim);font-size:12px;letter-spacing:2px}
-fieldset{border:1px solid #44444a;border-radius:8px;margin:0 0 12px;padding:10px 14px 14px}
+fieldset{border:1px solid #44444a;border-radius:8px;margin:0;padding:6px 12px 9px;
+min-width:0}   /* min-width:0 or a long row stretches its grid column */
+/* Rows tile inside a panel too — a label plus one control is ~230px, so
+   two or three sit side by side in a wide panel instead of stacking. */
+fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(222px,1fr));
+gap:2px 14px;align-content:start}
+fieldset>legend{grid-column:1/-1}
+/* Anything with a slider, a free-text field or its own buttons wants the
+   full width of its panel; :has covers the sliders without marking each. */
+.row.full,.row:has(input[type=range]),.row:has(input[type=text]):not(.mem){grid-column:1/-1}
+
 legend{color:var(--amber);font-size:11px;letter-spacing:2px;padding:0 6px}
-.row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.row{display:flex;align-items:center;gap:9px;margin:4px 0;flex-wrap:wrap}
 /* An author rule beats the hidden attribute's default display:none, so
    .row{display:flex} kept "hidden" rows on screen. */
 .row[hidden]{display:none!important}
-.row label{flex:0 0 108px;color:var(--dim);font-size:12px}
+.row label{flex:0 0 92px;color:var(--dim);font-size:12px}
 input,select,button{font:inherit;background:#131315;color:var(--label);
-border:1px solid #44444a;border-radius:5px;padding:5px 9px}
+border:1px solid #44444a;border-radius:5px;padding:3px 8px;font-size:13px}
 input[type=range]{flex:1;min-width:150px;padding:0;border:none;background:none;
 -webkit-appearance:none;appearance:none;height:18px}
 input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;
@@ -89,15 +115,20 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;
 border:1px solid #1a1a1c;background:linear-gradient(180deg,#d8cfb8,#8a8275)}
 input[type=checkbox]{accent-color:var(--amber)}
 input[type=text],input[type=number]{width:92px}
-button{cursor:pointer;background:linear-gradient(180deg,#44444a,#26262a);letter-spacing:1px}
+button{cursor:pointer;background:linear-gradient(180deg,#44444a,#26262a);
+letter-spacing:.5px;padding:3px 9px;font-size:12px}
 button:hover{border-color:var(--amber);color:var(--amber)}
 button.hot{color:var(--red);border-color:#5a2420}
 .val{color:var(--amber);min-width:56px;font-size:13px}
+/* Memories: six rows that must each stay on ONE line, or the panel becomes
+   the tallest thing on the page and nothing else fits beside it. */
+.row.mem{margin:3px 0;gap:6px}
+.row.mem button{padding:4px 7px;font-size:11px;letter-spacing:0}
 .row label[title]{border-bottom:1px dotted var(--dim);cursor:help}
 legend[title]{cursor:help}
-#msg{min-height:18px;font-size:12px;color:var(--green);margin-top:4px}
+#msg{min-height:16px;font-size:12px;color:var(--green);margin-top:4px}
 #msg.err{color:var(--red)}
-.foot{margin-top:12px;font-size:11px;color:var(--dim);text-align:center}
+.foot{margin-top:4px;font-size:11px;color:var(--dim);text-align:center}
 </style></head><body><div class="rig">
 <div class="brand"><b>WINKEYER</b><span>VU2CPL &middot; ESP32 &middot; K1EL WK3</span></div>
 
@@ -192,7 +223,7 @@ legend[title]{cursor:help}
   </select></div>
 </fieldset>
 
-<fieldset><legend>BACKEND</legend>
+<fieldset class="wide"><legend>BACKEND</legend>
 <div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
@@ -272,8 +303,8 @@ function buildMems(list){
   // NB: the returned string starts on the same line as `return` — a line
   // break there and automatic semicolon insertion silently returns undefined.
   $('mems').innerHTML=list.map((t,i)=>{const n=i+1;
-    return '<div class="row"><label style="flex:0 0 108px">F'+n+'</label>'
-      +'<input type="text" id="m'+n+'" style="flex:1;width:auto">'
+    return '<div class="row mem"><label style="flex:0 0 24px">F'+n+'</label>'
+      +'<input type="text" id="m'+n+'" style="flex:1;width:auto;min-width:0">'
       +'<button onclick="memSave('+n+')">SAVE</button>'
       +'<button onclick="memPlay('+n+')">PLAY</button></div>';}).join('');
   list.forEach((t,i)=>$('m'+(i+1)).value=t);

@@ -23,7 +23,7 @@ as a behavioural reference; the implementation here is original.
 | Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
 | HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
-| Settings web page at `winkeyer.local` | working, exercised on hardware |
+| Settings web page at `winkeyer.local` | working; fits one screen without scrolling at 1512x900 and above |
 | Persisted settings (NVS) | working, verified across a hard reset |
 | Message memories (6) with `%C` expansion | working from the web page and a logger |
 | RTTY FSK on GPIO27 | implemented, polarity unverified on air |
