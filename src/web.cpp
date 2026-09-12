@@ -52,7 +52,7 @@ color:var(--label);font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;min-heig
    console fits one screen on a desktop and falls back to a single column
    on a phone. auto-fit + minmax does that without a breakpoint per size. */
 .rig{max-width:1500px;margin:0 auto;padding:10px;border-radius:12px;
-display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+display:grid;grid-template-columns:1fr;
 gap:6px 12px;align-items:start;
 background:linear-gradient(180deg,#4a4a50 0%,#2d2d30 30%,#1f1f22 100%);
 box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 24px 48px rgba(0,0,0,.7)}
@@ -61,12 +61,25 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 .rig>.brand,.rig>.leds,.rig>.slicewarn,.rig>.speed,.rig>.foot{grid-column:1/-1}
 /* The backend panel carries the most rows; give it two columns when there
    is room, and let it collapse with everything else when there is not. */
-@media(min-width:1040px){
+/* Explicit breakpoints rather than auto-fit: auto-fit kept a ~800px window
+   in ONE column, which stretched every slider across the full width and
+   squeezed the memories into a single inner cell. */
+@media(min-width:760px) {.rig{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1150px){.rig{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1680px){.rig{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1150px){
   .wide{grid-column:span 2}
   /* Lamps and the speed readout share one line instead of taking two. */
   .rig>.leds{grid-column:1/-2}
   .rig>.speed{grid-column:-2/-1;margin-bottom:0}
 }
+/* A slider does not get more useful past a few hundred pixels; without a
+   cap a full-width card turns Speed into a metre of travel. */
+input[type=range]{max-width:340px}
+/* The six memories are wrapped in one div, so they were living in a single
+   inner column. Give that div the full card and tile inside it. */
+#mems{grid-column:1/-1;display:grid;
+grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:2px 12px}
 .brand{display:flex;justify-content:space-between;align-items:baseline;
 padding-bottom:8px;border-bottom:2px solid var(--bezel);margin-bottom:4px}
 .brand b{font-size:19px;letter-spacing:3px;color:var(--amber);text-shadow:0 0 12px rgba(255,170,34,.5)}
@@ -88,7 +101,7 @@ fieldset{border:1px solid #44444a;border-radius:8px;margin:0;padding:6px 12px 9p
 min-width:0}   /* min-width:0 or a long row stretches its grid column */
 /* Rows tile inside a panel too — a label plus one control is ~230px, so
    two or three sit side by side in a wide panel instead of stacking. */
-fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(222px,1fr));
+fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));
 gap:2px 14px;align-content:start}
 fieldset>legend{grid-column:1/-1}
 /* Anything with a slider, a free-text field or its own buttons wants the
