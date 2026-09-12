@@ -855,6 +855,13 @@ your own logger sends. To hand any of it back, restore the setter named in the
 comment on that case in `src/winkeyer.cpp`. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 
+**`GET /api/wktrace` shows the wire itself** — the last 1024 bytes between
+the logger and the keyer, both directions, millisecond-stamped
+(`ms H>K|K>H hex char`; `?clear=1` empties it). The serial port cannot be
+sniffed while a logger holds it, and "the logger did not show it" looks
+exactly like "the keyer did not send it". `tools/wk-trace-check.py` reads
+it and lists any character the logger sent that was never echoed.
+
 ## MQTT
 
 - Broker: `MQTT_HOST` in `secrets.h` (`config.h` default `192.168.1.10` is a

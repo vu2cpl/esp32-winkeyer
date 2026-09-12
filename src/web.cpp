@@ -658,6 +658,18 @@ void begin() {
     server.send_P(200, "text/html", PAGE);
   });
   server.on("/api/state", HTTP_GET,  handleState);
+  // Host traffic trace — ?clear=1 empties it. Kept off /api/state, which the
+  // page polls every second.
+  server.on("/api/wktrace", HTTP_GET, []() {
+    if (server.hasArg("clear")) {
+      WinKeyer::traceClear();
+      server.send(200, "text/plain", "cleared\n");
+      return;
+    }
+    String out;
+    WinKeyer::traceDump(out);
+    server.send(200, "text/plain", out);
+  });
   server.on("/api/set",   HTTP_POST, handleSet);
   server.on("/api/send",  HTTP_POST, handleSend);
   server.on("/api/tune",  HTTP_POST, handleTune);

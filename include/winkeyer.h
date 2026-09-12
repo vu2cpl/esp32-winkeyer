@@ -73,7 +73,11 @@ uint8_t modeRegister();
 int16_t     lastPinCfg();
 const char* lastDefaults();
 bool    echoEnabled();
-void closeHost();     // drop host mode (transport disconnected)
+void closeHost();
+// Last 1024 bytes to and from the host with millisecond stamps, as text
+// ("ms H>K|K>H hex char"). Served at GET /api/wktrace.
+void traceDump(String& out);
+void traceClear();     // drop host mode (transport disconnected)
 
 void      setBackend(WkBackend b);
 WkBackend getBackend();

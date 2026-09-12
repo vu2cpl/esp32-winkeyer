@@ -230,7 +230,22 @@ bool     paddleSessPrev = false;
 char     flexOut[64];
 uint8_t  flexLen = 0;
 
-void emit(uint8_t b) { if (sink) sink(&b, 1); }
+// ── Host traffic trace ───────────────────────────────────
+// Every byte to and from the host, stamped, for GET /api/wktrace. The wire
+// cannot be watched while a logger holds the port, and "the logger did not
+// show it" and "the keyer did not send it" look identical from outside.
+struct TraceEnt { uint32_t ms; uint8_t dir; uint8_t b; };   // dir 0 = from host
+static const uint16_t TRACE_N = 1024;
+TraceEnt trace[TRACE_N];
+uint16_t traceHead = 0;
+uint32_t traceTotal = 0;
+inline void traceAdd(uint8_t dir, uint8_t b) {
+  trace[traceHead] = { millis(), dir, b };
+  traceHead = (traceHead + 1) % TRACE_N;
+  traceTotal++;
+}
+
+void emit(uint8_t b) { traceAdd(1, b); if (sink) sink(&b, 1); }
 
 void emitStatus(bool force) {
   if (!hostIsOpen) return;
@@ -567,6 +582,7 @@ void begin() {
 }
 
 void feed(uint8_t b, WriteFn s) {
+  traceAdd(0, b);
   sink = s;
 
   // Collecting parameters for a command already in progress.
@@ -719,6 +735,24 @@ uint16_t monitorDelayMs()               { return cfgMonDelayMs; }
 uint16_t monitorDelayNowMs()            { return monDelayNow(); }
 
 bool hostOpen() { return hostIsOpen; }
+
+void traceClear() { traceHead = 0; traceTotal = 0; }
+
+void traceDump(String& out) {
+  uint16_t n = traceTotal < TRACE_N ? (uint16_t)traceTotal : TRACE_N;
+  uint16_t i = (traceHead + TRACE_N - n) % TRACE_N;
+  out.reserve(out.length() + (size_t)n * 18 + 64);
+  char line[40];
+  snprintf(line, sizeof(line), "# total %lu, showing %u\n", (unsigned long)traceTotal, n);
+  out += line;
+  for (uint16_t k = 0; k < n; k++, i = (i + 1) % TRACE_N) {
+    const TraceEnt& e = trace[i];
+    char c = (e.b >= 0x20 && e.b < 0x7F) ? (char)e.b : '.';
+    snprintf(line, sizeof(line), "%lu %s %02X %c\n", (unsigned long)e.ms,
+             e.dir ? "K>H" : "H>K", e.b, c);
+    out += line;
+  }
+}
 
 void closeHost() {
   if (hostIsOpen) Settings::restoreKeyer();

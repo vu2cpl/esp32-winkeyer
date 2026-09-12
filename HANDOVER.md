@@ -357,6 +357,11 @@ that RUMlogNG zeroes PTT timing and the pin configuration at session open
 (12e, 12f). **Close and RE-OPEN the session** when using it: that is when a
 logger sends its defaults, and a mid-session toggle can send nothing at all.
 
+**`GET /api/wktrace`** (2026-09-13) is the host wire: last 1024 bytes both
+ways, ms-stamped, `?clear=1` to reset. **`tools/wk-trace-check.py`** parses
+it as WinKeyer commands and lists text the host sent that never came back as
+echo. Poll it every few seconds to keep a whole session (it is a ring).
+
 **`tools/uptime-watch.py`** polls `/api/state` and prints only events —
 restarts (with the reset reason), outages and their length, stalls. "The
 board died" is useless; "uptime 225 -> 2 at 12:31:35, reason PANIC" is not.
@@ -893,7 +898,17 @@ makes the keyer feel slow.
   `pttSafety()`, plus an FSK keep-alive so an RTTY over longer than 10 s
   keeps its PTT.
 
-12a. **LIKELY FIXED 2026-09-13 — Flex echo pacing rewritten (12h); confirm with RUMlogNG.** Reported 2026-09-12 at wrap-up: characters missing from the
+12a. **STILL OPEN, intermittent (2026-09-13).** After the Flex echo pacing
+    rewrite (12h) Manoj's RUMlogNG session still dropped a letter from the
+    echo "several times" — a random letter mid-message (first seen: V of
+    VU2CPL in `cq cq vu2cpl vu2cpl k`), radio transmitting it fine, web page
+    open, nothing else happening. NOT reproduced: 24 sends of the same text
+    over TCP (paced at 1200-baud byte spacing and in bursts, with and
+    without `/api/state` polled like the page) all echoed completely, and a
+    traced RUMlogNG session (`/api/wktrace`, 11 messages) dropped nothing.
+    Next drop: pull the trace at once and run `tools/wk-trace-check.py` — it
+    says whether the keyer emitted the letter (then the loss is between the
+    wire and RUMlogNG's window) or not. Original report: Reported 2026-09-12 at wrap-up: characters missing from the
     host echo, while the radio sends them all.** So the text reaches the
     radio; only the echo stream back to the logger is short.
 
