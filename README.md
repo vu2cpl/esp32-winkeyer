@@ -19,12 +19,26 @@ as a behavioural reference; the implementation here is original.
 | WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
-| Host bridge (`tools/wk-bridge.py`) | implemented, not yet driven by a real logger |
-| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C @ 400 kHz on hardware |
+| RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
+| Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
+| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
+| HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
 | Settings web page at `winkeyer.local` | working, exercised on hardware |
 | Persisted settings (NVS) | working, verified across a hard reset |
+| Message memories (6) with `%C` expansion | working from the web page and a logger |
+| RTTY FSK on GPIO27 | implemented, polarity unverified on air |
+| MQTT status + heartbeat | working against the shack broker |
+| Arduino core | **3.3.11 / IDF 5.5.5** (pioarduino); 2.0.17 crashes under load |
 
 Bluetooth keyboard is considered but not built — see `HANDOVER.md`.
+
+**One hardware caveat on a devkit.** The USB-serial chip's DTR/RTS lines
+reach the ESP32's reset pin, so a logger holding that port can reset the
+board or hold it in reset — mid-over, which leaves a networked radio
+transmitting. Measured: `RTS` asserted with `DTR` not asserted holds it
+down indefinitely. Either drive the keyer through a separate USB-serial
+adapter wired to TX/RX/GND only, or cut the auto-reset link to EN. See
+"Serial / USB" below.
 
 ## Quick start
 

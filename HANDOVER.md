@@ -5,7 +5,24 @@
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
-hardware. Outstanding: FSK polarity and on-air fist quality unverified.
+hardware.
+
+**Read this first if you are picking the project up after 2026-09-12:**
+
+- **Arduino core 3.3.11 / IDF 5.5.5** via the pioarduino platform, and
+  **PlatformIO must run on Python 3.10+** — the Mac's system one is 3.9 and
+  cannot build this. `~/.pio-venv313` holds a suitable one; `flash.sh`,
+  `monitor.sh` and `install.py` find it themselves.
+- **The keyer is driven through a SECOND USB-serial adapter** wired to
+  TX/RX/GND only (`usbserial-A9M9DV3R`), with the board's own USB-C
+  unplugged and external power. The devkit's USB chip can hold the ESP32 in
+  reset, which stops the keyer mid-over and leaves the radio transmitting.
+- **Flashing therefore needs BOOT held and RST tapped by hand**, then
+  `pio run -t upload --upload-port <the FTDI>`. The board cannot be reset
+  by the adapter.
+- Outstanding: FSK polarity and on-air fist quality unverified; the LCD
+  slice warning never seen on a panel; the board mod that would end the
+  reset problem for good is not done.
 
 ---
 
@@ -852,10 +869,10 @@ Measured rather than assumed:
   reflected the way mDNS is. If the radio sits on another segment, skip
   discovery: **Find radio** on the web page scans a /24 over TCP, or pin
   the address with `/flex ip <addr>`.
-- **MQTT reaches the broker but is rejected `rc=5` (unauthorized)** — so
-  `include/secrets.h` still holds the example password, not the real
-  `iot` role password. Reachability is not the problem, even across
-  segments.
+- **MQTT connects (fixed 2026-09-12).** It had two faults at once: no
+  `MQTT_HOST` in `secrets.h`, so the build used the public placeholder,
+  and the example password. Reachability across segments was never the
+  problem.
 - Same-subnet placement did **not** fix latency; see the link-quality
   section below.
 
@@ -865,10 +882,13 @@ against exposing it beyond one.
 
 ## Open items
 
-1. **Set the real MQTT password** in `include/secrets.h` (the `iot` role,
-   from the shack password manager). Currently the example value, so the
-   broker rejects the connection with `rc=5` every 5 s. Everything else
-   works; this is the only thing failing.
+1. ~~Set the real MQTT password~~ **DONE 2026-09-12** — `[MQTT] connected`
+   as `iot`. `secrets.h` also needed **MQTT_HOST**, which was missing, so
+   the build had been using the public placeholder `192.168.1.10` all
+   along; that dead address is what blocked `loop()` once a minute. The
+   broker ACL needed `topic write shack/esp32-winkeyer/#` under `iot`.
+   **Not yet confirmed:** that the published topic actually arrives — read
+   it in Node-RED or MQTT Explorer.
 2. **WiFi link is mediocre but no longer limiting** — 131 ms average,
    0% loss, RSSI -68. Improve when convenient (closer AP, different
    channel, external-antenna board); not a blocker.
@@ -953,7 +973,16 @@ against exposing it beyond one.
     wrong `invert` prints reversed-case gibberish rather than silence.
     Not driven by any logger yet: text comes from `/fsk`, the web page or
     the API, so hooking RUMlogNG's RTTY output to it is the open question.
-11w. **The resets were BROWNOUTS, and they are intermittent** (2026-09-11).
+11w. **Superseded 2026-09-12 for the September-12 resets** — those were the
+    USB chip holding EN low (see the What-changed entry), not power: the
+    board had an external supply, 3.3 V measured good, and the four-state
+    DTR/RTS test reproduced the fault on demand. The 2026-09-11 brownouts
+    below were real (the chip's own detector reported them) and the
+    capacitor advice still stands for USB-only operation, but do not reach
+    for it first when a board "dies mid-over" — check what owns the serial
+    port. Original note follows.
+
+    **The resets were BROWNOUTS, and they are intermittent** (2026-09-11).
     `last reset: BROWNOUT (power)` was reported by the chip's own detector,
     so the diagnosis is not in doubt — but the trigger is. It was first
     read as deterministic: paddle keying at full WiFi power died, reduced
@@ -977,7 +1006,17 @@ against exposing it beyond one.
     The earlier cable swap and ESP32 swap were most likely both chasing
     this, which is why neither gave a clean answer.
 
-11x. **HARDWARE: the board was swapped, and the cause is still unproven.**
+11x. **RESOLVED 2026-09-12: the cause was the USB port's control lines.**
+    `RTS` asserted with `DTR` deasserted holds EN low; every other
+    combination change resets the board. Measured across all four states,
+    with the chip silent (no ROM banner) while held. A logger holding the
+    port therefore stops the keyer mid-over and leaves the radio keyed.
+    Workaround in use: a second USB-serial adapter on TX/RX/GND only.
+    Permanent fix, not done: lift the collector of whichever `J3Y`
+    transistor reaches EN, ideally onto a jumper so auto-flash can be
+    restored. Original note follows.
+
+    **HARDWARE: the board was swapped, and the cause is still unproven.**
     The original ESP32 began spontaneously restarting, always reporting
     `power-on` — never a panic, never a watchdog. Software cannot cause a
     power-on reset, so it is a supply or connection fault. A USB cable
@@ -1039,7 +1078,13 @@ against exposing it beyond one.
     reset reason, an `lsof` port-opener poller, and a pyserial capture
     with `dtr=rts=False` set before `open()`.
 
-11u. **OPEN: the web server stalls for 1–2 s at regular intervals** on the
+11u. **RESOLVED 2026-09-12 — it was both suspects at once.** The once-a-
+    minute stall was `mqttConnect()` on a dead placeholder address (capped
+    at 500 ms now), and the long ones were `Flex::tryConnect()`'s unbounded
+    `tcp.connect` (capped at 1500 ms), which could park loop() long enough
+    for the 30 s task watchdog to reset the board. Original note below.
+
+    **OPEN (was): the web server stalls for 1–2 s at regular intervals** on the
     old board (2026-09-11): `/api/state` timed out at :03 past the minute
     for several minutes running, and roughly every 10 s just after boot.
     That is loop() blocked, and loop() is also what sends the radio
@@ -1055,7 +1100,19 @@ against exposing it beyond one.
     Voiced, parked at his request: scan own + 192.168.0 + 192.168.1 when
     blank, or remember the last subnet that found a radio.
 
-11y. **OPEN: the local PTT line releases far too late on the Flex backend.**
+11y. **MOSTLY FIXED 2026-09-12, one recurrence unexplained.** Cause found:
+    `pending()` stays above zero after a memory because the `cwx send`
+    reply indexes the block's FIRST character, so the line was held until
+    the keyer's 10 s backstop dropped it. The radio's own interlock now
+    ends the message (not transmitting + no progress for 1 s ⇒ counters
+    cleared). **But `[KEYER] PTT was stuck with no keying` printed once
+    more at 12:13:46 after that fix**, on a web-page memory, so something
+    can still hold it. Next time it appears, capture `/api/state` at 5 Hz
+    across the whole over and compare `ptton` against the radio's
+    interlock. Only the local line is affected; nothing is wired to it on
+    Manoj's board. Original note follows.
+
+    **OPEN (was): the local PTT line releases far too late on the Flex backend.**
     Observed releasing ~20 s after a transmission against a 250 ms tail.
     The radio's own `xmit` released correctly; only GPIO32 hung on. That
     timing matches the **10 s safety backstop** firing rather than the
@@ -1089,7 +1146,14 @@ against exposing it beyond one.
     TX with no time-out. Voiced, not done: set a TX time-out in the Flex's
     interlock settings — the only backstop that survives a dead keyer.
 
-11z. **OPEN AND ACTIVE: the display hangs the board.** Confirmed
+11z. **NOT SEEN SINCE 2026-09-11.** The OLED has come up and run on every
+    boot through a day of flashing on 2026-09-12, including on Arduino core
+    3.3.11. The pull-ups were there all along (see the correction below),
+    so the original diagnosis was wrong and the hang may have been one of
+    the faults since fixed — the lwIP crash presents as a frozen board too.
+    Treat as dormant, not proven cured. Original note follows.
+
+    **OPEN AND ACTIVE (was): the display hangs the board.** Confirmed
     2026-09-11 — with the OLED enabled the board hangs during display
     init and never reaches the web server or the host link; with it
     disabled it boots and runs. **An overnight soak is running with the
