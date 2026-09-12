@@ -967,9 +967,24 @@ makes the keyer feel slow.
     a window in which a stale `lastKeyDownMs` drops the line. Plausible,
     not proven: it was never captured.
 
-    Builds clean on `esp32-winkeyer`; **not yet flashed to hardware here.**
-    Bench check: key a few characters, wait 15 s, key again — the PTT LED
-    must lead the first element and hold through the over both times.
+    **Flashed and verified on Manoj's board, 2026-09-12 evening.** Test
+    driven entirely over HTTP, no paddle needed: `/backend local`, send one
+    character to stamp the last-element time, idle 14 s (longer than the
+    backstop window), then send `TEST` while polling `/api/state` at 10 Hz.
+    `ptton` was true from 0.05 s to 1.85 s — lead-in, the whole over with
+    `key` toggling inside it, and the 400 ms tail after `busy` cleared.
+    Before the fix that over would have had PTT down throughout. Backend
+    restored to `flex` afterwards; radio reconnected.
+
+    That `/backend local` + `/api/send` + poll `ptton` recipe is the way to
+    test PTT sequencing without a paddle or a logger, and without keying
+    the Flex — nothing is wired to GPIO32/33 on this board.
+
+    **Why this never showed on Manoj's own station:** RUMlogNG sets the PTT
+    lead to 0 for its session, and with a zero lead-in the first element is
+    keyed in the same millisecond PTT comes up, so the backstop never got
+    its window. It needs a nonzero lead — the operator default is 50 ms —
+    which is what VU2LBW was keying with by hand.
 
 ## Network placement (measured 2026-09-10)
 
