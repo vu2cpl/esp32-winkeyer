@@ -119,5 +119,9 @@ int8_t potStep();
 // this keyer generated (so exact, not a signal decoder). Drives WinKeyer
 // paddle echo. Returns false when nothing is waiting.
 bool   decodedRead(char& c);
+// Buffered characters in the order they FINISH being keyed (a space when a
+// word gap ends). Drives WinKeyer serial echo on the local backend, which a
+// real WinKeyer sends only after the letter is completely sent.
+bool   sentRead(char& c);
 
 }  // namespace Keyer

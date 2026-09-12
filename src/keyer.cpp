@@ -179,6 +179,13 @@ uint32_t decIdleMs = 0;
 bool     decSpaceSent = true;   // suppress a leading space after silence
 QueueHandle_t decodeQ = nullptr;
 
+// Buffered characters as they FINISH being keyed, for WinKeyer serial echo.
+// A WinKeyer echoes a letter once it has been completely sent; echoing on
+// hand-over put the echo up to three characters ahead of the air.
+QueueHandle_t sentQ = nullptr;
+char     curChar = 0;          // buffered character whose pattern is running
+bool     spacePending = false; // word gap in progress; echo ' ' when it ends
+
 // Speed pot
 uint32_t potAccum = 0;
 uint16_t potTick  = 0;
@@ -287,6 +294,11 @@ void goIdle() {
 // Decide what happens after a gap expires (also entered from IDLE/LEAD
 // when work appears).
 void decideNext() {
+  if (spacePending) {          // the word gap just ran out
+    spacePending = false;
+    char sp = ' ';
+    if (sentQ) xQueueSend(sentQ, &sp, 0);
+  }
   // Paddles first. Mode B considers latched memory; mode A only live paddles.
   bool wantDit = dit || (cfgMode == KEYER_IAMBIC_B && memDit);
   bool wantDah = dah || (cfgMode == KEYER_IAMBIC_B && memDah);
@@ -300,6 +312,7 @@ void decideNext() {
     // Character finished. One element gap has already elapsed; add the rest
     // of the inter-character space unless a merge (prosign) suppressed it.
     pattern = nullptr;
+    if (sentQ && curChar) xQueueSend(sentQ, &curChar, 0);
     if (mergeNext) { mergeNext = false; decideNext(); return; }
     state = ST_GAP;
     timerMs = gapChar();
@@ -311,11 +324,13 @@ void decideNext() {
   while (xQueueReceive(charQ, &c, 0) == pdTRUE) {
     if (c == KEYER_MERGE_MARK) { mergeNext = true; continue; }
     if (c == ' ') {                    // word gap, on top of the character gap
+      spacePending = true;
       state = ST_GAP;
       timerMs = gapWord();
       return;
     }
     pattern = morseFor(c);
+    curChar = c;
     if (pattern && *pattern) { startElement(*pattern++ == '-', true); return; }
     pattern = nullptr;                 // unknown char — skip it
   }
@@ -441,6 +456,7 @@ void keyerTask(void*) {
       xQueueReset(charQ);
       pattern = nullptr;
       mergeNext = false;
+      spacePending = false;
       if (curIsAuto && state == ST_KEYDOWN) { keyUp(); goIdle(); }
       else if (state == ST_GAP)             { goIdle(); }
     }
@@ -548,6 +564,7 @@ void begin() {
   recalc();
   charQ   = xQueueCreate(256, sizeof(char));
   decodeQ = xQueueCreate(64, sizeof(char));
+  sentQ   = xQueueCreate(64, sizeof(char));
 
   // Priority well above loopTask (1); pinned to core 1 alongside it —
   // WiFi/BT stacks live on core 0 and never preempt element timing.
@@ -676,6 +693,10 @@ bool paddleDah()    { return dah; }
 
 void setKeyEventHook(void (*fn)(bool)) { keyHook = fn; }
 void setHookPaddleOnly(bool on) { hookPaddleOnly = on; }
+
+bool sentRead(char& c) {
+  return sentQ && xQueueReceive(sentQ, &c, 0) == pdTRUE;
+}
 
 bool decodedRead(char& c) {
   return decodeQ && xQueueReceive(decodeQ, &c, 0) == pdTRUE;

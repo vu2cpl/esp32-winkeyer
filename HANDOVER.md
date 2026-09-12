@@ -1269,10 +1269,17 @@ makes the keyer feel slow.
     also run on ours (pot, BREAKIN level, break-in erasing the radio's
     text): all as the K1EL.
 
-    **Still OPEN:** Flex — pause cannot hold text the radio already has and
-    XOFF never asserts (inherent to handing text over). **Local backend —
-    echo is emitted when a character enters the keyer's 3-character
-    look-ahead, i.e. before it is keyed**; pause cannot hold that look-ahead. Break-in now clears the radio's
+    **Local echo FIXED too:** the keyer reports buffered characters as they
+    finish (`Keyer::sentRead()`), and the engine echoes a host character only
+    then — PARIS within ~60 ms of the K1EL. Web-page and memory text is never
+    echoed to a logger (it has no entry in `echoQ`).
+
+    **Still OPEN:** local pause lets the keyer's 3-character look-ahead go
+    out (K1EL: only the current letter); Flex pause cannot hold text the
+    radio already has and XOFF never asserts (inherent to handing text
+    over); pin configuration never observed on hardware. **Needs Manoj:**
+    a RUMlogNG session to confirm 12a and that nothing a logger relied on
+    changed with the status-bit fix. Break-in now clears the radio's
     cwx buffer too (`Flex::clear()`), as a WinKeyer clears its own — a
     change Manoj will hear on the air.
 

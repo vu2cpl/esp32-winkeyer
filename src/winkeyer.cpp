@@ -418,6 +418,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
     case 0x0A:                        // clear buffer
       paused = false;                 // K1EL: clear cancels pause and tune
       Keyer::tune(false);
+      echoReset();
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
@@ -551,7 +552,7 @@ void pump() {
     }
     bufDrop();
     Keyer::sendChar((char)b);
-    if (serialEcho) emit(b);
+    if (serialEcho) echoPush((char)b);   // echoed when the keyer finishes it
   }
 }
 
@@ -619,7 +620,26 @@ void feed(uint8_t b, WriteFn s) {
 // Flex backstop gives up on a stalled radio and zeroes pending, everything
 // outstanding is flushed rather than stranded.
 void pumpEcho() {
-  if (backend != WK_BACKEND_FLEX || !serialEcho) return;
+  if (backend != WK_BACKEND_FLEX) {
+    // Local: release a host character when the keyer reports it finished.
+    // Anything else the keyer finishes (web page, memories) has no entry
+    // here and is not echoed; a host character the keyer skipped (no Morse
+    // for it) is dropped when a later one matches.
+    char c;
+    while (Keyer::sentRead(c)) {
+      const uint16_t N = sizeof(echoQ);
+      for (uint16_t i = 0; i < echoCount(); i++) {
+        if (echoQ[(echoHead + i) % N] != c) continue;
+        echoHead += i;                       // skipped ones are not echoed
+        echoHead++;
+        if (serialEcho) emit((uint8_t)c);
+        break;
+      }
+    }
+    return;
+  }
+  { char c; while (Keyer::sentRead(c)) {} }  // monitor copy: the radio's echo rules
+  if (!serialEcho) return;
   int outstanding = (int)echoCount() - Flex::pending();
   while (outstanding-- > 0 && echoCount() > 0)
     emit((uint8_t)echoQ[echoHead++ % sizeof(echoQ)]);
@@ -644,8 +664,9 @@ void poll() {
     bufReset();
     flexLen = 0;
     if (backend == WK_BACKEND_FLEX && (Flex::pending() > 0 || echoCount())) {
-      Flex::clear(); echoReset(); monReset();
+      Flex::clear(); monReset();
     }
+    echoReset();
   }
   paddleSessPrev = sess;
   pump();

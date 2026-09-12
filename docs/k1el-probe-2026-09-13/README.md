@@ -142,7 +142,19 @@ K1EL 4.37, 4.85, 5.46, 5.81 — ours trails by the radio's ~150 ms start),
 and EEE / MMMM / E after clears arrive paced with BUSY first.
 
 **Local backend** (`local-probe{3,4,6}.log`, backend switched over HTTP and
-restored): status, clear and XOFF correct (XOFF at our 2/3-of-512). **Echo is
-still early** — it is emitted when a character enters the keyer's
-3-character look-ahead, so PARIS was echoed before it was keyed; and pause
-cannot hold what is already in that look-ahead.
+restored): status, clear and XOFF correct (XOFF at our 2/3-of-512).
+
+**Local echo — fixed** (logs above are after the fix). Echo used to be sent
+when a character entered the keyer's 3-character look-ahead, i.e. before it
+was keyed. The keyer now reports each buffered character as it FINISHES
+(`Keyer::sentRead()`, a space when a word gap ends) and the engine echoes a
+host character only then. PARIS E, local vs K1EL: P 4.31/4.37, A 4.79/4.85,
+R 5.39/5.46, I 5.76/5.81, S 6.23/6.30, space 6.60/6.65, E 6.72/6.78 — within
+~60 ms, which is the USB/TCP difference. `flex-probe3.log` re-run afterwards:
+the Flex path is unaffected.
+
+**Remaining differences:** pause on the local backend still lets the
+characters already in the keyer's look-ahead go out (the K1EL finishes only
+the current one); on Flex, pause cannot hold what the radio already has and
+XOFF never asserts; key immediate goes straight to 0xDC. Pin configuration
+was never observed on hardware.
