@@ -805,12 +805,22 @@ backend. The **host's** session settings do not — a speed N1MM sets over
 the WinKeyer protocol is gone at the next boot, so a contest never leaves
 the keyer permanently reconfigured.
 
-**Sidetone pitch is the exception a logger does not get at all.** The host
-command (`0x01`, tone = 4000/N) is parsed and ignored: RUMlogNG asks for
-N=4 — a legal 1000 Hz — on every session open, and that replaced the
-operator's pitch the moment a logger connected. It is the one setting here
-that only the operator hears: it is not timing, it never reaches the air,
-and no logger reads it back. Yours stays where you put it. CLI and web page both go through
+**Two settings a logger does not get at all**, because both were being
+undone the moment one connected:
+
+- **Sidetone pitch** (`0x01`, tone = 4000/N). RUMlogNG asks for N=4 — a
+  legal 1000 Hz — on every session open. It is the one setting here that
+  only the operator hears: not timing, never on the air, never read back by
+  the logger.
+- **PTT lead-in and tail** (`0x04`, and the same bytes inside `0x0F`).
+  RUMlogNG sends 0,0, which switches off the sequencing entirely on a
+  station where the keyer is what sequences PTT. Lead and tail belong to the
+  rig and the amp in front of it.
+
+Both are parsed and recorded — the status dump still reports what the host
+asked for — and then ignored, so yours stay where you put them. To hand
+either back to the host, restore the setters named in the comments on those
+cases in `src/winkeyer.cpp`. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 
 ## MQTT

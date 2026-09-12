@@ -323,16 +323,16 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
     case 0x03:                        // weighting
       if (n) { cfgWeight = p[0]; Keyer::setWeighting(p[0]); }
       break;
-    case 0x04:                        // PTT lead / tail, 10 ms units
-      if (n >= 2) {
-        cfgLead = p[0]; cfgTail = p[1];
-        Keyer::setPttLeadMs(p[0] * 10);
-        // Both tails, or the host moves the local PTT line while the radio
-        // keeps its own — the same split that made /tail look dead on the
-        // Flex backend. Session-scoped: not persisted, restored on close.
-        Keyer::setPttTailMs(p[1] * 10);
-        Flex::setPttTailMs(p[1] * 10);
-      }
+    case 0x04:                        // PTT lead / tail — RECORDED, NOT APPLIED
+      // RUMlogNG sends 0,0 on every session open, which turns off both the
+      // lead-in and the tail on a station where the KEYER is what sequences
+      // PTT. Lead and tail belong to the rig and the amp in front of it, not
+      // to whichever logger happens to be attached, so the values are kept
+      // for the status dump and the keyer goes on using the operator's.
+      // To hand PTT timing back to the host, restore the three setters here
+      // (Keyer lead, Keyer tail, Flex tail — both tails, or the host moves
+      // the local line while the radio keeps its own).
+      if (n >= 2) { cfgLead = p[0]; cfgTail = p[1]; }
       break;
     case 0x05:                        // speed pot range
       if (n >= 2) {
@@ -379,8 +379,8 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
         Keyer::setPotRange(p[3], p[4]);
         cfgFarns = p[5];  Keyer::setFarnsworth(p[5]);
         cfgWeight = p[6]; Keyer::setWeighting(p[6]);
-        cfgLead = p[7];   Keyer::setPttLeadMs(p[7] * 10);
-        cfgTail = p[8];   Keyer::setPttTailMs(p[8] * 10);
+        cfgLead = p[7];   // PTT timing stays the operator's — see 0x04
+        cfgTail = p[8];
         cfgRatio = p[10]; Keyer::setRatio(p[10]);
         cfgComp = p[11];
         cfgFirstExt = p[12];

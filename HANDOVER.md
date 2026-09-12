@@ -533,6 +533,9 @@ makes the keyer feel slow.
     `Settings::restoreKeyer()` runs on host close AND on transport drop.
     The same command also set only the keyer's tail and not Flex's, the
     identical two-tails split as before: fixed in the protocol path too.
+    **Superseded 2026-09-12 (evening): the host no longer sets PTT timing
+    at all** — see item 12e. Restoring on close was only ever half a fix,
+    because the zeros were in force for the whole session.
   - Web page prose moved to hover help (dotted labels, `title=`), on
     request — the panel had grown more explanation than controls.
   - **Echo was arriving all at once.** RUMlogNG showed the first message
@@ -1058,6 +1061,31 @@ makes the keyer feel slow.
       width**, leaving `diddle` wrapped underneath on its own. Split — Baud
       and its select on one full row, the two switches on the next behind a
       92px spacer so they line up with the controls above.
+
+12e. **What a logger may and may not change (2026-09-12, evening).** Two
+    settings are now the operator's alone, both after Manoj watched a
+    RUMlogNG connect undo them:
+
+    - **Sidetone pitch.** RUMlogNG sends N=4 (a legal 1000 Hz) on every
+      session open. Parsed and ignored now: the pitch is the one setting
+      here that only the operator hears — not timing, never on the air,
+      never read back by the logger.
+    - **PTT lead-in and tail.** RUMlogNG sends 0,0 (WK 0x04, and the same
+      bytes in 0x0F "load defaults"), which turns off the sequencing on a
+      station where the keyer is what sequences PTT. Recorded for the
+      status dump, not applied: lead and tail belong to the rig and the amp,
+      not to whichever logger is attached. Manoj: *"i need 50/400"*.
+
+    Everything else a logger sets still applies for its session and is
+    restored from NVS on close — speed, Farnsworth, weighting, mode register.
+    To hand either of these back to the host, restore the setters named in
+    the comments on `case 0x01` and `case 0x04` in `winkeyer.cpp`.
+
+    Verified on the board: boot 50/400/600 with no host, unchanged through a
+    RUMlogNG session open. **Note the side effect:** his station now runs
+    with a 50 ms lead-in during logger sessions for the first time, which is
+    exactly the path item 12c's backstop bug used to break — the zero lead
+    is why that bug never bit him here.
 
 ## Network placement (measured 2026-09-10)
 
