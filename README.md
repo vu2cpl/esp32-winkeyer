@@ -684,7 +684,23 @@ buffered text.
 ./tools/flex-check.py --key                          # ...and key it (TRANSMITS)
 ./tools/flex-ptt-watch.py --keyer <ip> --radio <ip>  # keyer + radio PTT on one clock
 ./tools/boot-listen.py /dev/cu.usbserial-0001        # is it boot-looping?
+./tools/ptt-check.py --ip <ip>                       # PTT sequencing + every STOP
+./tools/host-watch.py --ip <ip>                      # what is a logger changing?
 ```
+
+**`ptt-check.py` needs no paddle, no logger and no radio.** It drives the
+keyer through its own API on the local backend and polls `/api/state` at
+10 Hz, which is the only way to see faults like a PTT line that comes up
+and drops one millisecond into the lead-in. It restores the backend it
+found, but it does key GPIO33/32 — run it into a dummy load or with
+nothing attached.
+
+**`host-watch.py` answers "what is my logger doing to my settings?"** —
+including `pincfg` and `hostdef`, the raw bytes of the two host commands
+whose bit layout is not obvious from outside. A logger sends its defaults
+at session OPEN, so close and re-open the session before concluding
+anything: a mid-session toggle of RUMlogNG's own PTT boxes sends nothing
+at all.
 
 **`flex-check.py` is the first thing to run when the Flex will not key.**
 Every prerequisite fails silently — the radio reports no error for a
