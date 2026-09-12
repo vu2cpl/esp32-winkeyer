@@ -1103,11 +1103,10 @@ makes the keyer feel slow.
     0→71 with `echo` following. His stored 20 is left at 0 — it looks like a
     leftover from the era when the host could write it.
 
-    **`0x09` pin configuration stays the host's, by decision** — Manoj,
-    asked directly: *"ptt and key, let it be settable from rumlog"*. Bit 0
-    enables the PTT line, so a logger can switch the output off for its
-    session; that is restored from NVS on close like every other session
-    setting.
+    **`0x09` pin configuration: first left to the host, then taken back
+    once it was measured.** Asked directly, Manoj said *"ptt and key, let it
+    be settable from rumlog"*, so bit 0 (PTT line enable) stayed the host's.
+    What changed his mind was data, below.
 
     **MEASURED 2026-09-12, and the decision needs revisiting: RUMlogNG
     always sends `0x00`.** Manoj reported its PTT / key-out boxes had no
@@ -1129,9 +1128,13 @@ makes the keyer feel slow.
       so our field order for that command remains unverified against a real
       host. Worth checking against the K1EL datasheet before trusting it.
 
-    Which means honouring the byte only ever costs him the PTT line, and
-    "settable from the logger" is not on offer here. Recommended: record it
-    like the rest and stop applying it. **Not done — his call.** The other bits of that command differ between WK revisions and
+    Which means honouring the byte only ever cost him the PTT line, and
+    "settable from the logger" was not on offer here. **DONE the same
+    evening on his word — 0x09 joins the recorded-not-applied set.** The
+    byte is still captured in `pincfg`, so the next logger to try this can
+    be judged on evidence rather than on a comment. Verified after flashing:
+    `ptt` stays true through a RUMlogNG session open, with `pincfg` showing
+    the 0 that used to disable it. The other bits of that command differ between WK revisions and
     are still ignored on purpose — acting on them would silently kill the
     sidetone or the key output.
 

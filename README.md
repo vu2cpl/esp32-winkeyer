@@ -816,7 +816,7 @@ host's.**
 | Speed (`0x02`, `0x1C`, `0x0F` b1) | Sidetone pitch (`0x01`) |
 | Serial echo, paddle echo (`0x0E` bits 2, 6) | PTT lead-in and tail (`0x04`, `0x0F` b7/b8) |
 | Speed pot range (`0x05`, `0x0F` b3/b4) | Farnsworth (`0x0D`, `0x0F` b5) |
-| PTT line enable (`0x09` bit 0) | |
+| | PTT line enable (`0x09` bit 0) |
 | | Weighting (`0x03`, `0x0F` b6) |
 | | Dit/dah ratio (`0x17`, `0x0F` b10) |
 | | Iambic A/B and paddle swap (`0x0E` bits 5:4, 3) |
@@ -828,10 +828,13 @@ QSO and per F-key, and the speed knob already overrides it the moment you
 turn it.
 
 This is not what a real K1EL WinKeyer does; it is a deliberate difference.
-RUMlogNG sets PTT lead/tail to 0, Farnsworth to 20 and the sidetone to
-1000 Hz on every session open, which on this station meant no PTT
-sequencing, stretched spacing and the wrong pitch for as long as the logger
-was attached. To hand any of it back, restore the setter named in the
+RUMlogNG sets PTT lead/tail to 0, Farnsworth to 20, the sidetone to 1000 Hz
+and the pin configuration to 0x00 on every session open, which on this
+station meant no PTT sequencing, stretched spacing, the wrong pitch and the
+PTT output switched off for as long as the logger was attached. Its own PTT
+and key-out checkboxes never reach the keyer at all — they drive its rig
+control. `/api/state` carries `pincfg` and `hostdef` if you want to see what
+your own logger sends. To hand any of it back, restore the setter named in the
 comment on that case in `src/winkeyer.cpp`. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 

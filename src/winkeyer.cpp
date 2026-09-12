@@ -359,14 +359,16 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       // Only bit 0 (PTT enable) is acted on — the remaining bits differ
       // between WK revisions and getting them wrong would silently
       // disable the operator's sidetone or key output.
-      // Deliberately NOT in the operator-owned set of 0x0D: Manoj's call,
-      // 2026-09-12 — "ptt and key, let it be settable from rumlog". A logger
-      // turning the PTT line off for its session is a thing a logger is
-      // entitled to do; it is restored from NVS when the session closes.
-      if (n) {
-        dbgPinCfg = p[0];
-        Keyer::setPttEnabled((p[0] & 0x01) != 0);
-      }
+      // RECORDED, NOT APPLIED — measured, not assumed. This was left as the
+      // host's on 2026-09-12 so a logger could enable and disable the PTT
+      // line; capturing `pincfg` the same evening showed RUMlogNG sends 0x00
+      // at every session open and nothing at all when its PTT and key-out
+      // boxes are toggled, so the only thing honouring the byte ever did was
+      // switch the operator's PTT output off for the length of a session.
+      // Those boxes drive the logger's own rig control, not this byte.
+      // The value is still recorded and reported in /api/state, so the next
+      // logger to try can be judged on evidence rather than this comment.
+      if (n) dbgPinCfg = p[0];
       break;
     case 0x0A:                        // clear buffer
       bufReset();
