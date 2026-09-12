@@ -1,0 +1,663 @@
+01:18:23    0.02  RADIO  interlock ? src=
+01:18:23    0.04  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=25
+01:18:23    0.08  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:18:23    0.29  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=25
+01:18:23    0.33  RADIO  interlock READY src=
+01:18:24    1.61  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=25
+01:19:06   43.28  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:06   43.28  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:06   43.34  RADIO  interlock ? src=
+01:19:06   43.34  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:06   43.38  RADIO  interlock TRANSMITTING src=SWCW
+01:19:06   43.45  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=12
+01:19:07   43.75  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=12
+01:19:07   43.94  RADIO  cwx sent=6799
+01:19:07   44.06  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=12
+01:19:07   44.35  RADIO  cwx sent=6800
+01:19:07   44.60  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=12
+01:19:08   45.16  RADIO  cwx sent=6801
+01:19:08   45.48  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=12
+01:19:09   45.77  RADIO  cwx sent=6802
+01:19:09   45.78  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=12
+01:19:09   46.17  RADIO  cwx sent=6803
+01:19:09   46.29  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=12
+01:19:09   46.57  RADIO  interlock UNKEY_REQUESTED src=
+01:19:09   46.57  RADIO  interlock READY src=
+01:19:10   46.79  RADIO  interlock ? src=
+01:19:10   46.79  RADIO  interlock PTT_REQUESTED src=SW
+01:19:10   46.85  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:19:10   46.94  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=12
+01:19:10   47.50  KEYER  busy=1 key=0 ptton=1 xmit=1 wpm=12
+01:19:11   47.87  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=12
+01:19:11   48.14  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=12
+01:19:11   48.40  RADIO  interlock UNKEY_REQUESTED src=
+01:19:11   48.40  RADIO  interlock READY src=
+01:19:11   48.42  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=12
+01:19:12   49.31  RADIO  interlock ? src=
+01:19:12   49.31  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:12   49.35  RADIO  interlock TRANSMITTING src=SWCW
+01:19:12   49.52  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=12
+01:19:12   49.61  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:12   49.61  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:13   49.69  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:13   49.69  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:13   49.80  RADIO  cwx sent=6804
+01:19:13   49.90  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=22
+01:19:13   49.94  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:13   49.94  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:13   50.03  RADIO  cwx sent=6805
+01:19:13   50.13  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=21
+01:19:13   50.34  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:13   50.34  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:13   50.50  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:13   50.50  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:13   50.51  RADIO  cwx sent=6806
+01:19:13   50.53  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=25
+01:19:13   50.59  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:13   50.59  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:13   50.59  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:13   50.59  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:13   50.59  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:13   50.59  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:14   50.75  RADIO  cwx wpm=29 break_in_delay=782 qsk_enabled=1
+01:19:14   50.75  RADIO  cwx wpm=29 break_in_delay=782 qsk_enabled=1
+01:19:14   50.79  RADIO  cwx sent=6807
+01:19:14   50.92  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:14   50.92  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:14   50.96  RADIO  cwx sent=6808
+01:19:14   50.99  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:14   50.99  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:14   51.16  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:14   51.16  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:14   51.29  KEYER  busy=1 key=0 ptton=1 xmit=1 wpm=33
+01:19:14   51.31  RADIO  cwx wpm=33 break_in_delay=782 qsk_enabled=1
+01:19:14   51.31  RADIO  cwx wpm=33 break_in_delay=782 qsk_enabled=1
+01:19:14   51.58  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=33
+01:19:15   51.92  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=33
+01:19:15   52.43  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:15   52.43  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:15   52.43  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:15   52.43  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:15   52.43  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:15   52.43  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:15   52.51  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:15   52.51  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:15   52.59  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:15   52.59  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:16   52.64  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=25
+01:19:16   52.68  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:16   52.68  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:16   52.68  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:16   52.68  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:16   52.84  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:16   52.84  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:16   52.93  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:16   52.95  RADIO  interlock UNKEY_REQUESTED src=
+01:19:16   52.95  RADIO  interlock READY src=
+01:19:16   53.01  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:16   53.01  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:16   53.09  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:16   53.09  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:16   53.31  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=11
+01:19:16   53.33  RADIO  cwx wpm=11 break_in_delay=782 qsk_enabled=1
+01:19:16   53.33  RADIO  cwx wpm=11 break_in_delay=782 qsk_enabled=1
+01:19:16   53.49  RADIO  cwx wpm=10 break_in_delay=782 qsk_enabled=1
+01:19:16   53.49  RADIO  cwx wpm=10 break_in_delay=782 qsk_enabled=1
+01:19:16   53.58  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:16   53.58  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:17   53.66  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:17   53.66  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:17   53.74  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:17   53.74  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:17   53.74  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:17   53.74  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:17   53.83  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:17   53.83  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:17   53.88  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=24
+01:19:17   53.91  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:17   53.91  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:17   53.99  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:17   53.99  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:17   54.07  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:17   54.07  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:17   54.15  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:17   54.15  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:17   54.24  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:17   54.24  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:17   54.24  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:17   54.24  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:17   54.32  RADIO  cwx wpm=37 break_in_delay=782 qsk_enabled=1
+01:19:17   54.32  RADIO  cwx wpm=37 break_in_delay=782 qsk_enabled=1
+01:19:17   54.32  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:17   54.32  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:17   54.40  RADIO  cwx wpm=39 break_in_delay=782 qsk_enabled=1
+01:19:17   54.40  RADIO  cwx wpm=39 break_in_delay=782 qsk_enabled=1
+01:19:17   54.49  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:17   54.49  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:17   54.49  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:17   54.49  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:17   54.52  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=36
+01:19:17   54.57  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:17   54.57  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:18   54.66  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:18   54.66  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:18   54.66  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:18   54.66  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:18   54.74  RADIO  cwx wpm=29 break_in_delay=782 qsk_enabled=1
+01:19:18   54.74  RADIO  cwx wpm=29 break_in_delay=782 qsk_enabled=1
+01:19:18   54.74  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:18   54.75  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:19:18   54.75  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:18   54.75  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:18   54.82  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:18   54.82  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:18   54.91  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:18   54.91  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:18   54.99  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:18   54.99  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:18   55.06  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=23
+01:19:18   55.15  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:18   55.15  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:18   55.15  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:18   55.15  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:18   55.23  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:18   55.23  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:18   55.33  RADIO  interlock ? src=
+01:19:18   55.33  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:18   55.37  RADIO  interlock TRANSMITTING src=SWCW
+01:19:18   55.45  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=19
+01:19:18   55.48  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:18   55.48  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:19   55.64  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:19   55.64  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:19   55.73  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=20
+01:19:19   55.75  RADIO  cwx sent=6809
+01:19:19   55.88  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:19   55.88  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:19   55.88  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:19   55.88  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:19   55.96  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:19   55.96  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:19   55.99  RADIO  cwx sent=6810
+01:19:19   56.05  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:19   56.05  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:19   56.13  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:19   56.13  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:19   56.21  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=25
+01:19:19   56.41  RADIO  cwx sent=6811
+01:19:19   56.47  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=25
+01:19:19   56.52  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:19   56.52  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:20   56.74  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=26
+01:19:20   56.87  RADIO  cwx sent=6812
+01:19:20   57.06  RADIO  cwx sent=6813
+01:19:20   57.57  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=26
+01:19:21   57.76  RADIO  interlock UNKEY_REQUESTED src=
+01:19:21   57.76  RADIO  interlock READY src=
+01:19:21   57.89  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=26
+01:19:21   58.15  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=26
+01:19:24   61.27  RADIO  interlock ? src=
+01:19:24   61.27  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:24   61.31  RADIO  interlock TRANSMITTING src=SWCW
+01:19:24   61.49  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=26
+01:19:24   61.59  RADIO  cwx sent=6814
+01:19:25   61.78  RADIO  cwx sent=6815
+01:19:25   61.79  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=26
+01:19:25   62.04  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=26
+01:19:25   62.16  RADIO  cwx sent=6816
+01:19:25   62.45  RADIO  cwx sent=6817
+01:19:25   62.58  KEYER  busy=1 key=0 ptton=1 xmit=1 wpm=26
+01:19:26   62.63  RADIO  cwx sent=6818
+01:19:26   62.92  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=26
+01:19:26   63.42  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=26
+01:19:27   63.71  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=26
+01:19:27   63.74  RADIO  interlock UNKEY_REQUESTED src=
+01:19:27   63.74  RADIO  interlock READY src=
+01:19:28   64.65  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:28   64.65  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:28   64.73  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:28   64.73  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:28   64.90  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:28   64.90  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:28   65.01  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:28   65.07  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:28   65.07  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:28   65.07  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:28   65.07  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:28   65.07  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:28   65.07  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:28   65.14  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:28   65.14  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:28   65.23  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:28   65.23  RADIO  cwx wpm=14 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=11 break_in_delay=782 qsk_enabled=1
+01:19:28   65.31  RADIO  cwx wpm=11 break_in_delay=782 qsk_enabled=1
+01:19:28   65.36  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=11
+01:19:28   65.47  RADIO  cwx wpm=10 break_in_delay=782 qsk_enabled=1
+01:19:28   65.47  RADIO  cwx wpm=10 break_in_delay=782 qsk_enabled=1
+01:19:29   65.64  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=10
+01:19:29   65.72  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:29   65.72  RADIO  cwx wpm=12 break_in_delay=782 qsk_enabled=1
+01:19:29   65.80  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:29   65.80  RADIO  cwx wpm=13 break_in_delay=782 qsk_enabled=1
+01:19:29   65.88  RADIO  cwx wpm=15 break_in_delay=782 qsk_enabled=1
+01:19:29   65.88  RADIO  cwx wpm=15 break_in_delay=782 qsk_enabled=1
+01:19:29   65.96  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:29   65.96  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:29   66.13  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:29   66.13  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:29   66.21  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:29   66.21  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:29   66.29  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:29   66.29  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:29   66.32  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=25
+01:19:29   66.38  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:29   66.38  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:29   66.38  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:29   66.38  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:29   66.46  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:29   66.46  RADIO  cwx wpm=31 break_in_delay=782 qsk_enabled=1
+01:19:29   66.46  RADIO  cwx wpm=33 break_in_delay=782 qsk_enabled=1
+01:19:29   66.46  RADIO  cwx wpm=33 break_in_delay=782 qsk_enabled=1
+01:19:29   66.54  RADIO  cwx wpm=35 break_in_delay=782 qsk_enabled=1
+01:19:29   66.54  RADIO  cwx wpm=35 break_in_delay=782 qsk_enabled=1
+01:19:29   66.54  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:29   66.54  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:30   66.63  RADIO  cwx wpm=37 break_in_delay=782 qsk_enabled=1
+01:19:30   66.63  RADIO  cwx wpm=37 break_in_delay=782 qsk_enabled=1
+01:19:30   66.63  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:30   66.63  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:30   66.71  RADIO  cwx wpm=39 break_in_delay=782 qsk_enabled=1
+01:19:30   66.71  RADIO  cwx wpm=39 break_in_delay=782 qsk_enabled=1
+01:19:30   67.00  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=36
+01:19:30   67.03  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:30   67.03  RADIO  cwx wpm=38 break_in_delay=782 qsk_enabled=1
+01:19:30   67.03  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:30   67.03  RADIO  cwx wpm=36 break_in_delay=782 qsk_enabled=1
+01:19:30   67.11  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:30   67.11  RADIO  cwx wpm=34 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=32 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=30 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:30   67.20  RADIO  cwx wpm=28 break_in_delay=782 qsk_enabled=1
+01:19:30   67.29  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:30   67.29  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:19:30   67.37  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:30   67.37  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:19:30   67.45  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:30   67.45  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:19:30   67.45  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:30   67.45  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:19:30   67.47  RADIO  interlock ? src=
+01:19:30   67.47  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:30   67.52  RADIO  interlock TRANSMITTING src=SWCW
+01:19:31   67.69  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:31   67.69  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:19:31   67.82  RADIO  cwx sent=6819
+01:19:31   67.83  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=21
+01:19:31   67.93  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:31   67.93  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:19:31   68.05  RADIO  cwx sent=6820
+01:19:32   68.63  RADIO  cwx sent=6821
+01:19:32   68.65  KEYER  busy=1 key=0 ptton=1 xmit=1 wpm=21
+01:19:32   68.93  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=21
+01:19:32   69.03  RADIO  cwx sent=6822
+01:19:32   69.19  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=21
+01:19:32   69.26  RADIO  cwx sent=6823
+01:19:32   69.43  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:33   69.84  RADIO  interlock UNKEY_REQUESTED src=
+01:19:33   69.84  RADIO  interlock READY src=
+01:19:33   69.94  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:36   73.24  RADIO  interlock ? src=
+01:19:36   73.24  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:36   73.28  RADIO  interlock TRANSMITTING src=SWCW
+01:19:36   73.34  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:36   73.59  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=21
+01:19:37   73.62  RADIO  cwx sent=6824
+01:19:37   73.86  RADIO  cwx sent=6825
+01:19:37   73.90  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=21
+01:19:37   74.15  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=21
+01:19:37   74.27  RADIO  cwx sent=6826
+01:19:38   74.65  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:38   74.67  RADIO  cwx sent=6827
+01:19:38   74.90  RADIO  cwx sent=6828
+01:19:38   74.97  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:38   75.48  RADIO  interlock UNKEY_REQUESTED src=
+01:19:38   75.48  RADIO  interlock READY src=
+01:19:42   79.24  RADIO  interlock ? src=
+01:19:42   79.24  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:42   79.29  RADIO  interlock TRANSMITTING src=SWCW
+01:19:42   79.41  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:43   79.63  RADIO  cwx erase=6830,6833
+01:19:43   79.63  RADIO  interlock UNKEY_REQUESTED src=
+01:19:43   79.63  RADIO  interlock READY src=
+01:19:43   79.64  RADIO  cwx sent=6829
+01:19:43   79.71  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=21
+01:19:43   79.72  RADIO  interlock ? src=
+01:19:43   79.72  RADIO  interlock PTT_REQUESTED src=SW
+01:19:43   79.78  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:19:43   80.01  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=21
+01:19:43   80.52  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:44   80.76  RADIO  interlock UNKEY_REQUESTED src=
+01:19:44   80.76  RADIO  interlock READY src=
+01:19:44   81.31  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:48   85.25  RADIO  interlock ? src=
+01:19:48   85.25  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:48   85.30  RADIO  interlock TRANSMITTING src=SWCW
+01:19:48   85.55  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=21
+01:19:49   85.64  RADIO  cwx sent=6834
+01:19:49   85.88  RADIO  cwx sent=6835
+01:19:49   86.07  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=21
+01:19:49   86.35  RADIO  cwx sent=6836
+01:19:49   86.58  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=21
+01:19:50   86.74  RADIO  cwx sent=6837
+01:19:50   86.84  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=21
+01:19:50   86.97  RADIO  cwx sent=6838
+01:19:50   87.09  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:50   87.52  RADIO  interlock UNKEY_REQUESTED src=
+01:19:50   87.52  RADIO  interlock READY src=
+01:19:50   87.61  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:54   91.26  RADIO  interlock ? src=
+01:19:54   91.26  RADIO  interlock PTT_REQUESTED src=SWCW
+01:19:54   91.31  RADIO  interlock TRANSMITTING src=SWCW
+01:19:54   91.45  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:55   91.65  RADIO  cwx sent=6839
+01:19:55   91.81  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=21
+01:19:55   91.89  RADIO  cwx sent=6840
+01:19:55   92.32  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=21
+01:19:55   92.37  RADIO  cwx sent=6841
+01:19:56   92.78  RADIO  cwx sent=6842
+01:19:56   92.83  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=21
+01:19:56   93.01  RADIO  cwx sent=6843
+01:19:56   93.10  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=21
+01:19:56   93.58  RADIO  interlock UNKEY_REQUESTED src=
+01:19:56   93.58  RADIO  interlock READY src=
+01:19:59   95.64  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:59   95.64  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:19:59   95.67  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=20
+01:19:59   95.72  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:59   95.72  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:19:59   95.81  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:19:59   95.81  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:19:59   95.89  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:59   95.89  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:59   95.97  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:59   95.97  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:59   96.07  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=16
+01:19:59   96.13  RADIO  cwx wpm=15 break_in_delay=782 qsk_enabled=1
+01:19:59   96.13  RADIO  cwx wpm=15 break_in_delay=782 qsk_enabled=1
+01:19:59   96.30  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:59   96.30  RADIO  cwx wpm=16 break_in_delay=782 qsk_enabled=1
+01:19:59   96.46  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:19:59   96.46  RADIO  cwx wpm=17 break_in_delay=782 qsk_enabled=1
+01:20:00   96.63  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:00   97.26  RADIO  interlock ? src=
+01:20:00   97.26  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:00   97.31  RADIO  interlock TRANSMITTING src=SWCW
+01:20:00   97.45  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:01   97.70  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:01   97.73  RADIO  cwx sent=6844
+01:20:01   98.02  RADIO  cwx sent=6845
+01:20:01   98.26  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:01   98.53  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:01   98.60  RADIO  cwx sent=6846
+01:20:02   98.86  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:02   99.03  RADIO  cwx sent=6847
+01:20:02   99.14  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:02   99.32  RADIO  cwx sent=6848
+01:20:02   99.38  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:03   99.84  RADIO  interlock UNKEY_REQUESTED src=
+01:20:03   99.84  RADIO  interlock READY src=
+01:20:04  101.40  RADIO  interlock ? src=
+01:20:04  101.40  RADIO  interlock PTT_REQUESTED src=SW
+01:20:04  101.47  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:20:05  101.72  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:05  102.06  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:05  102.36  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:05  102.36  RADIO  interlock UNKEY_REQUESTED src=
+01:20:05  102.36  RADIO  interlock READY src=
+01:20:06  103.35  RADIO  interlock ? src=
+01:20:06  103.35  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:06  103.40  RADIO  interlock TRANSMITTING src=SWCW
+01:20:07  103.68  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:07  103.82  RADIO  cwx sent=6849
+01:20:07  104.03  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:07  104.11  RADIO  cwx sent=6850
+01:20:07  104.33  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:07  104.60  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:08  104.69  RADIO  cwx sent=6851
+01:20:08  104.86  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:08  105.12  RADIO  cwx sent=6852
+01:20:08  105.16  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:08  105.40  RADIO  cwx sent=6853
+01:20:08  105.42  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:09  105.92  RADIO  interlock UNKEY_REQUESTED src=
+01:20:09  105.92  RADIO  interlock READY src=
+01:20:12  109.26  RADIO  interlock ? src=
+01:20:12  109.26  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:12  109.31  RADIO  interlock TRANSMITTING src=SWCW
+01:20:12  109.47  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:13  109.73  RADIO  cwx sent=6854
+01:20:13  109.78  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:13  110.03  RADIO  cwx sent=6855
+01:20:13  110.16  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:13  110.48  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:13  110.60  RADIO  cwx sent=6856
+01:20:14  111.03  RADIO  cwx sent=6857
+01:20:14  111.11  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:14  111.32  RADIO  cwx sent=6858
+01:20:14  111.38  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:15  111.84  RADIO  interlock UNKEY_REQUESTED src=
+01:20:15  111.84  RADIO  interlock READY src=
+01:20:16  112.70  RADIO  interlock ? src=
+01:20:16  112.70  RADIO  interlock PTT_REQUESTED src=SW
+01:20:16  112.76  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:20:16  112.80  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:16  113.46  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:17  113.78  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:17  114.19  RADIO  interlock UNKEY_REQUESTED src=
+01:20:17  114.19  RADIO  interlock READY src=
+01:20:17  114.36  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:18  115.26  RADIO  interlock ? src=
+01:20:18  115.26  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:18  115.30  RADIO  interlock TRANSMITTING src=SWCW
+01:20:18  115.41  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:19  115.69  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:19  115.72  RADIO  cwx sent=6859
+01:20:19  116.02  RADIO  cwx sent=6860
+01:20:19  116.25  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:19  116.59  RADIO  cwx sent=6861
+01:20:20  116.84  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:20  117.02  RADIO  cwx sent=6862
+01:20:20  117.14  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:20  117.31  RADIO  cwx sent=6863
+01:20:21  117.63  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:21  117.83  RADIO  interlock UNKEY_REQUESTED src=
+01:20:21  117.83  RADIO  interlock READY src=
+01:20:22  118.69  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:22  118.72  RADIO  interlock ? src=
+01:20:22  118.72  RADIO  interlock PTT_REQUESTED src=SW
+01:20:22  118.79  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:20:22  118.96  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:22  119.26  KEYER  busy=1 key=0 ptton=1 xmit=1 wpm=17
+01:20:22  119.51  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:23  119.76  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:23  120.03  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:23  120.07  RADIO  interlock UNKEY_REQUESTED src=
+01:20:23  120.07  RADIO  interlock READY src=
+01:20:24  121.28  RADIO  interlock ? src=
+01:20:24  121.28  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:24  121.32  RADIO  interlock TRANSMITTING src=SWCW
+01:20:24  121.54  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:25  121.75  RADIO  cwx sent=6864
+01:20:25  121.83  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:25  122.04  RADIO  cwx sent=6865
+01:20:25  122.45  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:25  122.62  RADIO  cwx sent=6866
+01:20:26  123.01  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:26  123.05  RADIO  cwx sent=6867
+01:20:26  123.29  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:26  123.33  RADIO  cwx sent=6868
+01:20:26  123.53  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:27  123.78  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:27  124.25  RADIO  interlock UNKEY_REQUESTED src=
+01:20:27  124.25  RADIO  interlock READY src=
+01:20:27  124.37  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:30  127.29  RADIO  interlock ? src=
+01:20:30  127.29  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:30  127.34  RADIO  interlock TRANSMITTING src=SWCW
+01:20:30  127.50  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:31  127.76  RADIO  cwx sent=6869
+01:20:31  127.80  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:31  128.05  RADIO  cwx sent=6870
+01:20:31  128.32  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:32  128.62  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:32  128.63  RADIO  cwx sent=6871
+01:20:32  128.89  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:32  129.06  RADIO  cwx sent=6872
+01:20:32  129.20  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:32  129.35  RADIO  cwx sent=6873
+01:20:32  129.61  RADIO  interlock UNKEY_REQUESTED src=
+01:20:32  129.61  RADIO  interlock READY src=
+01:20:33  129.69  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:36  133.28  RADIO  interlock ? src=
+01:20:36  133.28  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:36  133.33  RADIO  interlock TRANSMITTING src=SWCW
+01:20:36  133.43  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:37  133.67  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=17
+01:20:37  133.75  RADIO  cwx sent=6874
+01:20:37  134.04  RADIO  cwx sent=6875
+01:20:37  134.17  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:37  134.41  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=17
+01:20:37  134.62  RADIO  cwx sent=6876
+01:20:38  134.70  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=17
+01:20:38  135.05  RADIO  cwx sent=6877
+01:20:38  135.23  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:38  135.34  RADIO  cwx sent=6878
+01:20:38  135.49  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:39  135.75  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:39  136.20  RADIO  interlock UNKEY_REQUESTED src=
+01:20:39  136.20  RADIO  interlock READY src=
+01:20:39  136.30  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:42  139.39  RADIO  interlock ? src=
+01:20:42  139.39  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:42  139.44  RADIO  interlock TRANSMITTING src=SWCW
+01:20:42  139.59  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:43  139.86  RADIO  cwx sent=6879
+01:20:43  139.91  RADIO  cwx erase=6881,6883
+01:20:43  139.91  RADIO  interlock UNKEY_REQUESTED src=
+01:20:43  139.91  RADIO  interlock READY src=
+01:20:43  139.91  RADIO  cwx sent=6880
+01:20:43  140.01  RADIO  interlock ? src=
+01:20:43  140.01  RADIO  interlock PTT_REQUESTED src=SW
+01:20:43  140.08  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:20:43  140.13  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:44  140.67  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:44  140.94  RADIO  interlock UNKEY_REQUESTED src=
+01:20:44  140.94  RADIO  interlock READY src=
+01:20:44  141.53  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:48  145.28  RADIO  interlock ? src=
+01:20:48  145.28  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:48  145.33  RADIO  interlock TRANSMITTING src=SWCW
+01:20:48  145.50  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=17
+01:20:48  145.57  RADIO  cwx erase=6885,6888
+01:20:48  145.57  RADIO  interlock UNKEY_REQUESTED src=
+01:20:48  145.57  RADIO  interlock READY src=
+01:20:48  145.57  RADIO  cwx sent=6884
+01:20:49  145.65  RADIO  interlock ? src=
+01:20:49  145.65  RADIO  interlock PTT_REQUESTED src=SW
+01:20:49  145.72  RADIO  interlock TRANSMITTING src=SW,SWCW
+01:20:49  145.75  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=17
+01:20:49  146.07  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=17
+01:20:49  146.33  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=17
+01:20:50  146.72  RADIO  interlock UNKEY_REQUESTED src=
+01:20:50  146.72  RADIO  interlock READY src=
+01:20:50  147.36  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=17
+01:20:50  147.42  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:20:50  147.42  RADIO  cwx wpm=18 break_in_delay=782 qsk_enabled=1
+01:20:50  147.59  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:20:50  147.59  RADIO  cwx wpm=19 break_in_delay=782 qsk_enabled=1
+01:20:50  147.59  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:20:50  147.59  RADIO  cwx wpm=20 break_in_delay=782 qsk_enabled=1
+01:20:51  147.64  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=20
+01:20:51  147.75  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:20:51  147.75  RADIO  cwx wpm=21 break_in_delay=782 qsk_enabled=1
+01:20:51  147.84  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:20:51  147.84  RADIO  cwx wpm=22 break_in_delay=782 qsk_enabled=1
+01:20:51  147.84  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:20:51  147.84  RADIO  cwx wpm=23 break_in_delay=782 qsk_enabled=1
+01:20:51  147.92  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:20:51  147.92  RADIO  cwx wpm=24 break_in_delay=782 qsk_enabled=1
+01:20:51  147.92  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:20:51  147.92  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:20:51  147.98  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=25
+01:20:51  148.08  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:20:51  148.08  RADIO  cwx wpm=26 break_in_delay=782 qsk_enabled=1
+01:20:51  148.17  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:20:51  148.17  RADIO  cwx wpm=27 break_in_delay=782 qsk_enabled=1
+01:20:51  148.31  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=27
+01:20:54  151.28  RADIO  interlock ? src=
+01:20:54  151.28  RADIO  interlock PTT_REQUESTED src=SWCW
+01:20:54  151.32  RADIO  interlock TRANSMITTING src=SWCW
+01:20:54  151.35  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=27
+01:20:54  151.59  RADIO  cwx sent=6889
+01:20:55  151.66  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=27
+01:20:55  151.78  RADIO  cwx sent=6890
+01:20:55  151.93  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=27
+01:20:55  152.14  RADIO  cwx sent=6891
+01:20:55  152.22  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=27
+01:20:55  152.47  RADIO  cwx sent=6892
+01:20:56  152.65  RADIO  cwx sent=6893
+01:20:56  152.75  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=27
+01:20:56  153.27  RADIO  interlock UNKEY_REQUESTED src=
+01:20:56  153.27  RADIO  interlock READY src=
+01:20:59  156.17  KEYER  busy=1 key=0 ptton=0 xmit=0 wpm=27
+01:20:59  156.24  RADIO  interlock ? src=
+01:20:59  156.24  RADIO  interlock PTT_REQUESTED src=SW
+01:20:59  156.28  RADIO  interlock TRANSMITTING src=SW
+01:20:59  156.47  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=27
+01:21:00  156.74  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=27
+01:21:00  157.26  RADIO  interlock UNKEY_REQUESTED src=
+01:21:00  157.26  RADIO  interlock READY src=
+01:21:00  157.31  RADIO  interlock ? src=
+01:21:00  157.31  RADIO  interlock PTT_REQUESTED src=SWCW
+01:21:00  157.36  RADIO  interlock TRANSMITTING src=SWCW
+01:21:00  157.43  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=27
+01:21:01  157.63  RADIO  cwx sent=6894
+01:21:01  157.77  KEYER  busy=1 key=0 ptton=1 xmit=0 wpm=27
+01:21:01  157.81  RADIO  cwx sent=6895
+01:21:01  158.05  KEYER  busy=1 key=1 ptton=1 xmit=0 wpm=27
+01:21:01  158.18  RADIO  cwx sent=6896
+01:21:01  158.30  KEYER  busy=1 key=1 ptton=0 xmit=0 wpm=27
+01:21:01  158.46  RADIO  cwx sent=6897
+01:21:02  158.63  KEYER  busy=1 key=1 ptton=1 xmit=1 wpm=27
+01:21:02  158.64  RADIO  cwx sent=6898
+01:21:02  159.03  KEYER  busy=0 key=0 ptton=1 xmit=1 wpm=27
+01:21:02  159.27  KEYER  busy=0 key=0 ptton=1 xmit=0 wpm=27
+01:21:02  159.51  RADIO  interlock UNKEY_REQUESTED src=
+01:21:02  159.51  RADIO  interlock READY src=
+01:21:02  159.55  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=27
+01:21:08  164.74  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:08  164.74  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:08  164.84  KEYER  busy=0 key=0 ptton=0 xmit=0 wpm=25
+01:21:40  196.92  RADIO  interlock ? src=
+01:21:40  197.13  RADIO  interlock READY src=
+01:21:41  197.67  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:41  197.67  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:41  197.67  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:41  197.67  RADIO  cwx wpm=25 break_in_delay=782 qsk_enabled=1
+01:21:41  198.39  RADIO  interlock ? src=
+01:21:42  198.76  RADIO  interlock READY src=
+01:21:42  198.89  RADIO  interlock ? src=
+01:21:53  210.51  RADIO  interlock READY src=

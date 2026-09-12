@@ -117,3 +117,32 @@ radio in batches rather than keyed here:
 - Clear Buffer: 0xC0, then a spurious 0xC4 for ~1 s, then 0xC0. The K1EL
   sends 0xC0 once.
 - Key immediate goes straight to 0xDC (K1EL: 0xD8 then 0xDC) — cosmetic.
+
+## Round 2 — probe 5 on ours, Flex echo fixed, local backend compared
+
+**Probe 5 on our keyer** (`ours-probe5.log`, Manoj on our pot and paddle;
+radio view in `ours-probe5-flex-watch.log`): pot bytes one per step 0..29,
+none for host speed commands; BREAKIN held as a level through each paddle
+session, closing space echoed, then idle — as the K1EL. The watcher shows
+break-in erasing the radio's remaining text (`cwx erase=6830,6833`).
+
+**Flex echo pacing — fixed in `flex.cpp`** (`flex-probe{3,4,6}.log`, radio
+view `flex-probe-watch.log`). Two causes:
+1. The `cwx send` reply gives the index of the block's FIRST character and
+   `cwx sent=` counts one per character (TEST -> 6799..6803), so pending
+   must run to index + length - 1. Taking the bare index as the end released
+   every echo the moment the reply landed.
+2. After a clear, a late `erase`/`sent=` report leaves `sentIdx` at the
+   radio's absolute index while `queuedIdx` restarted at 0, so the next send
+   read as already sent. The provisional count now starts from `sentIdx`.
+Replies to sends made before a `cwx clear` are ignored (matched by sequence
+number), which removed the ~1 s BUSY after Clear Buffer and break-in.
+Result: PARIS E echoed per letter (ours P 4.51, A 5.00, R 5.59, I 5.98;
+K1EL 4.37, 4.85, 5.46, 5.81 — ours trails by the radio's ~150 ms start),
+and EEE / MMMM / E after clears arrive paced with BUSY first.
+
+**Local backend** (`local-probe{3,4,6}.log`, backend switched over HTTP and
+restored): status, clear and XOFF correct (XOFF at our 2/3-of-512). **Echo is
+still early** — it is emitted when a character enters the keyer's
+3-character look-ahead, so PARIS was echoed before it was keyed; and pause
+cannot hold what is already in that look-ahead.

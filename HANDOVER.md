@@ -893,7 +893,7 @@ makes the keyer feel slow.
   `pttSafety()`, plus an FSK keep-alive so an RTTY over longer than 10 s
   keeps its PTT.
 
-12a. **OPEN (reported 2026-09-12 at wrap-up): characters missing from the
+12a. **LIKELY FIXED 2026-09-13 — Flex echo pacing rewritten (12h); confirm with RUMlogNG.** Reported 2026-09-12 at wrap-up: characters missing from the
     host echo, while the radio sends them all.** So the text reaches the
     radio; only the echo stream back to the logger is short.
 
@@ -1261,11 +1261,18 @@ makes the keyer feel slow.
     break-in clearing text) need probe 5 with an operator on OUR pot and
     paddle; and the **local** backend has not been compared at all.
 
-    **Still OPEN — Flex backend only** (text goes to the radio in batches):
-    echo arrives in bursts, sometimes before BUSY (this is 12a, and it now
-    has a reference: one echo at the end of each letter); pause cannot
-    hold text the radio already has; XOFF never asserts; Clear Buffer sends
-    a spurious ~1 s BUSY after its 0xC0. Break-in now clears the radio's
+    **Flex echo pacing FIXED later the same night** (`flex.cpp`): pending
+    now runs to the block's last index (reply index + length - 1), counts on
+    from `sentIdx` after a clear, and ignores replies to sends made before a
+    `cwx clear`. PARIS now echoes per letter within ~150 ms of the K1EL, and
+    the spurious BUSY after Clear Buffer / break-in is gone. Probe 5 was
+    also run on ours (pot, BREAKIN level, break-in erasing the radio's
+    text): all as the K1EL.
+
+    **Still OPEN:** Flex — pause cannot hold text the radio already has and
+    XOFF never asserts (inherent to handing text over). **Local backend —
+    echo is emitted when a character enters the keyer's 3-character
+    look-ahead, i.e. before it is keyed**; pause cannot hold that look-ahead. Break-in now clears the radio's
     cwx buffer too (`Flex::clear()`), as a WinKeyer clears its own — a
     change Manoj will hear on the air.
 

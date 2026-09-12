@@ -53,10 +53,24 @@ bool     subscribed = false;
 String   boundClientId;      // GUI client we transmit on behalf of
 String   guiHandle;          // ...and its handle, required on every cw key
 
-long     queuedIdx = 0;      // index returned by the last "cwx send"
+long     queuedIdx = 0;      // radio buffer index of the LAST character queued
 long     sentIdx   = 0;      // index reported by "cwx sent="
 uint8_t  cfgWpm    = 20;
 uint32_t busyUntil = 0;      // backstop: see pending()
+
+// Replies to "cwx send" are matched to the send that caused them by sequence
+// number. The reply carries the buffer index of the block's FIRST character,
+// and "cwx sent=" then counts up one per character (seen 2026-09-13:
+// "TEST " -> sent=6799..6803), so the block ends at index + length - 1.
+// Taking the bare index as the end made pending() collapse to ~0 as soon as
+// the reply landed, and every echo went to the host at once, long before the
+// radio had keyed the text. A reply to a send made before a "cwx clear" is
+// stale and must not re-arm pending() — that was the ~1 s BUSY a host saw
+// after Clear Buffer or a paddle break-in.
+struct CwxSend { uint32_t seq; uint16_t len; };
+CwxSend  cwxSends[8];
+uint8_t  cwxSendNext = 0;
+uint32_t clearSeq = 0;       // replies to commands before this are stale
 
 // Rough time for the radio to key `n` characters, used only as an upper
 // bound. ~12 dit-units per character is generous for plain text; the
@@ -212,9 +226,22 @@ void onLine(const String& line) {
       }
       return;
     }
-    // A successful "cwx send" answers with the buffer index it landed at.
-    long v = msg.toInt();
-    if (v > 0) queuedIdx = v;
+    // A successful "cwx send" answers with the buffer index its first
+    // character landed at. Only replies to our own live sends count: other
+    // commands answer with numbers too.
+    uint32_t rseq = strtoul(line.c_str() + 1, nullptr, 10);
+    if (rseq < clearSeq) return;
+    for (auto& e : cwxSends) {
+      if (e.len && e.seq == rseq) {
+        long v = msg.toInt();
+        if (v > 0) {
+          long last = v + (long)e.len - 1;
+          if (last > queuedIdx) queuedIdx = last;
+        }
+        e.len = 0;
+        break;
+      }
+    }
     return;
   }
   if (t == 'S') {                      // status: S<handle>|<object> ...
@@ -673,16 +700,26 @@ void send(const char* text) {
   if (!connected() || !text || !*text) return;
   String out;
   for (const char* p = text; *p; p++) out += (*p == ' ') ? (char)0x7F : *p;
+  cwxSends[cwxSendNext] = { seq, (uint16_t)strlen(text) };   // seq sendCmd will use
+  cwxSendNext = (cwxSendNext + 1) % (sizeof(cwxSends) / sizeof(cwxSends[0]));
   sendCmd("cwx send " + out);
   // Only time a start, not a continuation.
   if (!radioTx && pending() == 0) cwxSendAt = millis();
   lastCwxMs = millis();          // the radio is about to be busy sending
-  queuedIdx += strlen(text);          // provisional until the reply lands
+  // Provisional until the reply lands. Count on from wherever the radio has
+  // got to: after a clear, a late "cwx erase"/"sent=" leaves sentIdx at the
+  // radio's absolute index while queuedIdx restarts at 0, and counting on
+  // from 0 put pending() below zero — every echo went out at once, before
+  // the radio keyed a thing (seen 2026-09-13 after each Clear Buffer).
+  if (queuedIdx < sentIdx) queuedIdx = sentIdx;
+  queuedIdx += strlen(text);
   busyUntil = millis() + estimateMs(strlen(text)) + 5000;
 }
 
 void clear() {
   if (!connected()) return;
+  clearSeq = seq;              // anything already sent is now stale
+  for (auto& e : cwxSends) e.len = 0;
   sendCmd("cwx clear");
   queuedIdx = sentIdx = 0;
   busyUntil = 0;
