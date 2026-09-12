@@ -654,6 +654,8 @@ buffered text.
 ./tools/wk-bridge.py                                 # TCP → serial port
 ./tools/wk-timing.py --text "CQ TEST"                # timestamped status
 ./tools/flex-check.py                                # why isn't it keying?
+./tools/uptime-watch.py                              # restarts, outages, stalls
+./tools/console-capture.py /dev/cu.usbserial-0001    # console, without resetting it
 ./tools/flex-check.py --key                          # ...and key it (TRANSMITS)
 ./tools/flex-ptt-watch.py --keyer <ip> --radio <ip>  # keyer + radio PTT on one clock
 ./tools/boot-listen.py /dev/cu.usbserial-0001        # is it boot-looping?

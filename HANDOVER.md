@@ -342,6 +342,15 @@ unkeys 0.67 s after its last character on every memory (its own CWX
 break-in delay). A run of `err TimeoutError` on the KEYER side is loop()
 stalling, not the network.
 
+**`tools/uptime-watch.py`** polls `/api/state` and prints only events —
+restarts (with the reset reason), outages and their length, stalls. "The
+board died" is useless; "uptime 225 -> 2 at 12:31:35, reason PANIC" is not.
+
+**`tools/console-capture.py`** timestamps the console to a file WITHOUT
+touching DTR/RTS, so opening the port does not reset the board — and holds
+it through a reproduction attempt, which is how the lwIP backtrace was
+caught. Decode with `xtensa-esp32-elf-addr2line -pfiaC -e …/firmware.elf`.
+
 **`tools/boot-listen.py`** counts `rst:` lines at 115200 without driving
 DTR/RTS. Repeating `POWERON_RESET` points at the supply; repeating
 `SW_RESET` with no app output points at stale flash — **erase and reflash
@@ -850,6 +859,14 @@ makes the keyer feel slow.
     vanished mid-session.
   - `tools/wk-test.py --serial <port> --baud 1200` proves the protocol
     end-to-end in seconds, and is how the keyer was cleared of blame.
+
+- **2026-09-12 (wrap-up)** — **`docs/wiring.svg`**: the station on one page
+  — paddle, pot, piezo, I²C panel, both rigs' key/PTT, USB-C power, the
+  WiFi services, the FlexRadio and how it is keyed with no KEY/PTT wire,
+  and the second USB-serial adapter used as a listen-only console (RX +
+  GND, TX deliberately absent). The "why there are two serial paths" note
+  is on the drawing so nobody tidies the second adapter away. Also moved
+  the two diagnostics that had been living in a scratchpad into `tools/`.
 
 ## Network placement (measured 2026-09-10)
 
