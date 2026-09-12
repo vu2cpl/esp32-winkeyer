@@ -65,6 +65,13 @@ uint8_t paddleEcho();
 bool    paddleEchoActive();
 
 uint8_t modeRegister();
+// Diagnostics for the two commands whose bit layout differs between
+// WinKeyer revisions: the last pin-configuration byte (-1 if a host has
+// never sent one) and the last load-defaults payload as hex. Both surface
+// in /api/state, because the console cannot be read while the session that
+// sends them owns the wire.
+int16_t     lastPinCfg();
+const char* lastDefaults();
 bool    echoEnabled();
 void closeHost();     // drop host mode (transport disconnected)
 

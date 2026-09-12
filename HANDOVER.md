@@ -1107,7 +1107,31 @@ makes the keyer feel slow.
     asked directly: *"ptt and key, let it be settable from rumlog"*. Bit 0
     enables the PTT line, so a logger can switch the output off for its
     session; that is restored from NVS on close like every other session
-    setting. The other bits of that command differ between WK revisions and
+    setting.
+
+    **MEASURED 2026-09-12, and the decision needs revisiting: RUMlogNG
+    always sends `0x00`.** Manoj reported its PTT / key-out boxes had no
+    effect on the keyer. `/api/state` now carries `pincfg` (the last 0x09
+    byte, -1 if never) and `hostdef` (the last load-defaults payload, hex),
+    because the console cannot be read while the session that sends them
+    owns the wire. What the capture shows:
+
+    - Session open → `pincfg=0`, and bit 0 clear means **the keyer's PTT
+      output is disabled for the whole session**. On this station nothing
+      showed on air: the Flex does its own T/R and nothing is wired to
+      GPIO32.
+    - Toggling the boxes mid-session sends **nothing at all** — not one
+      change in ten minutes of 1 Hz polling.
+    - Toggling them and then restarting RUMlogNG still sends `0x00`. So
+      those boxes drive RUMlogNG's own rig control, not the WinKeyer pin
+      configuration; the logger cannot set this byte to anything else.
+    - `hostdef` stayed empty: **RUMlogNG never sends load defaults (0x0F)**,
+      so our field order for that command remains unverified against a real
+      host. Worth checking against the K1EL datasheet before trusting it.
+
+    Which means honouring the byte only ever costs him the PTT line, and
+    "settable from the logger" is not on offer here. Recommended: record it
+    like the rest and stop applying it. **Not done — his call.** The other bits of that command differ between WK revisions and
     are still ignored on purpose — acting on them would silently kill the
     sidetone or the key output.
 

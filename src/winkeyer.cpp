@@ -203,6 +203,11 @@ bool     awaitingSub   = false;
 // Settings mirrored so admin "get values" can answer.
 uint8_t  cfgSpeed = 20, cfgWeight = 50, cfgLead = 5, cfgTail = 25;
 uint8_t  cfgRatio = 50, cfgComp = 0, cfgFirstExt = 0, cfgSwitch = 50;
+// What the host last asked for on the two commands whose bits are not
+// obvious from the outside. Readable over HTTP, which is the only way to
+// see them: the console shares the wire with the session that sends them.
+int16_t  dbgPinCfg = -1;          // last 0x09 byte, -1 = never seen
+char     dbgDefaults[48] = "";    // last 0x0F payload, hex
 uint8_t  cfgPotMin = 10, cfgPotRange = 25, cfgFarns = 0;
 
 // Text accumulated for the Flex backend before being flushed.
@@ -358,7 +363,10 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       // 2026-09-12 — "ptt and key, let it be settable from rumlog". A logger
       // turning the PTT line off for its session is a thing a logger is
       // entitled to do; it is restored from NVS when the session closes.
-      if (n) Keyer::setPttEnabled((p[0] & 0x01) != 0);
+      if (n) {
+        dbgPinCfg = p[0];
+        Keyer::setPttEnabled((p[0] & 0x01) != 0);
+      }
       break;
     case 0x0A:                        // clear buffer
       bufReset();
@@ -385,6 +393,10 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       break;
     case 0x0F:                        // load defaults (15 bytes)
       if (n >= 15) {
+        // Recorded raw before anything is interpreted: the field ORDER here
+        // is the part worth checking against a real logger, not guessing.
+        for (uint8_t i = 0; i < 15; i++)
+          snprintf(dbgDefaults + i * 3, 4, "%02X ", p[i]);
         applyModeRegister(p[0]);
         cfgSpeed = p[1]; Keyer::setWpm(p[1]);
         cfgSwitch = p[2];
@@ -601,6 +613,9 @@ uint8_t paddleEcho() { return paddleEchoCfg; }
 bool    paddleEchoActive() {
   return (paddleEchoCfg == 2) ? paddleEchoBit : (paddleEchoCfg == 1);
 }
+
+int16_t     lastPinCfg()   { return dbgPinCfg; }
+const char* lastDefaults() { return dbgDefaults; }
 
 uint8_t modeRegister() { return modeReg; }
 bool    echoEnabled()  { return serialEcho; }

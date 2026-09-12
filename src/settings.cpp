@@ -491,6 +491,8 @@ void toJson(JsonDocument& doc) {
   doc["fskdid"]  = Fsk::diddle();
   doc["fskbusy"] = Fsk::busy();
   doc["modereg"] = WinKeyer::modeRegister();
+  doc["pincfg"]  = WinKeyer::lastPinCfg();      // -1 until a host sends one
+  doc["hostdef"] = WinKeyer::lastDefaults();    // last 0x0F payload, hex
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();
   doc["farns"]   = Keyer::getFarnsworth();
