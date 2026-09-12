@@ -69,6 +69,17 @@ the defaults in `config.h` — so a clone stays clean and an upgrade never
 collides with your local edits. Press Enter through it all to accept the
 defaults; nothing here is required to key CW.
 
+**If the first build fails with "Failed to install Python dependencies
+into penv"**, the ESP32 platform could not build its own Python
+environment — PlatformIO's problem, not this firmware's. In order: update
+the core (`pip install -U platformio`); delete the half-installed
+`~/.platformio/platforms/espressif32*` and
+`~/.platformio/packages/tool-esp_install*` and re-run, because a partial
+install never repairs itself; on Windows use Python from python.org rather
+than the Microsoft Store build, whose sandboxed paths break virtualenv
+creation; and check that antivirus or a proxy is not blocking pip. `pio run
+-e esp32-winkeyer -v` shows the underlying pip error.
+
 **On Windows** `flash.sh` / `monitor.sh` cannot run, so use the
 cross-platform equivalents, which pick the port the same way:
 

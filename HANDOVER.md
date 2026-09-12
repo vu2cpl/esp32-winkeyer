@@ -894,6 +894,27 @@ makes the keyer feel slow.
     Ask Manoj whether it is the FIRST characters, the LAST, or scattered —
     that alone separates the three hypotheses above.
 
+12b. **Windows build failure at the platform's own penv (2026-09-12).**
+    VU2LBW, building the same repo on Windows 10, got the platform and
+    `tool-esp_install@5.3.4` to download and then:
+    `Error: Failed to install Python dependencies (exit code: 2)` /
+    `Failed to install Python dependencies into penv`. That is PlatformIO
+    building its own Python environment for the ESP32 platform — nothing
+    to do with this firmware, and it will stop ANY pioarduino project.
+
+    Not yet diagnosed on his machine. Candidates, in the order worth
+    trying: an old PlatformIO core (the platform wants a recent one); a
+    half-installed platform that never repairs itself (delete
+    `~/.platformio/platforms/espressif32*` and
+    `~/.platformio/packages/tool-esp_install*`); the **Microsoft Store
+    build of Python**, whose sandboxed paths break virtualenv creation;
+    antivirus or a proxy blocking the pip step. `pio run -v` prints the
+    real pip error — ask for that before guessing further.
+
+    `install.py` now prints the PlatformIO core and Python it is about to
+    use, flags a Store-Python install, and prints this list when a build
+    fails, so the next person gets the facts rather than "it failed".
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was

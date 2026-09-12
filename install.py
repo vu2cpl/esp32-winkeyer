@@ -329,6 +329,29 @@ def main():
     else:
         ask_settings()
     ensure_secrets()
+    # Print what is about to do the work. When the platform fails to build
+    # its own Python environment ("Failed to install Python dependencies
+    # into penv"), these three lines are what identify the cause, and
+    # without them the report is just "it failed".
+    try:
+        info = json.loads(subprocess.run([pio, "system", "info", "--json-output"],
+                                         capture_output=True, text=True,
+                                         timeout=300).stdout)
+
+        def val(key):
+            v = info.get(key, "?")
+            return v.get("value", v) if isinstance(v, dict) else v
+
+        print(f"\nPlatformIO {val('core_version')} on Python {val('python_version')}")
+        print(f"  {pio}")
+        if "WindowsApps" in str(val("python_exe")):
+            print("  ⚠ This is the Microsoft Store build of Python. Its sandboxed")
+            print("    paths break virtualenv creation, which is what the ESP32")
+            print("    platform does on first build. Install Python from")
+            print("    python.org and reinstall PlatformIO into it.")
+    except Exception:
+        pass
+
     print("\nBuilding firmware to verify the toolchain…")
     print("  (the first build downloads the Arduino 3.x platform and its")
     print("   toolchain — a few hundred MB, several minutes)")
@@ -355,6 +378,16 @@ def main():
             print("  ./monitor.sh 115200   after /baud 115200, for a readable log")
     else:
         print("\n✗ Build failed — see the output above.")
+        print("\nIf it says \"Failed to install Python dependencies into penv\",")
+        print("the ESP32 platform could not build its own Python environment.")
+        print("That is PlatformIO's environment, not this firmware. Try, in order:")
+        print("  1. pip install -U platformio     (the platform needs a recent core)")
+        print("  2. delete ~/.platformio/platforms/espressif32* and")
+        print("     ~/.platformio/packages/tool-esp_install* , then re-run —")
+        print("     a half-installed platform never repairs itself")
+        print("  3. use Python from python.org, not the Microsoft Store build")
+        print("  4. check antivirus/proxy: the step is a pip install into a venv")
+        print("  5. re-run with more detail:  pio run -e esp32-winkeyer -v")
         sys.exit(r.returncode)
 
 
