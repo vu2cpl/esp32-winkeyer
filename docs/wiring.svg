@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 830" width="1100" height="830" font-family="ui-monospace,Menlo,Consolas,monospace">
-  <rect width="1100" height="830" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 848" width="1100" height="848" font-family="ui-monospace,Menlo,Consolas,monospace">
+  <rect width="1100" height="848" fill="#ffffff"/>
 
   <text x="30" y="38" font-size="20" font-weight="bold" fill="#111">ESP32 WinKeyer — wiring, including the debug console</text>
   <text x="30" y="60" font-size="12" fill="#555">VU2CPL · classic ESP32 devkit (ESP-WROOM-32, CP2102, USB-C) · pins from include/pins.h</text>
@@ -107,16 +107,32 @@
   <!-- ================= network ================= -->
   <rect x="300" y="572" width="400" height="122" rx="8" fill="#eefbf2" stroke="#0a7" stroke-width="2"/>
   <text x="500" y="596" font-size="13" font-weight="bold" text-anchor="middle" fill="#067">Shack LAN (WiFi)</text>
-  <text x="500" y="618" font-size="11" text-anchor="middle" fill="#333">FlexRadio API — TCP 4992 (keying, cwx, interlock)</text>
+  <text x="500" y="618" font-size="11" text-anchor="middle" fill="#333">FlexRadio API — TCP 4992 · see left</text>
   <text x="500" y="636" font-size="11" text-anchor="middle" fill="#333">Settings page — TCP 80 · WinKeyer — TCP 8088</text>
   <text x="500" y="654" font-size="11" text-anchor="middle" fill="#333">MQTT — TCP 1883</text>
   <text x="500" y="678" font-size="10.5" text-anchor="middle" fill="#a00">8088 and 80 are unauthenticated — trusted LAN only</text>
   <line x1="500" y1="550" x2="500" y2="572" stroke="#0a7" stroke-width="2.5"/>
 
+
+  <!-- ================= FlexRadio ================= -->
+  <rect x="30" y="530" width="250" height="164" rx="8" fill="#f3eeff" stroke="#6b3fa0" stroke-width="2"/>
+  <text x="155" y="554" font-size="13" font-weight="bold" text-anchor="middle" fill="#6b3fa0">FlexRadio 6600</text>
+  <text x="155" y="572" font-size="11" text-anchor="middle" fill="#333">SmartSDR API · TCP 4992</text>
+  <text x="155" y="588" font-size="11" text-anchor="middle" fill="#666">/flex ip &lt;addr&gt; — discovery is a</text>
+  <text x="155" y="602" font-size="11" text-anchor="middle" fill="#666">broadcast and will not cross subnets</text>
+  <text x="42" y="624" font-size="11" fill="#111">paddle → cw key 0/1 + time=</text>
+  <text x="52" y="638" font-size="10.5" fill="#666">radio rebuilds element timing</text>
+  <text x="42" y="656" font-size="11" fill="#111">memories → cwx send</text>
+  <text x="52" y="670" font-size="10.5" fill="#666">radio generates the CW itself</text>
+  <text x="42" y="688" font-size="11" fill="#a00">slice must be in CW mode</text>
+  <line x1="280" y1="612" x2="300" y2="620" stroke="#6b3fa0" stroke-width="2.5"/>
+
+  <text x="155" y="716" font-size="11" text-anchor="middle" font-weight="bold" fill="#6b3fa0">no KEY or PTT wire to the radio</text>
+
   <!-- ================= the warning ================= -->
-  <rect x="30" y="716" width="1040" height="94" rx="8" fill="#fff0f0" stroke="#a00" stroke-width="1.5"/>
-  <text x="44" y="740" font-size="12" font-weight="bold" fill="#a00">Why there are two serial paths</text>
-  <text x="44" y="761" font-size="11" fill="#333">The devkit's CP2102 drives EN and IO0 through the auto-reset transistors. RTS asserted with DTR</text>
-  <text x="44" y="779" font-size="11" fill="#333">deasserted holds the ESP32 in reset — measured. A logger on that port can therefore stop the keyer</text>
-  <text x="44" y="797" font-size="11" fill="#333">mid-over, leaving a networked radio transmitting. The second adapter reads the console without that risk.</text>
+  <rect x="30" y="734" width="1040" height="94" rx="8" fill="#fff0f0" stroke="#a00" stroke-width="1.5"/>
+  <text x="44" y="758" font-size="12" font-weight="bold" fill="#a00">Why there are two serial paths</text>
+  <text x="44" y="779" font-size="11" fill="#333">The devkit's CP2102 drives EN and IO0 through the auto-reset transistors. RTS asserted with DTR</text>
+  <text x="44" y="797" font-size="11" fill="#333">deasserted holds the ESP32 in reset — measured. A logger on that port can therefore stop the keyer</text>
+  <text x="44" y="815" font-size="11" fill="#333">mid-over, leaving a networked radio transmitting. The second adapter reads the console without that risk.</text>
 </svg>
