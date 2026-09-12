@@ -241,11 +241,12 @@ void emitPot(bool force) {
 
 void applyModeRegister(uint8_t m) {
   modeReg = m;
-  // bits 5:4 — 00 iambic B, 01 iambic A, 10 ultimatic, 11 bug.
-  // Ultimatic and bug are not implemented; both fall back to iambic B.
-  uint8_t km = (m >> 4) & 0x03;
-  Keyer::setMode(km == 1 ? KEYER_IAMBIC_A : KEYER_IAMBIC_B);
-  Keyer::setPaddleSwap((m & 0x08) != 0);
+  // Bits 5:4 are the keyer mode (00 iambic B, 01 A, 10 ultimatic, 11 bug)
+  // and bit 3 swaps the paddle. Both are RECORDED, NOT APPLIED: that is the
+  // paddle in the operator's hand, and a swap set the wrong way round makes
+  // it unusable mid-contest. modeReg still answers the host honestly.
+  // The echo bits below ARE the host's — they are protocol behaviour the
+  // logger needs, not anything to do with the fist.
   serialEcho    = (m & 0x04) != 0;
   paddleEchoBit = (m & 0x40) != 0;   // bit 6 — echo hand-sent characters
 }
@@ -320,8 +321,8 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
     case 0x02:                        // set speed
       if (n && p[0]) { cfgSpeed = p[0]; Keyer::setWpm(p[0]); }
       break;
-    case 0x03:                        // weighting
-      if (n) { cfgWeight = p[0]; Keyer::setWeighting(p[0]); }
+    case 0x03:                        // weighting — RECORDED, NOT APPLIED
+      if (n) cfgWeight = p[0];        // fist, not protocol: see 0x0D
       break;
     case 0x04:                        // PTT lead / tail — RECORDED, NOT APPLIED
       // RUMlogNG sends 0,0 on every session open, which turns off both the
@@ -364,8 +365,16 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
       break;
-    case 0x0D:                        // Farnsworth
-      if (n) { cfgFarns = p[0]; Keyer::setFarnsworth(p[0]); }
+    case 0x0D:                        // Farnsworth — RECORDED, NOT APPLIED
+      // RUMlogNG sets Farnsworth 20 on every session, which stretches the
+      // spacing of everything sent and, with the monitor copy beside it,
+      // sounded here like the radio unkeying early. Sending style is the
+      // operator's; the byte is kept so the status dump stays honest.
+      // Same for weighting (0x03), dit/dah ratio (0x17) and the keyer mode
+      // and paddle swap in the mode register. Speed and the echo bits are
+      // still the host's — a logger has to be able to drive those.
+      // To hand any of them back, restore the setter next to the record.
+      if (n) cfgFarns = p[0];
       break;
     case 0x0E:                        // mode register
       if (n) applyModeRegister(p[0]);
@@ -377,11 +386,13 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
         cfgSwitch = p[2];
         cfgPotMin = p[3]; cfgPotRange = p[4];
         Keyer::setPotRange(p[3], p[4]);
-        cfgFarns = p[5];  Keyer::setFarnsworth(p[5]);
-        cfgWeight = p[6]; Keyer::setWeighting(p[6]);
-        cfgLead = p[7];   // PTT timing stays the operator's — see 0x04
+        // Speed and the pot range above are the host's; everything from
+        // here down is the operator's and is recorded only — see 0x0D.
+        cfgFarns = p[5];
+        cfgWeight = p[6];
+        cfgLead = p[7];
         cfgTail = p[8];
-        cfgRatio = p[10]; Keyer::setRatio(p[10]);
+        cfgRatio = p[10];
         cfgComp = p[11];
         cfgFirstExt = p[12];
       }
@@ -394,8 +405,8 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
     case 0x15:                        // request status
       emitStatus(true);
       break;
-    case 0x17:                        // dit/dah ratio
-      if (n) { cfgRatio = p[0]; Keyer::setRatio(p[0]); }
+    case 0x17:                        // dit/dah ratio — RECORDED, NOT APPLIED
+      if (n) cfgRatio = p[0];         // fist, not protocol: see 0x0D
       break;
     case 0x18:                        // PTT on / off
       if (n) Keyer::pttManual(p[0] != 0);

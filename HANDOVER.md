@@ -1087,9 +1087,30 @@ makes the keyer feel slow.
     exactly the path item 12c's backstop bug used to break — the zero lead
     is why that bug never bit him here.
 
-12f. **TODO, raised 2026-09-12 (evening): should the rest of the CW values
-    be the operator's too, Farnsworth included?** Manoj's question after
-    12e. Not implemented — deciding which is his call, and each one flipped
+12f. **DONE 2026-09-12 (evening): the fist is the operator's, the QSO is the
+    host's.** Manoj's call after 12e — *"do that, keep speed and echo bits
+    host controlled"*. Farnsworth, weighting, dit/dah ratio, keyer mode and
+    paddle swap joined pitch and PTT timing: parsed, recorded for the status
+    dump, not applied. Speed (`0x02`, `0x1C`, `0x0F` b1), the echo bits
+    (`0x0E` bits 2 and 6) and the pot range stay the host's.
+
+    Verified against a live RUMlogNG session — and the Farnsworth test is
+    the one that needed care, because his NVS already held 20, so "still 20
+    with a logger attached" would have proved nothing. Set to 0 through the
+    operator path, then the session was closed and re-opened (a logger sends
+    its defaults at session OPEN, so nothing less tests it): **farns stayed
+    0**, while `wpm` still tracked the host 25→27 and `modereg` still went
+    0→71 with `echo` following. His stored 20 is left at 0 — it looks like a
+    leftover from the era when the host could write it.
+
+    **Still the host's, not yet discussed: `0x09` pin configuration**, whose
+    bit 0 enables the PTT line. A logger clearing it turns the PTT output
+    off for the whole session. Same family as lead/tail; nobody has seen it
+    happen here.
+
+    The original analysis follows.
+
+    Not implemented — deciding which is his call, and each one flipped
     is one more place this keyer stops behaving like a WinKeyer.
 
     What a logger can still change, and what it costs:

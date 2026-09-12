@@ -805,22 +805,33 @@ backend. The **host's** session settings do not — a speed N1MM sets over
 the WinKeyer protocol is gone at the next boot, so a contest never leaves
 the keyer permanently reconfigured.
 
-**Two settings a logger does not get at all**, because both were being
-undone the moment one connected:
+### What a logger may change, and what it may not
 
-- **Sidetone pitch** (`0x01`, tone = 4000/N). RUMlogNG asks for N=4 — a
-  legal 1000 Hz — on every session open. It is the one setting here that
-  only the operator hears: not timing, never on the air, never read back by
-  the logger.
-- **PTT lead-in and tail** (`0x04`, and the same bytes inside `0x0F`).
-  RUMlogNG sends 0,0, which switches off the sequencing entirely on a
-  station where the keyer is what sequences PTT. Lead and tail belong to the
-  rig and the amp in front of it.
+The line is: **anything that shapes the fist or the local monitor is the
+operator's; anything the logger needs to drive a QSO or read back is the
+host's.**
 
-Both are parsed and recorded — the status dump still reports what the host
-asked for — and then ignored, so yours stay where you put them. To hand
-either back to the host, restore the setters named in the comments on those
-cases in `src/winkeyer.cpp`. CLI and web page both go through
+| The host still sets | The operator keeps |
+|---|---|
+| Speed (`0x02`, `0x1C`, `0x0F` b1) | Sidetone pitch (`0x01`) |
+| Serial echo, paddle echo (`0x0E` bits 2, 6) | PTT lead-in and tail (`0x04`, `0x0F` b7/b8) |
+| Speed pot range (`0x05`, `0x0F` b3/b4) | Farnsworth (`0x0D`, `0x0F` b5) |
+| | Weighting (`0x03`, `0x0F` b6) |
+| | Dit/dah ratio (`0x17`, `0x0F` b10) |
+| | Iambic A/B and paddle swap (`0x0E` bits 5:4, 3) |
+
+The right-hand column is parsed and **recorded** — the status dump still
+reports what the host asked for, so nothing in the protocol breaks — and
+then not applied. Speed stays the host's because a logger changes it per
+QSO and per F-key, and the speed knob already overrides it the moment you
+turn it.
+
+This is not what a real K1EL WinKeyer does; it is a deliberate difference.
+RUMlogNG sets PTT lead/tail to 0, Farnsworth to 20 and the sidetone to
+1000 Hz on every session open, which on this station meant no PTT
+sequencing, stretched spacing and the wrong pitch for as long as the logger
+was attached. To hand any of it back, restore the setter named in the
+comment on that case in `src/winkeyer.cpp`. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 
 ## MQTT
