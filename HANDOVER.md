@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 (late morning) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 (midday) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -771,6 +771,38 @@ makes the keyer feel slow.
     it: not transmitting + no progress for 1 s ⇒ `queuedIdx = sentIdx = 0`.
   - Console at 1200 8N2 is what a logger needs; 115200 is what debugging
     needs. It is a runtime setting — switch it over HTTP, no reflash.
+
+- **2026-09-12 (midday)** — **Arduino core 3.3.11 / IDF 5.5.5, and it fixed
+  the crash.**
+  - Platform is now the **pioarduino** fork, pinned to release `55.03.311`,
+    because official PlatformIO's espressif32 stops at Arduino 2.0.17.
+    `board_build.partitions = huge_app.csv` — the new core hit **94.8%** of
+    the default table; it is 39.5% of the 3 MB one, and nothing here uses OTA.
+  - **Result: 26 memories sent back-to-back, no crash, uptime continuous.**
+    The old core crashed within minutes of the same test, every time.
+  - **Requires PlatformIO on Python 3.10+.** The Mac's PlatformIO runs on
+    3.9 and simply refuses. A separate one lives in `~/.pio-venv313`;
+    `flash.sh`, `monitor.sh` and `install.py` all locate a suitable one
+    (checking the interpreter version, not just that `pio` exists) and
+    `install.py` offers to create it. `PIO=` overrides.
+  - **Code changes the upgrade forced:** `ledcSetup`/`ledcAttachPin` →
+    `ledcAttach` addressing the PIN, and `esp_task_wdt_init()` now takes a
+    config struct (with `esp_task_wdt_reconfigure()` when Arduino already
+    started it).
+  - **Two real bugs the stricter core exposed**, both silent on 2.0.17:
+    - **Radio 2's KEY/PTT (GPIO 18/19) were never `pinMode`d**, so those
+      lines were never driven — `/radio 2` and `/radio both` cannot have
+      worked on any earlier build. Now declared and dropped low at boot.
+    - The **speed pot's attenuation** was set on a pin that had no ADC
+      channel yet; a first `analogRead()` creates it.
+  - **`pttAssert()` set `pttOn` even with the PTT line disabled**, so the
+    web page and panel showed PTT active while nothing was driven — the
+    exact thing that misleads someone debugging a dead PTT wire. Fixed
+    while answering whether a friend's radio-1 PTT fault was the same bug
+    (it was not: radio 1's path was always correct).
+  - Flashing over the FTDI adapter: `--before no_reset --after no_reset`,
+    with BOOT held and RST tapped by hand. PlatformIO's own upload works
+    too and gets the offsets right, which matters now the table changed.
 
 ## Network placement (measured 2026-09-10)
 

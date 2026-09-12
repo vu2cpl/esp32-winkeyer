@@ -186,8 +186,6 @@ int      potLastWpm = -1;
 // flicker of ±0.5 step can never cross it.
 static const int POT_HYST_CWPM = 60;   // hundredths of a WPM
 
-static const int SIDETONE_CH = 0;
-
 void (*keyHook)(bool) = nullptr;
 bool hookPaddleOnly = false;
 
@@ -207,8 +205,8 @@ inline uint16_t gapChar()  { return monitorOnly() ? tGapCharP : tGapChar; }
 inline uint16_t gapWord()  { return monitorOnly() ? tGapWordP : tGapWord; }
 
 // ── Low-level outputs ─────────────────────────────────────
-void toneOn()  { if (cfgSidetone) ledcWriteTone(SIDETONE_CH, cfgToneHz); }
-void toneOff() { ledcWriteTone(SIDETONE_CH, 0); }
+void toneOn()  { if (cfgSidetone) ledcWriteTone(PIN_SIDETONE, cfgToneHz); }
+void toneOff() { ledcWriteTone(PIN_SIDETONE, 0); }
 void keyDown() {
   if (cfgKeyOut) {
     if (cfgRadio & 1) digitalWrite(PIN_KEY_OUT,  HIGH);
@@ -231,10 +229,13 @@ void keyUp() {
   if (was && hookWanted()) keyHook(false);
 }
 void pttAssert() {
-  if (cfgPtt) {
-    if (cfgRadio & 1) digitalWrite(PIN_PTT_OUT,  HIGH);
-    if (cfgRadio & 2) digitalWrite(PIN_PTT_OUT2, HIGH);
-  }
+  // pttOn means "the LINE is up", so it must not be set when the PTT line
+  // is disabled — the web page and the panel read it, and showing PTT
+  // active while nothing is driven is exactly what misleads someone
+  // debugging a dead PTT wire.
+  if (!cfgPtt) return;
+  if (cfgRadio & 1) digitalWrite(PIN_PTT_OUT,  HIGH);
+  if (cfgRadio & 2) digitalWrite(PIN_PTT_OUT2, HIGH);
   pttOn = true;
 }
 void pttRelease() {
@@ -487,15 +488,24 @@ namespace Keyer {
 void begin() {
   pinMode(PIN_PADDLE_DIT, INPUT_PULLUP);
   pinMode(PIN_PADDLE_DAH, INPUT_PULLUP);
-  pinMode(PIN_KEY_OUT, OUTPUT);  digitalWrite(PIN_KEY_OUT,  LOW);   // drop both regardless of selection:
-  digitalWrite(PIN_KEY_OUT2, LOW);   // a line must never be left keyed
-  pinMode(PIN_PTT_OUT, OUTPUT);  digitalWrite(PIN_PTT_OUT,  LOW);
-  digitalWrite(PIN_PTT_OUT2, LOW);
+  // Radio 2's pair was written without ever being declared — silently
+  // accepted by core 2.0.17, refused by 3.x ("IO 18 is not set as GPIO"),
+  // which means those lines were never actually driven low at boot.
+  pinMode(PIN_KEY_OUT,  OUTPUT);  digitalWrite(PIN_KEY_OUT,  LOW);
+  pinMode(PIN_KEY_OUT2, OUTPUT);  digitalWrite(PIN_KEY_OUT2, LOW);
+  pinMode(PIN_PTT_OUT,  OUTPUT);  digitalWrite(PIN_PTT_OUT,  LOW);
+  pinMode(PIN_PTT_OUT2, OUTPUT);  digitalWrite(PIN_PTT_OUT2, LOW);
 
-  ledcSetup(SIDETONE_CH, cfgToneHz, 10);
-  ledcAttachPin(PIN_SIDETONE, SIDETONE_CH);
-  ledcWriteTone(SIDETONE_CH, 0);
+  // Arduino core 3.x addresses LEDC by PIN, not by channel — ledcSetup()
+  // and ledcAttachPin() are gone; ledcAttach() does both.
+  ledcAttach(PIN_SIDETONE, cfgToneHz, 10);
+  ledcWriteTone(PIN_SIDETONE, 0);
 
+  // The ADC channel has to exist before its attenuation can be set, and
+  // what creates it is a first read — pinMode alone is not enough on
+  // core 3.x ("Pin is not configured as analog channel").
+  pinMode(PIN_SPEED_POT, INPUT);
+  (void)analogRead(PIN_SPEED_POT);
   analogSetPinAttenuation(PIN_SPEED_POT, ADC_11db);   // full 0–3.3 V range
 
   recalc();
@@ -606,9 +616,9 @@ void chirp(char c) {
   if (!pat) return;
   uint16_t dit = 1200 / (cfgWpm ? cfgWpm : 20);
   for (const char* p = pat; *p; p++) {
-    ledcWriteTone(SIDETONE_CH, cfgToneHz);
+    ledcWriteTone(PIN_SIDETONE, cfgToneHz);
     delay(*p == '-' ? dit * 3 : dit);
-    ledcWriteTone(SIDETONE_CH, 0);
+    ledcWriteTone(PIN_SIDETONE, 0);
     delay(dit);
   }
 }

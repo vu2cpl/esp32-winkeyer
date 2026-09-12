@@ -15,6 +15,7 @@ import platform
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ENV = "esp32-winkeyer"
@@ -51,19 +52,100 @@ def confirm(auto):
     return auto
 
 
+VENV_PIO = Path.home() / ".pio-venv313" / "bin" / "pio"
+
+
+def pio_python_ok(pio_path):
+    """True if this PlatformIO runs on Python 3.10+.
+
+    The Arduino 3.x platform refuses anything older, with a bare
+    "ERROR: Python version must be 3.10 ..." that says nothing about which
+    PlatformIO it means — so check before building rather than after.
+    """
+    try:
+        out = subprocess.run([str(pio_path), "system", "info", "--json-output"],
+                             capture_output=True, text=True, timeout=90)
+        if out.returncode != 0:
+            return False
+        import json as _json
+        ver = _json.loads(out.stdout)["python_version"]["value"]
+        major, minor = (int(x) for x in ver.split(".")[:2])
+        return (major, minor) >= (3, 10)
+    except Exception:
+        return False
+
+
+def make_pio_venv():
+    """Build a PlatformIO virtualenv on the newest Python we can find."""
+    for cand in ("python3.14", "python3.13", "python3.12", "python3.11",
+                 "python3.10", "python3"):
+        exe = shutil.which(cand)
+        if not exe:
+            continue
+        try:
+            v = subprocess.run([exe, "-c",
+                                "import sys;print('%d.%d' % sys.version_info[:2])"],
+                               capture_output=True, text=True, timeout=30).stdout.strip()
+            if tuple(int(x) for x in v.split(".")) < (3, 10):
+                continue
+        except Exception:
+            continue
+        print(f"  creating a PlatformIO environment on {cand} ({v})…")
+        venv = Path.home() / ".pio-venv313"
+        if subprocess.run([exe, "-m", "venv", str(venv)]).returncode != 0:
+            return None
+        pip = venv / "bin" / "pip"
+        if subprocess.run([str(pip), "install", "-q", "platformio"]).returncode != 0:
+            return None
+        return venv / "bin" / "pio"
+    return None
+
+
 def ensure_pio(host):
-    if shutil.which("pio"):
-        return
-    print("\nPlatformIO is not on PATH. Install it, then re-run this script:")
-    if host == "macos":
-        print("  brew install platformio")
-        print("  or (no brew):  pip3 install --user platformio")
-    elif host == "windows":
-        print("  py -m pip install --user platformio")
-        print("  then reopen the terminal so PATH picks up the Scripts folder")
+    """Return a PlatformIO that can build this project.
+
+    This firmware is built against Arduino core 3.x (pioarduino platform),
+    which needs Python 3.10+. A PlatformIO installed under an older Python —
+    common on machines that have had it for a while — cannot build it at all.
+    """
+    if VENV_PIO.exists() and pio_python_ok(VENV_PIO):
+        return str(VENV_PIO)
+
+    on_path = shutil.which("pio")
+    if on_path and pio_python_ok(on_path):
+        return on_path
+
+    if on_path:
+        print("\nThe PlatformIO on PATH runs on Python older than 3.10, which")
+        print("cannot build this firmware (Arduino core 3.x needs 3.10+).")
+        print("Your existing install is left alone; a separate one is needed.")
     else:
-        print("  pip3 install --user platformio")
-        print("  (Raspberry Pi OS Bookworm+ may need --break-system-packages)")
+        print("\nPlatformIO is not on PATH.")
+
+    try:
+        ans = input("Create a PlatformIO environment in ~/.pio-venv313 now? [Y/n] ")
+    except EOFError:
+        ans = "n"
+    if ans.strip().lower() in ("", "y", "yes"):
+        pio = make_pio_venv()
+        if pio and pio_python_ok(pio):
+            print(f"  ready: {pio}")
+            return str(pio)
+        print("  that did not work — install one by hand.")
+
+    print("\nInstall PlatformIO on Python 3.10+ and re-run, e.g.:")
+    if host == "macos":
+        print("  brew install python@3.13")
+        print("  python3.13 -m venv ~/.pio-venv313")
+        print("  ~/.pio-venv313/bin/pip install platformio")
+    elif host == "windows":
+        print("  py -3.13 -m venv %USERPROFILE%\\.pio-venv313")
+        print("  %USERPROFILE%\\.pio-venv313\\Scripts\\pip install platformio")
+    else:
+        print("  sudo apt install python3-venv        # if needed")
+        print("  python3 -m venv ~/.pio-venv313")
+        print("  ~/.pio-venv313/bin/pip install platformio")
+        print("  (Raspberry Pi OS Bookworm+ ships Python 3.11, which is fine)")
     sys.exit(1)
 
 
@@ -131,7 +213,7 @@ def list_ports():
     alike, so this works the same on Windows, macOS and the Pi. Globbing
     device paths would need a branch per OS and still miss Windows."""
     try:
-        out = subprocess.run(["pio", "device", "list", "--json-output"],
+        out = subprocess.run([ensure_pio(detect()), "device", "list", "--json-output"],
                              capture_output=True, text=True, check=True).stdout
         ports = [d["port"] for d in json.loads(out)]
     except Exception:
@@ -171,15 +253,17 @@ def pick_port():
 
 
 def do_flash():
+    pio = ensure_pio(detect())
     port = pick_port()
-    sys.exit(subprocess.run(["pio", "run", "-e", ENV, "-t", "upload",
+    sys.exit(subprocess.run([pio, "run", "-e", ENV, "-t", "upload",
                              "--upload-port", port], cwd=HERE).returncode)
 
 
 def do_monitor(baud):
+    pio = ensure_pio(detect())
     port = pick_port()
     print(f"Monitoring {port} at {baud} baud. Ctrl-C to stop.")
-    sys.exit(subprocess.run(["pio", "device", "monitor", "--port", port,
+    sys.exit(subprocess.run([pio, "device", "monitor", "--port", port,
                              "-b", str(baud)], cwd=HERE).returncode)
 
 
@@ -196,7 +280,7 @@ def main():
         sys.exit(2)
 
     host = confirm(detect())
-    ensure_pio(host)
+    pio = ensure_pio(host)
     existing = os.path.exists(os.path.join(HERE, "include", "secrets.h"))
     if existing:
         ans = input("\ninclude/secrets.h already exists. Re-enter settings? [y/N] ")
@@ -206,7 +290,7 @@ def main():
         ask_settings()
     ensure_secrets()
     print("\nBuilding firmware to verify the toolchain…")
-    r = subprocess.run(["pio", "run", "-e", "esp32-winkeyer"], cwd=HERE)
+    r = subprocess.run([pio, "run", "-e", "esp32-winkeyer"], cwd=HERE)
     if r.returncode == 0:
         print("\n✓ Build OK.")
         if host == "windows":
