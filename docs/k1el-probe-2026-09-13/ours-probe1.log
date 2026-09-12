@@ -1,0 +1,18 @@
+   0.010  opened tcp://192.168.10.209:8088 1200 8N2 dtr=True rts=True
+   1.521  RX (nothing)   # unsolicited after open  [0 bytes]
+   1.521  TX 00 04 a5   # admin echo 0xA5 (before host open)
+   1.794  RX a5   # echo reply  [1 bytes]
+   1.794  TX 00 02   # admin host open
+   2.084  RX 17   # version byte + anything after  [1 bytes]
+   2.084     version = 23 (0x17)
+   3.094  RX (nothing)   # settle after open  [0 bytes]
+   3.094  TX 15   # request status
+   3.361  RX c0   # status  [1 bytes]
+   3.361  TX 07   # get speed pot
+   3.626  RX 8c   # pot  [1 bytes]
+   3.626  TX 00 07   # admin get values
+   3.901  RX 00 14 00 32 05 19 0a 19 00 00 00 32 32 00 00   # get values  [15 bytes]
+   3.901     get values bytes: 0:0 1:20 2:0 3:50 4:5 5:25 6:10 7:25 8:0 9:0 10:0 11:50 12:50 13:0 14:0
+   3.901  TX 00 03   # admin host close
+   4.910  RX (nothing)   # after host close  [0 bytes]
+   4.911  closed

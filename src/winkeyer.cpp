@@ -30,11 +30,16 @@ static const uint8_t WK_VERSION = 23;
 
 // ── Status byte (0xC0 | flags) ────────────────────────────
 static const uint8_t ST_BASE    = 0xC0;
-static const uint8_t ST_XOFF    = 0x02;
-static const uint8_t ST_BREAKIN = 0x04;
-static const uint8_t ST_BUSY    = 0x08;
-static const uint8_t ST_KEYDOWN = 0x10;
-static const uint8_t ST_WAIT    = 0x20;
+// Measured on a genuine K1EL WK3.1 (docs/k1el-probe-2026-09-13) and in the
+// K1EL datasheet. Until 2026-09-13 every flag here sat one bit too high, so
+// a logger read our BUSY as KEYDOWN and our BREAKIN as BUSY — and the tools
+// in tools/ decoded the same wrong map, which is why self-tests passed.
+static const uint8_t ST_XOFF    = 0x01;
+static const uint8_t ST_BREAKIN = 0x02;
+static const uint8_t ST_BUSY    = 0x04;
+static const uint8_t ST_KEYDOWN = 0x08;   // WK1 mode only; tune only
+static const uint8_t ST_WAIT    = 0x10;
+static const uint8_t ST_PB      = 0x08;   // WK2 mode: tags a pushbutton byte
 
 // ── Parameter counts ──────────────────────────────────────
 // Index = immediate command byte. Keeps the parser in sync even
@@ -74,13 +79,18 @@ static const uint8_t IMM_PARAMS[32] = {
   0,   // 0x1F buffered NOP
 };
 
-static uint8_t adminParams(uint8_t sub) {
+// K1EL WK3 datasheet Rev 1.3 admin table. A wrong count here desyncs every
+// byte that follows, so these were checked against a genuine WK3.1 where it
+// was safe to (echo test after each stayed in sync).
+static uint16_t adminParams(uint8_t sub) {
   switch (sub) {
-    case 0x04: return 1;   // echo test
-    case 0x0D: return 15;  // load EEPROM
-    case 0x0E: return 1;   // send stored message
-    case 0x0F: return 1;   // load X1MODE
-    case 0x14: return 1;   // sidetone volume
+    case 0x04: return 1;    // echo test
+    case 0x0D: return 256;  // load EEPROM — the whole EEPROM image
+    case 0x0E: return 1;    // send stored message
+    case 0x0F: return 1;    // load X1MODE
+    case 0x13: return 2;    // set RTTY mode registers (WK3.1)
+    case 0x16: return 1;    // load X2MODE
+    case 0x19: return 1;    // set sidetone volume
     default:   return 0;
   }
 }
@@ -194,9 +204,9 @@ WkBackend backend   = WK_BACKEND_LOCAL;
 // Command parsing
 uint8_t  pendingCmd    = 0;
 uint8_t  pendingSub    = 0;
-uint8_t  paramsNeeded  = 0;
+uint16_t paramsNeeded  = 0;   // admin 0x0D takes 256
 uint8_t  paramBuf[16];
-uint8_t  paramCount    = 0;
+uint16_t paramCount    = 0;
 bool     inAdmin       = false;
 bool     awaitingSub   = false;
 
@@ -209,6 +219,12 @@ uint8_t  cfgRatio = 50, cfgComp = 0, cfgFirstExt = 0, cfgSwitch = 50;
 int16_t  dbgPinCfg = -1;          // last 0x09 byte, -1 = never seen
 char     dbgDefaults[48] = "";    // last 0x0F payload, hex
 uint8_t  cfgPotMin = 10, cfgPotRange = 25, cfgFarns = 0;
+uint8_t  cfgTone = 0, cfgX1 = 0, cfgX2 = 0;   // recorded for get values only
+// Admin 11 (Set WK2 Mode) switches the status byte to WK2 layout: bit 3 then
+// tags a pushbutton byte and KEYDOWN is no longer reported. Host open always
+// returns to WK1 mode — both measured on the K1EL.
+bool     wk2Mode = false;
+bool     paddleSessPrev = false;
 
 // Text accumulated for the Flex backend before being flushed.
 char     flexOut[64];
@@ -219,14 +235,21 @@ void emit(uint8_t b) { if (sink) sink(&b, 1); }
 void emitStatus(bool force) {
   if (!hostIsOpen) return;
   uint8_t s = ST_BASE;
+  const bool paddle = Keyer::paddleSession();
   bool busy = (backend == WK_BACKEND_FLEX)
                 ? (Flex::pending() > 0 || !bufEmpty() || flexLen > 0)
                 : (Keyer::busy() || !bufEmpty());
-  if (busy)                 s |= ST_BUSY;
-  if (Keyer::keyIsDown())   s |= ST_KEYDOWN;
-  if (paused)               s |= ST_WAIT;
-  if (bufCount() > BUF_SIZE - 32) s |= ST_XOFF;
-  if (Keyer::paddleBreakIn())     s |= ST_BREAKIN;
+  if (busy || paddle || Keyer::tuning()) s |= ST_BUSY;
+  // A real WinKeyer reports KEYDOWN for tune only — never per element. Ours
+  // used to send it on every key transition, two status bytes per element
+  // on a 1200-baud link. Tune also raises WAIT (0xD8/0xDC on the K1EL);
+  // pause does NOT, whatever the name suggests.
+  if (Keyer::tuning()) { s |= ST_WAIT; if (!wk2Mode) s |= ST_KEYDOWN; }
+  if (bufCount() > BUF_SIZE * 2 / 3) s |= ST_XOFF;   // "more than 2/3 full"
+  // A level for the whole paddle session, from the first element until the
+  // hang time runs out — not a one-shot. A logger tells paddle echo from
+  // serial echo by this bit, so it has to be up when the echo arrives.
+  if (paddle) s |= ST_BREAKIN;
   if (force || s != lastStatus) {
     lastStatus = s;
     emit(s);
@@ -235,9 +258,16 @@ void emitStatus(bool force) {
 
 void emitPot(bool force) {
   if (!hostIsOpen) return;
-  uint8_t span = cfgPotRange ? cfgPotRange : 1;
-  int v = ((int)Keyer::getWpm() - (int)cfgPotMin) * 31 / span;
-  uint8_t pot = (uint8_t)constrain(v, 0, 31);
+  // The pot byte is the KNOB: its WPM step above MINWPM, unscaled (0..range),
+  // one byte per step. A host speed command never produces one. Ours used to
+  // scale getWpm() to 0..31, so every speed a logger set came back to it as
+  // a pot movement.
+  int8_t step = Keyer::potStep();
+  uint8_t pot;
+  if (step >= 0)   pot = (uint8_t)step;
+  else if (!force) return;                 // no pot wired: nothing unsolicited
+  else pot = (uint8_t)constrain((int)Keyer::getWpm() - (int)cfgPotMin, 0, 31);
+  if (pot > 0x3F) pot = 0x3F;
   if (force || pot != lastPot) {
     lastPot = pot;
     emit(0x80 | pot);
@@ -276,9 +306,13 @@ void execAdmin(uint8_t sub, const uint8_t* p, uint8_t n) {
     case 0x02:                        // host open
       hostIsOpen = true;
       resetToDefaults();
+      wk2Mode = false;
       emit(WK_VERSION);
-      lastStatus = 0; lastPot = 0xFF;
-      emitStatus(true);
+      // The K1EL sends the version byte and nothing else. Prime the "last
+      // sent" values so the first poll does not volunteer a status or pot
+      // byte the host never asked for.
+      lastStatus = ST_BASE;
+      { int8_t st = Keyer::potStep(); lastPot = st >= 0 ? (uint8_t)st : 0xFF; }
       break;
     case 0x03:                        // host close
       resetToDefaults();
@@ -291,17 +325,27 @@ void execAdmin(uint8_t sub, const uint8_t* p, uint8_t n) {
     case 0x05: emit(0); break;        // paddle A2D — no hardware
     case 0x06: emit(0); break;        // speed A2D — no hardware
     case 0x07: {                      // get values (15 bytes)
+      // Same order as load defaults (0x0F). WK3 dropped this command — the
+      // K1EL sends nothing — but we report WK2, which answers it.
       uint8_t v[15] = {
-        modeReg, cfgSpeed, cfgSwitch, cfgPotMin, cfgPotRange,
-        cfgFarns, cfgWeight, cfgLead, cfgTail, 0 /* sample */,
-        cfgRatio, cfgComp, cfgFirstExt, 0, 0
+        modeReg, cfgSpeed, cfgTone, cfgWeight, cfgLead, cfgTail,
+        cfgPotMin, cfgPotRange, cfgX2, cfgComp, cfgFarns, cfgSwitch,
+        cfgRatio, (uint8_t)(dbgPinCfg < 0 ? 0 : dbgPinCfg), cfgX1
       };
       if (sink) sink(v, sizeof(v));
       break;
     }
-    case 0x09: emit(0); break;        // get calibration
-    case 0x0A: case 0x0B: case 0x13:  // WK1/WK2/WK3 mode select
+    case 0x09: emit(WK_VERSION); break;   // get FW major rev (K1EL: 31)
+    case 0x0A: wk2Mode = false; break;    // set WK1 mode
+    case 0x0B:                            // set WK2 mode
+      wk2Mode = true;
+      if (hostIsOpen) emit(ST_BASE | ST_PB);  // K1EL answers 0xC8 at once
       break;
+    case 0x15: emit(79); break;           // Vcc: 26214/79 = 3.32 V
+    case 0x17: emit(0);  break;           // get FW minor rev
+    case 0x18: emit(1);  break;           // IC type: SMT
+    // 0x13 RTTY registers, 0x14 WK3 mode, 0x16 X2MODE, 0x19 sidetone volume:
+    // parameters consumed by adminParams(), nothing to act on.
     case 0x0C: {                      // dump EEPROM — 256 zero bytes
       uint8_t z[16] = {0};
       for (int i = 0; i < 16 && sink; i++) sink(z, sizeof(z));
@@ -314,7 +358,8 @@ void execAdmin(uint8_t sub, const uint8_t* p, uint8_t n) {
 
 void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
   switch (cmd) {
-    case 0x01:                        // sidetone control — PARSED, NOT APPLIED
+    case 0x01:                        // sidetone control — RECORDED, NOT APPLIED
+      if (n) cfgTone = p[0];
       // K1EL: the low nibble is N, tone = 4000/N; bit 7 means paddle-only.
       // RUMlogNG sends N=4 on every session open, which is a perfectly legal
       // 1000 Hz — and it overrode the operator's 600 Hz every time a logger
@@ -371,6 +416,8 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       if (n) dbgPinCfg = p[0];
       break;
     case 0x0A:                        // clear buffer
+      paused = false;                 // K1EL: clear cancels pause and tune
+      Keyer::tune(false);
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
@@ -399,20 +446,27 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
         // is the part worth checking against a real logger, not guessing.
         for (uint8_t i = 0; i < 15; i++)
           snprintf(dbgDefaults + i * 3, 4, "%02X ", p[i]);
+        // Order from K1EL's datasheet (WK3 Rev 1.3, Table 13). The previous
+        // mapping was a guess, wrong from byte 2 on: it took the pot range
+        // from the host's weight and lead-in.
         applyModeRegister(p[0]);
-        cfgSpeed = p[1]; Keyer::setWpm(p[1]);
-        cfgSwitch = p[2];
-        cfgPotMin = p[3]; cfgPotRange = p[4];
-        Keyer::setPotRange(p[3], p[4]);
-        // Speed and the pot range above are the host's; everything from
-        // here down is the operator's and is recorded only — see 0x0D.
-        cfgFarns = p[5];
-        cfgWeight = p[6];
-        cfgLead = p[7];
-        cfgTail = p[8];
-        cfgRatio = p[10];
-        cfgComp = p[11];
-        cfgFirstExt = p[12];
+        cfgSpeed = p[1];
+        if (p[1]) Keyer::setWpm(p[1]);     // 0 = follow the pot, as 0x02
+        cfgPotMin = p[6]; cfgPotRange = p[7];
+        Keyer::setPotRange(p[6], p[7]);
+        // Mode, speed and the pot range above are the host's; everything
+        // below is the operator's and is recorded only — see 0x0D.
+        cfgTone   = p[2];
+        cfgWeight = p[3];
+        cfgLead   = p[4];
+        cfgTail   = p[5];
+        cfgX2     = p[8];    // WK3 X2MODE; K1EL's WK2 table may call this 1st extension
+        cfgComp   = p[9];
+        cfgFarns  = p[10];
+        cfgSwitch = p[11];
+        cfgRatio  = p[12];
+        dbgPinCfg = p[13];
+        cfgX1     = p[14];
       }
       break;
     case 0x10: if (n) cfgFirstExt = p[0]; break;
@@ -519,8 +573,9 @@ void feed(uint8_t b, WriteFn s) {
     if (paramCount < sizeof(paramBuf)) paramBuf[paramCount] = b;
     paramCount++;
     if (--paramsNeeded == 0) {
-      if (inAdmin) execAdmin(pendingSub, paramBuf, paramCount);
-      else         execImmediate(pendingCmd, paramBuf, paramCount);
+      uint8_t n = paramCount < sizeof(paramBuf) ? paramCount : sizeof(paramBuf);
+      if (inAdmin) execAdmin(pendingSub, paramBuf, n);
+      else         execImmediate(pendingCmd, paramBuf, n);
       inAdmin = false;
     }
     return;
@@ -553,6 +608,10 @@ void feed(uint8_t b, WriteFn s) {
   // Printable: text to send. WK uses 0x7F-style high codes for control,
   // everything from 0x20 up is buffered as CW.
   if (!hostIsOpen) return;            // ignore text until the host opens
+  // K1EL: while the operator is on the paddle, serial text is processed but
+  // ignored — only immediate commands act. Measured: text sent mid-break-in
+  // was never keyed.
+  if (Keyer::paddleSession()) return;
   bufPush(b);
 }
 
@@ -577,6 +636,18 @@ void pumpPaddleEcho() {
 }
 
 void poll() {
+  // Paddle break-in clears the serial input buffer — here and, on the Flex
+  // backend, whatever text the radio still holds — as a real WinKeyer does.
+  // The local keyer already dropped its own queue on the paddle edge.
+  const bool sess = Keyer::paddleSession();
+  if (sess && !paddleSessPrev) {
+    bufReset();
+    flexLen = 0;
+    if (backend == WK_BACKEND_FLEX && (Flex::pending() > 0 || echoCount())) {
+      Flex::clear(); echoReset(); monReset();
+    }
+  }
+  paddleSessPrev = sess;
   pump();
   monPump();
   pumpEcho();

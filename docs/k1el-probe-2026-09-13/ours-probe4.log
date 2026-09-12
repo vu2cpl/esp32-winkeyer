@@ -1,0 +1,165 @@
+   0.022  TX 00 02   # host open
+   0.023  -- watch 1.0s: version
+   0.061     RX 17  BYTE
+   1.029  TX 0e 04   # mode reg 0x04: serial echo only
+   1.029  -- watch 0.3s: 
+   1.333  TX 04 00 00   # lead/tail 0
+   1.333  -- watch 0.3s: 
+   1.634  TX 0b 01   # key immediate ON
+   1.635  -- watch 0.5s: unsolicited?
+   1.651     RX dc  STATUS 11011100 (low5=11100)
+   2.136  TX 15   # status key down
+   2.136  -- watch 0.4s: 
+   2.201     RX dc  STATUS 11011100 (low5=11100)
+   2.538  TX 0b 00   # key immediate OFF
+   2.538  -- watch 0.5s: 
+   2.564     RX c0  STATUS 11000000 (low5=00000)
+   3.041  TX 15   # status key up
+   3.041  -- watch 0.4s: 
+   3.080     RX c0  STATUS 11000000 (low5=00000)
+   3.447  TX 02 0a   # 10 WPM
+   3.447  -- watch 0.3s: 
+   3.753  TX 4d 4d 4d 4d   # text MMMM
+   3.753  -- watch 0.8s: 
+   3.783     RX c4  STATUS 11000100 (low5=00100)
+   4.555  TX 06 01   # pause ON
+   4.555  -- watch 1.5s: while paused
+   5.057     RX 4d  ECHO 'M'
+   5.058     RX 4d  ECHO 'M'
+   5.061     RX 4d  ECHO 'M'
+   5.064     RX 4d  ECHO 'M'
+   5.078     RX c0  STATUS 11000000 (low5=00000)
+   6.060  TX 15   # status paused
+   6.060  -- watch 0.4s: 
+   6.070     RX c0  STATUS 11000000 (low5=00000)
+   6.464  TX 06 00   # pause OFF
+   6.464  -- watch 0.6s: 
+   7.065  TX 15   # status unpaused
+   7.065  -- watch 0.3s: 
+   7.082     RX c0  STATUS 11000000 (low5=00000)
+   7.370  TX 0a   # clear buffer
+   7.370  -- watch 1.5s: 
+   7.486     RX c4  STATUS 11000100 (low5=00100)
+   7.497     RX c0  STATUS 11000000 (low5=00000)
+   8.875  TX 02 05   # 5 WPM
+   8.875  -- watch 0.3s: 
+   9.177  TX 45 45 45 45 45 45 45 45   # chunk 0, total 8
+   9.177  -- watch 0.25s: 
+   9.213     RX 45  ECHO 'E'
+   9.214     RX 45  ECHO 'E'
+   9.226     RX 45  ECHO 'E'
+   9.230     RX 45  ECHO 'E'
+   9.233     RX 45  ECHO 'E'
+   9.237     RX 45  ECHO 'E'
+   9.238     RX 45  ECHO 'E'
+   9.248     RX 45  ECHO 'E'
+   9.319     RX c4  STATUS 11000100 (low5=00100)
+   9.428  TX 45 45 45 45 45 45 45 45   # chunk 1, total 16
+   9.428  -- watch 0.25s: 
+   9.679  TX 45 45 45 45 45 45 45 45   # chunk 2, total 24
+   9.679  -- watch 0.25s: 
+   9.930  TX 45 45 45 45 45 45 45 45   # chunk 3, total 32
+   9.930  -- watch 0.25s: 
+  10.185  TX 45 45 45 45 45 45 45 45   # chunk 4, total 40
+  10.185  -- watch 0.25s: 
+  10.440  TX 45 45 45 45 45 45 45 45   # chunk 5, total 48
+  10.440  -- watch 0.25s: 
+  10.695  TX 45 45 45 45 45 45 45 45   # chunk 6, total 56
+  10.695  -- watch 0.25s: 
+  10.946  TX 45 45 45 45 45 45 45 45   # chunk 7, total 64
+  10.946  -- watch 0.25s: 
+  11.197  TX 45 45 45 45 45 45 45 45   # chunk 8, total 72
+  11.197  -- watch 0.25s: 
+  11.209     RX 45  ECHO 'E'
+  11.451  TX 45 45 45 45 45 45 45 45   # chunk 9, total 80
+  11.451  -- watch 0.25s: 
+  11.704  TX 45 45 45 45 45 45 45 45   # chunk 10, total 88
+  11.704  -- watch 0.25s: 
+  11.956  TX 45 45 45 45 45 45 45 45   # chunk 11, total 96
+  11.956  -- watch 0.25s: 
+  12.209  TX 45 45 45 45 45 45 45 45   # chunk 12, total 104
+  12.209  -- watch 0.25s: 
+  12.241     RX 45  ECHO 'E'
+  12.460  TX 45 45 45 45 45 45 45 45   # chunk 13, total 112
+  12.460  -- watch 0.25s: 
+  12.711  TX 45 45 45 45 45 45 45 45   # chunk 14, total 120
+  12.711  -- watch 0.25s: 
+  12.965  TX 45 45 45 45 45 45 45 45   # chunk 15, total 128
+  12.965  -- watch 0.25s: 
+  13.168     RX 45  ECHO 'E'
+  13.219  TX 45 45 45 45 45 45 45 45   # chunk 16, total 136
+  13.219  -- watch 0.25s: 
+  13.473  TX 45 45 45 45 45 45 45 45   # chunk 17, total 144
+  13.473  -- watch 0.25s: 
+  13.726  TX 45 45 45 45 45 45 45 45   # chunk 18, total 152
+  13.726  -- watch 0.25s: 
+  13.979  TX 45 45 45 45 45 45 45 45   # chunk 19, total 160
+  13.980  -- watch 0.25s: 
+  14.171     RX 45  ECHO 'E'
+  14.232  TX 45 45 45 45 45 45 45 45   # chunk 20, total 168
+  14.233  -- watch 0.25s: 
+  14.484  TX 45 45 45 45 45 45 45 45   # chunk 21, total 176
+  14.484  -- watch 0.25s: 
+  14.739  TX 45 45 45 45 45 45 45 45   # chunk 22, total 184
+  14.740  -- watch 0.25s: 
+  14.994  TX 45 45 45 45 45 45 45 45   # chunk 23, total 192
+  14.994  -- watch 0.25s: 
+  15.079     RX 45  ECHO 'E'
+  15.246  TX 45 45 45 45 45 45 45 45   # chunk 24, total 200
+  15.247  -- watch 0.25s: 
+  15.498  TX 45 45 45 45 45 45 45 45   # chunk 25, total 208
+  15.498  -- watch 0.25s: 
+  15.753  TX 45 45 45 45 45 45 45 45   # chunk 26, total 216
+  15.753  -- watch 0.25s: 
+  16.004  TX 45 45 45 45 45 45 45 45   # chunk 27, total 224
+  16.004  -- watch 0.25s: 
+  16.112     RX 45  ECHO 'E'
+  16.259  TX 45 45 45 45 45 45 45 45   # chunk 28, total 232
+  16.259  -- watch 0.25s: 
+  16.513  TX 45 45 45 45 45 45 45 45   # chunk 29, total 240
+  16.514  -- watch 0.25s: 
+  16.764  TX 45 45 45 45 45 45 45 45   # chunk 30, total 248
+  16.764  -- watch 0.25s: 
+  17.019  TX 45 45 45 45 45 45 45 45   # chunk 31, total 256
+  17.019  -- watch 0.25s: 
+  17.059     RX 45  ECHO 'E'
+  17.271  TX 45 45 45 45 45 45 45 45   # chunk 32, total 264
+  17.271  -- watch 0.25s: 
+  17.524  TX 45 45 45 45 45 45 45 45   # chunk 33, total 272
+  17.525  -- watch 0.25s: 
+  17.778  TX 45 45 45 45 45 45 45 45   # chunk 34, total 280
+  17.779  -- watch 0.25s: 
+  18.030  TX 45 45 45 45 45 45 45 45   # chunk 35, total 288
+  18.030  -- watch 0.25s: 
+  18.282  TX 45 45 45 45 45 45 45 45   # chunk 36, total 296
+  18.284  -- watch 0.25s: 
+  18.536  TX 45 45 45 45 45 45 45 45   # chunk 37, total 304
+  18.537  -- watch 0.25s: 
+  18.787  TX 45 45 45 45 45 45 45 45   # chunk 38, total 312
+  18.787  -- watch 0.25s: 
+  19.044  TX 45 45 45 45 45 45 45 45   # chunk 39, total 320
+  19.044  -- watch 0.25s: 
+  19.298  TX 45 45 45 45 45 45 45 45   # chunk 40, total 328
+  19.298  -- watch 0.25s: 
+  19.554  TX 45 45 45 45 45 45 45 45   # chunk 41, total 336
+  19.554  -- watch 0.25s: 
+  19.807  TX 45 45 45 45 45 45 45 45   # chunk 42, total 344
+  19.807  -- watch 0.25s: 
+  20.058  TX 45 45 45 45 45 45 45 45   # chunk 43, total 352
+  20.058  -- watch 0.25s: 
+  20.313  TX 45 45 45 45 45 45 45 45   # chunk 44, total 360
+  20.313  -- watch 0.25s: 
+  20.564  TX 15   # status at threshold
+  20.564  -- watch 0.4s: 
+  20.580     RX c4  STATUS 11000100 (low5=00100)
+  20.965  TX 0a   # clear buffer
+  20.965  -- watch 1.5s: clear at XOFF
+  20.997     RX c0  STATUS 11000000 (low5=00000)
+  21.013     RX c4  STATUS 11000100 (low5=00100)
+  22.020     RX c0  STATUS 11000000 (low5=00000)
+  22.468  TX 15   # status after clear
+  22.468  -- watch 0.4s: 
+  22.480     RX c0  STATUS 11000000 (low5=00000)
+  22.872  TX 00 03   # host close
+  22.873  -- watch 0.6s: 
+  23.474  closed; xoff_at=None

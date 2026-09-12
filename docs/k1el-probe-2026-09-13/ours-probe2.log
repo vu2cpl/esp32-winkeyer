@@ -1,0 +1,15 @@
+   0.043  opened tcp://192.168.10.209:8088 1200 8N2
+   1.054  RX (nothing)   # unsolicited  [0 bytes]
+   1.054  TX 00 04 5a   # admin echo (link check)
+   1.337  RX 5a   # echo  [1 bytes]
+   1.337  TX 00 07   # admin get values, HOST CLOSED
+   5.414  RX 00 14 00 32 05 19 0a 19 00 00 00 32 32 00 00   # get values standby  [15 bytes]
+   5.414  TX 00 02   # admin host open
+   7.950  RX 17   # version + settle  [1 bytes]
+   7.951  TX 00 07   # admin get values, HOST OPEN after 2.5 s settle
+  13.011  RX 00 14 00 32 05 19 0a 19 00 00 00 32 32 00 00   # get values open  [15 bytes]
+  13.012  TX 15   # request status (still in sync?)
+  13.283  RX c0   # status  [1 bytes]
+  13.283  TX 00 03   # admin host close
+  16.313  RX (nothing)   # after close (late bytes?)  [0 bytes]
+  16.313  closed

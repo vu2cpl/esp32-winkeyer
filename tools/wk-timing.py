@@ -11,8 +11,9 @@ text's expected duration.
     ./wk-timing.py                            # winkeyer.local
     ./wk-timing.py --host 192.168.10.20 --wpm 25 --text "CQ TEST"
 
-A correct run shows one KEYDOWN per Morse element and a BUSY span close
-to the predicted duration.
+A correct run shows NO KEYDOWN bytes — a genuine K1EL reports KEYDOWN for
+tune only, never per element (measured 2026-09-13, docs/k1el-probe-2026-09-13)
+— and a BUSY span close to the predicted duration.
 """
 
 import argparse
@@ -72,15 +73,16 @@ def main():
                 t = time.time() - t0
                 if b & 0xC0 == 0xC0:
                     f = []
-                    if b & 0x20: f.append("WAIT")
-                    if b & 0x10: f.append("KEYDOWN")
-                    if b & 0x08: f.append("BUSY")
-                    if b & 0x04: f.append("BREAKIN")
+                    if b & 0x10: f.append("WAIT")
+                    if b & 0x08: f.append("KEYDOWN")
+                    if b & 0x04: f.append("BUSY")
+                    if b & 0x02: f.append("BREAKIN")
+                    if b & 0x01: f.append("XOFF")
                     state = "|".join(f) or "idle"
                     print(f"{t:7.3f}s  status {state}")
-                    if b & 0x10:
-                        keydowns += 1
                     if b & 0x08:
+                        keydowns += 1
+                    if b & 0x04:
                         span.setdefault("start", time.time())
                     elif state == "idle" and "start" in span:
                         span.setdefault("end", time.time())
@@ -102,8 +104,8 @@ def main():
     s.close()
 
     print()
-    print(f"elements expected: {n_elem}   KEYDOWN seen: {keydowns}"
-          f"   {'OK' if keydowns == n_elem else 'MISMATCH'}")
+    print(f"elements sent: {n_elem}   KEYDOWN bytes: {keydowns}"
+          f"   {'OK (tune only, as a real WinKeyer)' if keydowns == 0 else 'WRONG — real WK sends none for text'}")
     if "start" in span and "end" in span:
         held = span["end"] - span["start"]
         print(f"BUSY held {held:.2f}s   predicted ~{predicted:.2f}s at {args.wpm} wpm")

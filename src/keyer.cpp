@@ -132,7 +132,11 @@ QueueHandle_t  charQ;
 volatile bool  flagClear    = false;
 volatile bool  flagTune     = false;
 volatile bool  flagPttHold  = false;
-volatile bool  flagBreakIn  = false;   // sticky until read via paddleBreakIn()
+// WinKeyer BREAKIN is a LEVEL: up from the operator's first element until the
+// paddle hang time runs out (one word space plus a dit after the last
+// element, the K1EL default), then down. Measured on a genuine WK3.1.
+volatile bool  paddleSess   = false;
+uint32_t       paddleIdleMs = 0;
 
 // ── Keyer-task state ──
 enum State : uint8_t { ST_IDLE, ST_LEAD, ST_KEYDOWN, ST_GAP, ST_TUNE };
@@ -179,6 +183,9 @@ QueueHandle_t decodeQ = nullptr;
 uint32_t potAccum = 0;
 uint16_t potTick  = 0;
 int      potLastWpm = -1;
+// The knob's own step above MINWPM, for the WinKeyer pot byte. Kept apart
+// from potLastWpm, which setWpm() resets whenever a host sets a speed.
+volatile int8_t potStepV = -1;
 // A pot parked on a step boundary alternates between two adjacent speeds
 // forever, and every flip is a speed change AND an unsolicited WinKeyer pot
 // byte — at 1200 baud that stream saturates the host link.
@@ -374,10 +381,15 @@ void samplePot() {
   potAccum = (potAccum * 3 + (uint32_t)analogRead(PIN_SPEED_POT)) / 4;  // IIR smooth
   // Work in hundredths so the deadband can sit between two whole WPM steps.
   int cwpm = (int)cfgPotMin * 100 + (int)((potAccum * cfgPotRange * 100) / 4095);
-  if (potLastWpm < 0) { potLastWpm = (cwpm + 50) / 100; return; }  // don't stomp boot speed
+  if (potLastWpm < 0) {                   // don't stomp boot speed
+    potLastWpm = (cwpm + 50) / 100;
+    potStepV = (int8_t)constrain(potLastWpm - (int)cfgPotMin, 0, (int)cfgPotRange);
+    return;
+  }
   int cur = potLastWpm * 100;
   if (cwpm < cur + POT_HYST_CWPM && cwpm > cur - POT_HYST_CWPM) return;
   potLastWpm = (cwpm + 50) / 100;
+  potStepV = (int8_t)constrain(potLastWpm - (int)cfgPotMin, 0, (int)cfgPotRange);
   cfgWpm     = constrain(potLastWpm, 5, 60);
   recalc();
 }
@@ -414,6 +426,15 @@ void keyerTask(void*) {
     pttSafety();
     tickDecoder();
 
+    // Paddle session for WinKeyer BREAKIN. A paddle element in progress or
+    // in its gap counts as activity; tune and buffered text do not.
+    if (dit || dah || (!curIsAuto && (state == ST_KEYDOWN || state == ST_GAP))) {
+      paddleSess = true;
+      paddleIdleMs = 0;
+    } else if (paddleSess && ++paddleIdleMs >= (uint32_t)tGapElemP * 8) {
+      paddleSess = false;
+    }
+
     // Host abort (WK "clear buffer"): stop buffered sending at once.
     if (flagClear) {
       flagClear = false;
@@ -430,7 +451,6 @@ void keyerTask(void*) {
       xQueueReset(charQ);
       pattern = nullptr;
       mergeNext = false;
-      flagBreakIn = true;
       if (curIsAuto && state == ST_KEYDOWN) { keyUp(); state = ST_GAP; timerMs = gapElem(); }
     }
 
@@ -661,10 +681,7 @@ bool decodedRead(char& c) {
   return decodeQ && xQueueReceive(decodeQ, &c, 0) == pdTRUE;
 }
 
-bool paddleBreakIn() {
-  bool b = flagBreakIn;
-  flagBreakIn = false;
-  return b;
-}
+bool   paddleSession() { return paddleSess; }
+int8_t potStep()       { return cfgPotEn ? potStepV : -1; }
 
 }  // namespace Keyer

@@ -16,7 +16,7 @@ as a behavioural reference; the implementation here is original.
 |---|---|
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
-| WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13 — status bits, load-defaults order and more differ, fixes in progress** ([findings](docs/k1el-probe-2026-09-13/README.md)) |
+| WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night — Flex-path echo pacing still differs** ([findings](docs/k1el-probe-2026-09-13/README.md)) |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
@@ -707,8 +707,9 @@ Every prerequisite fails silently — the radio reports no error for a
 missing slice, a slice in the wrong mode, or a missing GUI client — so it
 checks all of them at once.
 
-**`wk-timing.py` timestamps every status byte** and counts KEYDOWN against
-the text's actual element count. Counting status bytes in fixed windows
+**`wk-timing.py` timestamps every status byte** and times the BUSY span
+against the text's predicted duration. It also checks that no KEYDOWN
+arrives for text: a genuine K1EL reports KEYDOWN for tune only. Counting status bytes in fixed windows
 gives false negatives when a delayed burst lands outside its window; this
 tells "not sent" from "reported late".
 
@@ -829,12 +830,12 @@ host's.**
 
 | The host still sets | The operator keeps |
 |---|---|
-| Speed (`0x02`, `0x1C`, `0x0F` b1) | Sidetone pitch (`0x01`) |
-| Serial echo, paddle echo (`0x0E` bits 2, 6) | PTT lead-in and tail (`0x04`, `0x0F` b7/b8) |
-| Speed pot range (`0x05`, `0x0F` b3/b4) | Farnsworth (`0x0D`, `0x0F` b5) |
-| | PTT line enable (`0x09` bit 0) |
-| | Weighting (`0x03`, `0x0F` b6) |
-| | Dit/dah ratio (`0x17`, `0x0F` b10) |
+| Speed (`0x02`, `0x1C`, `0x0F` b1) | Sidetone pitch (`0x01`, `0x0F` b2) |
+| Serial echo, paddle echo (`0x0E` bits 2, 6; `0x0F` b0) | PTT lead-in and tail (`0x04`, `0x0F` b4/b5) |
+| Speed pot range (`0x05`, `0x0F` b6/b7) | Farnsworth (`0x0D`, `0x0F` b10) |
+| | PTT line enable (`0x09` bit 0, `0x0F` b13) |
+| | Weighting (`0x03`, `0x0F` b3) |
+| | Dit/dah ratio (`0x17`, `0x0F` b12) |
 | | Iambic A/B and paddle swap (`0x0E` bits 5:4, 3) |
 
 The right-hand column is parsed and **recorded** — the status dump still

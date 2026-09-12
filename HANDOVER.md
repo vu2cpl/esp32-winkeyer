@@ -1218,8 +1218,10 @@ makes the keyer feel slow.
   logs, the scripts, and a write-up with each finding checked against the
   K1EL WK3 datasheet Rev 1.3. See 12h.
 
-12h. **OPEN 2026-09-13: eleven places where this firmware is not a
-    WinKeyer.** Measured on the real keyer, confirmed in the datasheet;
+12h. **FIXED 2026-09-13, verified against the K1EL logs (flex backend):
+    eleven places where this firmware was not a WinKeyer** — plus a twelfth,
+    a status byte volunteered after the version. What still differs is
+    listed at the end of this item. Measured on the real keyer, confirmed in the datasheet;
     detail and raw bytes in `docs/k1el-probe-2026-09-13/README.md`. Worst
     first:
 
@@ -1251,6 +1253,21 @@ makes the keyer feel slow.
     Pot and break-in were measured with Manoj on the K1EL's controls. Pin
     configuration (12g item 2) was NOT measured — nothing was wired to the
     K1EL's outputs; the datasheet layout is in the write-up.
+
+    **Verification:** `docs/k1el-probe-2026-09-13/run-tcp.py` replays the
+    K1EL probe scripts unchanged against our keyer over TCP 8088, so the two
+    logs diff directly. Probes 1-4 and 6 now agree on everything listed
+    above. **Not yet verified:** items 3, 7 and 8 (pot, BREAKIN level,
+    break-in clearing text) need probe 5 with an operator on OUR pot and
+    paddle; and the **local** backend has not been compared at all.
+
+    **Still OPEN — Flex backend only** (text goes to the radio in batches):
+    echo arrives in bursts, sometimes before BUSY (this is 12a, and it now
+    has a reference: one echo at the end of each letter); pause cannot
+    hold text the radio already has; XOFF never asserts; Clear Buffer sends
+    a spurious ~1 s BUSY after its 0xC0. Break-in now clears the radio's
+    cwx buffer too (`Flex::clear()`), as a WinKeyer clears its own — a
+    change Manoj will hear on the air.
 
 ## Network placement (measured 2026-09-10)
 

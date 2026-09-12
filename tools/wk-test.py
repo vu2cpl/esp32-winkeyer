@@ -55,11 +55,13 @@ def decode(data):
     for b in data:
         if b & 0xC0 == 0xC0:
             flags = []
-            if b & 0x20: flags.append("WAIT")
-            if b & 0x10: flags.append("KEYDOWN")
-            if b & 0x08: flags.append("BUSY")
-            if b & 0x04: flags.append("BREAKIN")
-            if b & 0x02: flags.append("XOFF")
+            # Bit map measured on a genuine K1EL WK3.1 (docs/k1el-probe-2026-09-13).
+            # In WK2 mode bit 3 tags a pushbutton byte instead of KEYDOWN.
+            if b & 0x10: flags.append("WAIT")
+            if b & 0x08: flags.append("KEYDOWN/PB")
+            if b & 0x04: flags.append("BUSY")
+            if b & 0x02: flags.append("BREAKIN")
+            if b & 0x01: flags.append("XOFF")
             out.append(f"status(0x{b:02X}) {'|'.join(flags) or 'idle'}")
         elif b & 0xC0 == 0x80:
             out.append(f"pot={b & 0x3F}")

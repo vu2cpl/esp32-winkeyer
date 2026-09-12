@@ -107,7 +107,13 @@ void setKeyEventHook(void (*fn)(bool down));
 // through this keyer purely to make sidetone — but its key events must not
 // reach the hook, or the radio would be keyed twice for the same text.
 void setHookPaddleOnly(bool on);
-bool   paddleBreakIn();    // true once if paddle press aborted a buffered send
+// The operator is on the paddle: true from the first element until the paddle
+// hang time (one word space + a dit) has passed. Drives WinKeyer BREAKIN,
+// which is a level for the whole session, not a pulse.
+bool   paddleSession();
+// The speed pot's step above its minimum (0..range), or -1 when no pot is
+// enabled. What a WinKeyer pot byte reports — the knob, not the speed.
+int8_t potStep();
 
 // Characters the OPERATOR sent on the paddle, decoded from the elements
 // this keyer generated (so exact, not a signal decoder). Drives WinKeyer

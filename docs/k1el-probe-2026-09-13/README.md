@@ -67,6 +67,10 @@ unless marked otherwise.
    a 1200-baud link; `tools/wk-timing.py` treats one KEYDOWN per element as
    correct and needs the same correction.
 
+12. **Nothing after the version byte.** Host open returns the version and
+   no status or pot byte (probe 1: 1 s of silence). Ours followed the version
+   with a forced status byte and, on the next poll, a pot byte.
+
 ## Behaviour confirmed (reference for 12a echo work)
 
 - Host speed commands (0x02) do not produce a pot byte; pot bytes report the
@@ -86,3 +90,30 @@ unless marked otherwise.
 - 0x09 PINCFG: bit0 PTT enable, bit1 sidetone enable, bit2 KeyOut2,
   bit3 KeyOut1; bits 7-6 ultimatic priority, 5-4 paddle hang time.
 - 0x01 sidetone: WK2 = low-nibble N table (4000/N); WK3 mode = 62500/Hz.
+
+## After the fixes — our keyer, same probes (2026-09-13, 01:15)
+
+`run-tcp.py` replays each probe unchanged against our keyer over WinKeyer
+TCP 8088; results in `ours-probe{1,2,3,4,6}.log` (backend **flex**, radio
+into a dummy load). Probe 5 needs an operator on our pot and paddle and has
+not been run yet.
+
+**Now matching the K1EL:** status bit layout; nothing after the version
+byte; KEYDOWN (with WAIT) for key immediate only, none for text; Set WK2
+Mode answers 0xC8 and switches bit 3; host open returns to WK1 mode; admin
+9/21/23/24 answer (23, 79, 0, 1) and an echo test after each stays in sync;
+Clear Buffer cancels pause. Get Values now answers in load-defaults order
+(ours reports WK2, which has the command; the WK3.1 does not).
+
+**Still different — all on the Flex backend**, where text is handed to the
+radio in batches rather than keyed here:
+
+- Echo arrives in bursts, not at the end of each letter: PARIS E echoed as
+  seven bytes at once; 150 bytes of TEST echoed in 1.5 s; EE echoed before
+  BUSY rose. This is HANDOVER 12a's echo-pacing problem, now with a
+  reference for correct behaviour.
+- Pause does not hold: the text is already on the radio.
+- XOFF never asserts: the buffer drains straight to the radio.
+- Clear Buffer: 0xC0, then a spurious 0xC4 for ~1 s, then 0xC0. The K1EL
+  sends 0xC0 once.
+- Key immediate goes straight to 0xDC (K1EL: 0xD8 then 0xDC) — cosmetic.
