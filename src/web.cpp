@@ -76,6 +76,10 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 /* A slider does not get more useful past a few hundred pixels; without a
    cap a full-width card turns Speed into a metre of travel. */
 input[type=range]{max-width:340px}
+/* Memories shares a grid row with the backend panel, which is much taller.
+   .rig is align-items:start, so the card stopped at its content and the two
+   ended at different heights. */
+.stretch{align-self:stretch}
 /* The six memories are wrapped in one div, so they were living in a single
    inner column. Give that div the full card and tile inside it. */
 #mems{grid-column:1/-1;display:grid;
@@ -127,12 +131,23 @@ background:linear-gradient(180deg,#d8cfb8,#8a8275);box-shadow:0 0 7px rgba(255,1
 input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;
 border:1px solid #1a1a1c;background:linear-gradient(180deg,#d8cfb8,#8a8275)}
 input[type=checkbox]{accent-color:var(--amber)}
-input[type=text],input[type=number]{width:92px}
+input[type=text]{width:92px}
+/* Wide enough for "2000" and the spinner, narrow enough that label + field
+   + unit clears a half-width panel column with room to spare. */
+input[type=number]{width:78px}
 button{cursor:pointer;background:linear-gradient(180deg,#44444a,#26262a);
 letter-spacing:.5px;padding:3px 9px;font-size:12px}
 button:hover{border-color:var(--amber);color:var(--amber)}
 button.hot{color:var(--red);border-color:#5a2420}
 .val{color:var(--amber);min-width:56px;font-size:13px}
+/* A fixed unit ("ms", "WPM") is not a readout: reserving 56px for it was
+   enough to push it onto a second line inside a half-width panel column.
+   .val keeps its width because a CHANGING value there would resize the
+   slider beside it on every drag. */
+.unit{color:var(--amber);font-size:13px;white-space:nowrap}
+/* A <select> is as wide as its longest option and will not shrink below
+   it, so "1200 8N2 - WinKeyer standard" hung out past the panel border. */
+select{max-width:100%}
 /* Memories: six rows that must each stay on ONE line, or the panel becomes
    the tallest thing on the page and nothing else fits beside it. */
 .row.mem{margin:3px 0;gap:6px}
@@ -178,7 +193,7 @@ legend[title]{cursor:help}
 <div class="row"><label title="Dah length relative to a dit, 33-66, nominal 50 = the standard 3 dits. Away from 50 the CW stops being standard-weight, so move it only to match a fist you already like.">Dah ratio</label>
   <input type="range" id="ratio" min="33" max="66"><span class="val" id="ratioV"></span></div>
 <div class="row"><label title="0 = off. Otherwise characters stay at the Speed above while the GAPS stretch to this slower WPM — the standard way to learn at speed. Must be 0 or 5-60; 1-4 is not a legal value.">Farnsworth</label>
-  <input type="number" id="farns" min="0" max="60"><span class="val">WPM</span></div>
+  <input type="number" id="farns" min="0" max="60"><span class="unit">WPM</span></div>
 </fieldset>
 
 <fieldset><legend id="legPtt" title="">PTT</legend>
@@ -187,17 +202,17 @@ legend[title]{cursor:help}
 <div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
 <div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
-  <input type="number" id="lead" min="0" max="2000"><span class="val">ms</span></div>
+  <input type="number" id="lead" min="0" max="2000"><span class="unit">ms</span></div>
 <div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
-  <input type="number" id="tail" min="0" max="2000"><span class="val">ms</span></div>
+  <input type="number" id="tail" min="0" max="2000"><span class="unit">ms</span></div>
 </fieldset>
 
 <fieldset><legend>SPEED POT</legend>
 <div class="row"><label title="10k linear pot on GPIO34, wiper to the pin, 100nF to GND. Leave this OFF until one is actually wired: the pin floats and noise will drive your speed. The knob overrides a host-set speed the moment you turn it.">Knob</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="pot"> enabled</label></div>
-<div class="row"><label title="WPM at each end of the knob travel. Expect a small dead zone at the top: the ESP32 ADC saturates near 3.1 V rather than 3.3 V.">Range</label>
-  <input type="number" id="potmin" min="5" max="59"> to
-  <input type="number" id="potmax" min="6" max="60"><span class="val">WPM</span></div>
+<div class="row full"><label title="WPM at each end of the knob travel. Expect a small dead zone at the top: the ESP32 ADC saturates near 3.1 V rather than 3.3 V.">Range</label>
+  <input type="number" id="potmin" min="5" max="59"><span class="unit">to</span>
+  <input type="number" id="potmax" min="6" max="60"><span class="unit">WPM</span></div>
 </fieldset>
 
 <fieldset><legend>DISPLAY</legend>
@@ -213,7 +228,7 @@ legend[title]{cursor:help}
 </fieldset>
 
 <fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
-<div class="row"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
+<div class="row full"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
   <select id="txpower">
     <option value="19">19 dBm (full)</option>
     <option value="17">17 dBm</option>
@@ -225,7 +240,7 @@ legend[title]{cursor:help}
     <option value="2">2 dBm (minimum)</option>
   </select>
   <span class="val" id="rssiVal"></span></div>
-<div class="row"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
+<div class="row full"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
   <select id="baud">
     <option value="1200">1200 8N2 &mdash; WinKeyer standard</option>
     <option value="9600">9600 8N1</option>
@@ -266,7 +281,7 @@ legend[title]{cursor:help}
   <span class="val" id="flexip"></span></div>
 </fieldset>
 
-<fieldset><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
+<fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
 <div class="row"><label title="Expands wherever %C appears in a memory.">Callsign</label>
   <input type="text" id="call" style="width:120px" placeholder="VU2CPL"></div>
 <div id="mems"></div>
@@ -274,8 +289,7 @@ legend[title]{cursor:help}
 
 <fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
 <div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
-  <button onclick="fsksend()">SEND</button>
-  <button class="hot" onclick="post('/api/fsk?stop=1')">STOP</button></div>
+  <button id="fskBtn" onclick="fskSendOrStop()">SEND</button></div>
 <div class="row"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
   <select id="fskbaud"><option value="45.45">45.45 (standard)</option>
   <option value="50">50</option><option value="75">75</option></select>
@@ -284,11 +298,10 @@ legend[title]{cursor:help}
   <span class="val" id="fskState"></span></div>
 </fieldset>
 
-<fieldset><legend title="Type text and press Enter or SEND to transmit it. TUNE keys continuously for tuning an amp; STOP ends it. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
+<fieldset><legend title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
 <div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
-  <button onclick="send()">SEND</button>
-  <button onclick="post('/api/tune?v=on')">TUNE</button>
-  <button class="hot" onclick="post('/api/tune?v=off')">STOP</button></div>
+  <button id="sendBtn" onclick="sendOrStop()">SEND</button>
+  <button onclick="post('/api/tune?v=on')">TUNE</button></div>
 <div id="msg"></div>
 </fieldset>
 
@@ -305,9 +318,23 @@ const KEYMAP={fskbaud:'fskbaud',fskinv:'fskinv',fskdid:'fskdiddle',
               flexbind:'flexbind',flexxmit:'flexxmit',flexcmd:'flexcmd'};
 function set(k,v){post('/api/set?k='+(KEYMAP[k]||k)+'&v='+encodeURIComponent(v))}
 function send(){const t=$('txt').value.trim();if(!t)return;
-  post('/api/send?t='+encodeURIComponent(t));$('txt').value=''}
+  post('/api/send?t='+encodeURIComponent(t));$('txt').value='';setBtn('sendBtn',true)}
 function fsksend(){const t=$('fsktxt').value.trim();if(!t)return;
-  post('/api/fsk?t='+encodeURIComponent(t));$('fsktxt').value=''}
+  post('/api/fsk?t='+encodeURIComponent(t));$('fsktxt').value='';setBtn('fskBtn',true)}
+// SEND and STOP are the same button: a second one sitting there armed is
+// only useful while something is transmitting, and a STOP that does nothing
+// the rest of the time invites a click that clears a buffer mid-contest.
+// The state comes from the poll; the click flips it at once so the button
+// does not sit on SEND for up to a second while the message is going out.
+function setBtn(id,on){const b=$(id);if(!b)return;
+  b.textContent=on?'STOP':'SEND';b.classList.toggle('hot',on)}
+function stopping(id){return $(id).classList.contains('hot')}
+function sendOrStop(){
+  if(stopping('sendBtn')){post('/api/send?stop=1');setBtn('sendBtn',false);return}
+  send()}
+function fskSendOrStop(){
+  if(stopping('fskBtn')){post('/api/fsk?stop=1');setBtn('fskBtn',false);return}
+  fsksend()}
 function memPlay(n){post('/api/mem?play='+n)}
 function memSave(n){post('/api/mem?n='+n+'&t='+encodeURIComponent($('m'+n).value))}
 let memsBuilt=false;
@@ -411,6 +438,9 @@ async function refresh(){
   if(editing!=='call') $('call').value=s.call||'';
   $('fskinv').checked=s.fskinv; $('fskdid').checked=s.fskdid;
   $('fskState').textContent = s.fskbusy ? 'SENDING' : '';
+  // Tune counts: it is the other thing the button has to be able to end.
+  setBtn('sendBtn', !!(s.busy || s.tune));
+  setBtn('fskBtn',  !!s.fskbusy);
   $('wpmV').textContent=$('wpm').value+' WPM';
   $('sthzV').textContent=$('sthz').value+' Hz';
   $('weightV').textContent=$('weight').value+(s.weight==50?' (nominal)':'');
@@ -496,6 +526,17 @@ void handleSet() {
 }
 
 void handleSend() {
+  // One button on the page is SEND or STOP depending on what is happening,
+  // so the stop arrives on this endpoint. It has to clear the radio's buffer
+  // too, not just the local one, and drop tune — the button is the only way
+  // out of any of them now.
+  if (server.hasArg("stop")) {
+    WinKeyer::abort();
+    Keyer::tune(false);
+    Log::println("[WEB] stop");
+    server.send(200, "text/plain", "stopped");
+    return;
+  }
   String t = server.arg("t");
   if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
   WinKeyer::sendText(t.c_str());

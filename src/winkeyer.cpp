@@ -550,6 +550,13 @@ void poll() {
   emitPot(false);
 }
 
+void abort() {
+  bufReset();
+  flexLen = 0;
+  Keyer::clearBuffer();
+  if (backend == WK_BACKEND_FLEX) { Flex::clear(); echoReset(); monReset(); }
+}
+
 void sendText(const char* text) {
   if (!text || !*text) return;
   if (backend == WK_BACKEND_FLEX) {

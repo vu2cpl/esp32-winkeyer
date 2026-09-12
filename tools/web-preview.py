@@ -49,7 +49,7 @@ STATE = {
     "flex": {"enabled": True, "connected": True, "ip": "192.168.1.50",
              "slice": True, "slicewarn": "", "cmd": "key", "bind": True,
              "xmit": True, "xmiton": False},
-    "rssi": -62, "ip": "192.168.1.20",
+    "rssi": -62, "txpower": 19, "ip": "192.168.1.20",
 }
 
 

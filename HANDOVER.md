@@ -986,6 +986,36 @@ makes the keyer feel slow.
     its window. It needs a nonzero lead — the operator default is 50 ms —
     which is what VU2LBW was keying with by hand.
 
+12d. **Settings-page layout faults and the SEND/STOP merge (2026-09-12,
+    evening).** All reported from a screenshot of Manoj's own window; all
+    verified in `tools/web-preview.py` at 1130px and 880px before flashing.
+
+    - **`ms` and `WPM` suffixes wrapped to their own line** in PTT, TIMING
+      and SPEED POT. `.val` reserves 56px so a CHANGING readout does not
+      resize the slider beside it on every drag — but a fixed unit is not a
+      readout, and label (92) + field (92) + unit (56) + gaps overflowed a
+      196px-minimum panel column by a hair. Units now use `.unit`, which
+      reserves nothing and never wraps; number fields are 78px.
+    - **Speed-pot Range wrapped** — two fields, a joining word and a unit
+      never fit one column. That row is now full width.
+    - **Host baud hung outside the card.** A `<select>` is as wide as its
+      longest option and will not shrink below it, so "1200 8N2 — WinKeyer
+      standard" ran past the panel border. The row is full width, WiFi
+      power with it, plus a `select{max-width:100%}` guard for the future.
+    - **MEMORIES now matches the BACKEND card's height** (`.stretch` —
+      `align-self:stretch` against `.rig{align-items:start}`); they share a
+      grid row and ended at different heights.
+    - **SEND and STOP are one button**, in both the SEND and FSK panels:
+      SEND when idle, red STOP while `busy`/`tune` (or `fskbusy`), driven
+      by the 1 Hz poll with an optimistic flip on click. The page's STOP
+      used to call `/api/tune?v=off` and could not stop a message or a
+      memory at all. It now posts `/api/send?stop=1` → new
+      `WinKeyer::abort()` (the internals of host command 0x0A: local buffer,
+      keyer queue, and on Flex the radio's buffer, echo and monitor) plus
+      tune off.
+    - `tools/web-preview.py` had no `txpower` in its stub, so the WiFi power
+      select rendered blank in the preview and looked like a page bug.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was

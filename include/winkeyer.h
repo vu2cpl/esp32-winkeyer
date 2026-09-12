@@ -44,6 +44,9 @@ bool hostOpen();
 // withheld from the key hook to stop the radio being keyed twice.
 void sendText(const char* text);
 
+// Stop everything queued and playing, here and on the radio — the page's
+// STOP. Same internals as the host's clear-buffer command (0x0A).
+void abort();
 void setMonitor(bool on);
 bool monitor();
 

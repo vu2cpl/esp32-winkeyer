@@ -24,6 +24,7 @@ as a behavioural reference; the implementation here is original.
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
 | HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
 | Settings web page at `winkeyer.local` | working; one screen without scrolling from ~880x1150 upwards |
+| SEND / STOP as one button on the page | working; STOP clears the radio's buffer too, and ends tune |
 | Persisted settings (NVS) | working, verified across a hard reset |
 | Message memories (6) with `%C` expansion | working from the web page and a logger |
 | RTTY FSK on GPIO27 | implemented, polarity unverified on air |
@@ -477,7 +478,9 @@ An FSK keying line on **GPIO27** for a rig's FSK input: Baudot (ITA2) at
 /fsk                    # status
 ```
 
-The web page has an FSK panel with its own send box.
+The web page has an FSK panel with its own send box. Its button is SEND
+while the line is idle and turns into a red STOP for as long as the over is
+going out — the same one button, not two.
 
 **Polarity is the one thing you must confirm on air.** Getting `invert`
 wrong prints reversed-case gibberish at the far end rather than nothing, so
