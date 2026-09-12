@@ -34,6 +34,20 @@ python3 install.py     # detects the host, prompts for local settings, verifies 
 ./monitor.sh           # serial monitor, 1200 baud
 ```
 
+**PlatformIO must run on Python 3.10 or newer.** This firmware builds
+against Arduino core 3.x (the pioarduino platform), which refuses older
+Python with a bare `ERROR: Python version must be 3.10 ...` that never says
+which PlatformIO it means. `install.py` checks first and offers to create
+one in `~/.pio-venv313`, leaving any existing install alone; `flash.sh` and
+`monitor.sh` find it the same way (`PIO=/path/to/pio` overrides). Why the
+newer core: 2.0.17's `WiFiClient` double-frees an lwIP buffer under heavy
+inbound traffic, which crashed this keyer within minutes of sending
+memories to a FlexRadio — see `HANDOVER.md`.
+
+The app partition is the single 3 MB `huge_app` layout, because the newer
+core filled 94.8% of the default one. Nothing here uses OTA. Flashing
+rewrites the partition table, so an older board needs no special steps.
+
 `install.py` detects macOS, Raspberry Pi, Linux or Windows (with a manual
 override), then asks for your MQTT broker, mDNS name and setup-AP details.
 Answers go to **`include/secrets.h`**, which is git-ignored and overrides

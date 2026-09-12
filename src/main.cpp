@@ -492,7 +492,14 @@ void setup() {
   // this init may be refused — and the return codes were being ignored,
   // which meant claiming a watchdog was armed without ever checking. Say
   // outright what actually happened.
-  esp_err_t wdtInit = esp_task_wdt_init(30, true);
+  // IDF 5 takes a config struct, and Arduino may already have started the
+  // watchdog — in that case reconfigure it rather than failing.
+  esp_task_wdt_config_t wdtCfg = {};
+  wdtCfg.timeout_ms     = 30000;
+  wdtCfg.idle_core_mask = 0;          // idle tasks are not ours to police
+  wdtCfg.trigger_panic  = true;
+  esp_err_t wdtInit = esp_task_wdt_init(&wdtCfg);
+  if (wdtInit == ESP_ERR_INVALID_STATE) wdtInit = esp_task_wdt_reconfigure(&wdtCfg);
   esp_err_t wdtAdd  = esp_task_wdt_add(NULL);   // NULL = loopTask
   Serial.printf("[BOOT] task watchdog: init=%s add=%s -> loopTask %s\n",
                 esp_err_to_name(wdtInit), esp_err_to_name(wdtAdd),
