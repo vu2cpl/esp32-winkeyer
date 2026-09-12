@@ -1042,6 +1042,23 @@ makes the keyer feel slow.
       the host command is the culprit and its tone should be made
       session-only or ignored outright.**
 
+    **Chased down and settled the same evening.** The board was watched
+    across a reboot and a RUMlogNG connect: it came up at 600 from NVS with
+    no host, and went to **1000 the moment the session opened**. That is
+    RUMlogNG sending N=4 — a perfectly legal 1000 Hz, not a bug in the
+    parse and not the clamp. **The host's sidetone command is now parsed and
+    ignored** (`case 0x01`, `winkeyer.cpp`): the pitch is the one setting
+    here that only the operator hears — not timing, never on the air, never
+    read back by the logger — so a logger does not get to take it. The
+    earlier NVS 2000 is explained by the same override plus a slider click
+    saving what the page was showing. Verified: 600 at boot, 600 with the
+    session open.
+
+    - **FSK panel: Baud, invert and diddle on one row overflowed at every
+      width**, leaving `diddle` wrapped underneath on its own. Split — Baud
+      and its select on one full row, the two switches on the next behind a
+      92px spacer so they line up with the controls above.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was

@@ -803,7 +803,14 @@ The **operator's** panel settings persist in NVS: speed, mode, swap,
 sidetone, PTT, weighting/ratio/Farnsworth, pot enable and range, display,
 backend. The **host's** session settings do not — a speed N1MM sets over
 the WinKeyer protocol is gone at the next boot, so a contest never leaves
-the keyer permanently reconfigured. CLI and web page both go through
+the keyer permanently reconfigured.
+
+**Sidetone pitch is the exception a logger does not get at all.** The host
+command (`0x01`, tone = 4000/N) is parsed and ignored: RUMlogNG asks for
+N=4 — a legal 1000 Hz — on every session open, and that replaced the
+operator's pitch the moment a logger connected. It is the one setting here
+that only the operator hears: it is not timing, it never reaches the air,
+and no logger reads it back. Yours stays where you put it. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 
 ## MQTT
