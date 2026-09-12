@@ -1,0 +1,17 @@
+   0.003  opened /dev/cu.usbserial-AI02BVHE 1200 8N2 dtr=True rts=True
+   1.553  RX (nothing)   # unsolicited after open  [0 bytes]
+   1.553  TX 00 04 a5   # admin echo 0xA5 (before host open)
+   1.948  RX a5   # echo reply  [1 bytes]
+   1.948  TX 00 02   # admin host open
+   2.326  RX 1f   # version byte + anything after  [1 bytes]
+   2.326     version = 31 (0x1f)
+   3.362  RX (nothing)   # settle after open  [0 bytes]
+   3.362  TX 15   # request status
+   3.733  RX c0   # status  [1 bytes]
+   3.733  TX 07   # get speed pot
+   4.108  RX 88   # pot  [1 bytes]
+   4.108  TX 00 07   # admin get values
+   7.218  RX (nothing)   # get values  [0 bytes]
+   7.218  TX 00 03   # admin host close
+   8.273  RX (nothing)   # after host close  [0 bytes]
+   8.274  closed

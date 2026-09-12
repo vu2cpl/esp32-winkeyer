@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 (evening) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-13 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -1181,7 +1181,7 @@ makes the keyer feel slow.
     Same mechanics as 12e — record the value for the status dump, do not
     apply it — and the same one-line way back.
 
-12g. **A real K1EL WinKeyer will be available to probe** — Manoj, 2026-09-12:
+12g. **DONE 2026-09-13 — probed; see 12h.** A real K1EL WinKeyer will be available to probe — Manoj, 2026-09-12:
     *"When I am back will let you probe a real winkeyer."* Every protocol
     question this firmware has had to guess at can be settled by asking the
     genuine article, so do not spend the session on whatever seems
@@ -1210,6 +1210,47 @@ makes the keyer feel slow.
     of ours. `tools/host-watch.py` is the other half — run it against OUR
     keyer with the same logger attached and compare what each one is told. **Capture the raw bytes both ways and commit the log**, so the
     next question does not need the hardware back.
+
+- **2026-09-13 (after midnight)** — **audited against a genuine K1EL
+  WinKeyer.** Manoj connected a WK3.1 (`usbserial-AI02BVHE`, version byte
+  31, firmware 31.02) and drove its pot and paddle while six probe scripts
+  logged every byte. Everything is in `docs/k1el-probe-2026-09-13/`: the
+  logs, the scripts, and a write-up with each finding checked against the
+  K1EL WK3 datasheet Rev 1.3. See 12h.
+
+12h. **OPEN 2026-09-13: eleven places where this firmware is not a
+    WinKeyer.** Measured on the real keyer, confirmed in the datasheet;
+    detail and raw bytes in `docs/k1el-probe-2026-09-13/README.md`. Worst
+    first:
+
+    1. **Every status flag is one bit too high** — real XOFF 0x01, BREAKIN
+       0x02, BUSY 0x04, KEYDOWN 0x08, WAIT 0x10. A logger has been reading
+       our BUSY as KEYDOWN. `tools/wk-test.py` and `tools/wk-timing.py`
+       decode the same wrong map, which is how self-tests passed.
+    2. **`0x0F` load-defaults order wrong from byte 3** — real: mode, speed,
+       sidetone, weight, lead, tail, minWPM, range, X2MODE, key comp,
+       Farnsworth, setpoint, ratio, pincfg, X1MODE. Ours took the pot range
+       from weight and lead-in. 12g's round-trip plan was impossible: admin 7
+       Get Values is unsupported on WK3 (it sends nothing at all).
+    3. Pot byte is the raw knob step above MINWPM (0..range), one byte per
+       step, never produced by a host speed command. Ours scales to 0..31
+       and follows `getWpm()`.
+    4. Admin parameter counts that desync the parser (0x0D = 256 bytes,
+       0x13 = 2, 0x14 = 0, 0x16 = 1, 0x19 = 1).
+    5. Admin replies: 0x09 FW major, 0x15 Vcc, 0x17 FW minor, 0x18 IC type.
+    6. Pause sets no WAIT; Clear Buffer cancels pause.
+    7. BREAKIN is a level held for the whole paddle session, not a pulse.
+    8. Paddle break-in clears the serial buffer and text arriving while
+       paddling is ignored.
+    9. XOFF at 2/3 of the buffer.
+    10. Set WK2 Mode (admin 11, accepted while open) answers 0xC8 and turns
+        bit 3 into the pushbutton tag; host open returns to WK1 mode.
+    11. **KEYDOWN is reported for tune only**, never per element — ours sends
+        about two status bytes per element at 1200 baud.
+
+    Pot and break-in were measured with Manoj on the K1EL's controls. Pin
+    configuration (12g item 2) was NOT measured — nothing was wired to the
+    K1EL's outputs; the datasheet layout is in the write-up.
 
 ## Network placement (measured 2026-09-10)
 
@@ -1285,10 +1326,10 @@ against exposing it beyond one.
 
    Still to do: confirm on-air fist quality with a decoder. `logKeying` in
    `flex.cpp` prints every edge; turn it off once happy.
-6. **Pin config command (WK 0x09)** — only bit 0 (PTT enable) is acted on.
-   The remaining bits differ between WK revisions and guessing wrong would
-   silently disable sidetone or key output. Revisit after testing with a
-   real logger.
+6. **Pin config command (WK 0x09)** — recorded, not applied (12f). The
+   WK2/WK3 datasheet layout is now known: bit 0 PTT enable, bit 1 sidetone,
+   bit 2 KeyOut 2, bit 3 KeyOut 1, bits 5-4 paddle hang time, 7-6 ultimatic
+   priority. Not yet observed on real hardware (12h).
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.

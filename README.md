@@ -16,7 +16,7 @@ as a behavioural reference; the implementation here is original.
 |---|---|
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
-| WinKeyer protocol engine (WK 2.3 host mode) | working, verified with `tools/wk-test.py` |
+| WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13 — status bits, load-defaults order and more differ, fixes in progress** ([findings](docs/k1el-probe-2026-09-13/README.md)) |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |

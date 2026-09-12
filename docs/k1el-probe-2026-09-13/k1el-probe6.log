@@ -1,0 +1,90 @@
+   0.003  TX 00 09   # admin 9 (0x09) get FW major rev
+   0.024  -- watch 1.0s: get FW major rev
+   0.035     RX 1f   31  BYTE
+   1.028  TX 00 04 53   # echo test b'S' — in sync?
+   1.059  -- watch 0.6s: 
+   1.071     RX 53   83  ECHO 'S'
+   1.660  TX 00 17   # admin 23 (0x17) get FW minor rev
+   1.680  -- watch 1.0s: get FW minor rev
+   1.693     RX 02    2  BYTE
+   2.685  TX 00 04 53   # echo test b'S' — in sync?
+   2.719  -- watch 0.6s: 
+   2.729     RX 53   83  ECHO 'S'
+   3.328  TX 00 18   # admin 24 (0x18) get IC type
+   3.349  -- watch 1.0s: get IC type
+   3.366     RX 01    1  BYTE
+   4.351  TX 00 04 53   # echo test b'S' — in sync?
+   4.382  -- watch 0.6s: 
+   4.402     RX 53   83  ECHO 'S'
+   4.985  TX 00 15   # admin 21 (0x15) read back Vcc
+   5.006  -- watch 1.0s: read back Vcc
+   5.024     RX 3e   62  ECHO '>'
+   6.012  TX 00 04 53   # echo test b'S' — in sync?
+   6.042  -- watch 0.6s: 
+   6.060     RX 53   83  ECHO 'S'
+   6.648  TX 00 02   # host open
+   6.669  -- watch 1.0s: version
+   6.681     RX 1f   31  BYTE
+   7.670  TX 0b 01   # WK1 mode: key immediate ON
+   7.691  -- watch 0.5s: 
+   7.702     RX d8  216  STATUS 11011000 (low5=11000)
+   7.718     RX dc  220  STATUS 11011100 (low5=11100)
+   8.197  TX 0b 00   # OFF
+   8.218  -- watch 0.5s: 
+   8.228     RX c0  192  STATUS 11000000 (low5=00000)
+   8.718  TX 00 0b   # admin 11 set WK2 mode (host open)
+   8.740  -- watch 0.8s: reply?
+   8.754     RX c8  200  STATUS 11001000 (low5=01000)
+   9.541  TX 0b 01   # WK2 mode: key immediate ON
+   9.561  -- watch 0.5s: 
+   9.582     RX d0  208  STATUS 11010000 (low5=10000)
+   9.582     RX d4  212  STATUS 11010100 (low5=10100)
+  10.065  TX 15   # status
+  10.076  -- watch 0.4s: 
+  10.092     RX d4  212  STATUS 11010100 (low5=10100)
+  10.481  TX 0b 00   # OFF
+  10.502  -- watch 0.5s: 
+  10.523     RX c0  192  STATUS 11000000 (low5=00000)
+  11.006  TX 0e 04   # serial echo
+  11.027  TX 04 00 00   # lead/tail 0
+  11.058  TX 02 14   # 20 WPM
+  11.078  -- watch 0.3s: 
+  11.379  TX 45 45 45   # WK2 mode: text EEE
+  11.410  -- watch 1.5s: busy status in WK2 mode
+  11.410     RX c4  196  STATUS 11000100 (low5=00100)
+  11.527     RX 45   69  ECHO 'E'
+  11.766     RX 45   69  ECHO 'E'
+  12.005     RX 45   69  ECHO 'E'
+  12.133     RX c0  192  STATUS 11000000 (low5=00000)
+  12.914  TX 02 0a   # 10 WPM
+  12.935  TX 4d 4d 4d 4d   # text MMMM
+  12.977  -- watch 0.5s: 
+  12.977     RX c4  196  STATUS 11000100 (low5=00100)
+  13.482  TX 06 01   # pause ON
+  13.503  -- watch 1.5s: 
+  13.918     RX 4d   77  ECHO 'M'
+  15.003  TX 0a   # clear buffer (should cancel pause)
+  15.015  -- watch 0.8s: 
+  15.034     RX c0  192  STATUS 11000000 (low5=00000)
+  15.820  TX 45   # text E after clear — sent if pause cancelled
+  15.831  -- watch 1.5s: 
+  15.846     RX c4  196  STATUS 11000100 (low5=00100)
+  16.085     RX 45   69  ECHO 'E'
+  16.325     RX c0  192  STATUS 11000000 (low5=00000)
+  17.337  TX 06 00   # pause OFF (cleanup)
+  17.358  -- watch 0.5s: 
+  17.861  TX 00 03   # host close
+  17.882  -- watch 0.8s: 
+  18.687  TX 00 02   # host open again
+  18.707  -- watch 1.0s: version
+  18.715     RX 1f   31  BYTE
+  19.708  TX 0b 01   # after re-open: key immediate ON
+  19.729  -- watch 0.5s: 
+  19.752     RX d8  216  STATUS 11011000 (low5=11000)
+  19.752     RX dc  220  STATUS 11011100 (low5=11100)
+  20.231  TX 0b 00   # OFF
+  20.252  -- watch 0.5s: 
+  20.262     RX c0  192  STATUS 11000000 (low5=00000)
+  20.755  TX 00 03   # host close
+  20.777  -- watch 0.5s: 
+  21.285  closed

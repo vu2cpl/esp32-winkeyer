@@ -1,0 +1,15 @@
+   0.003  opened /dev/cu.usbserial-AI02BVHE 1200 8N2
+   1.042  RX (nothing)   # unsolicited  [0 bytes]
+   1.042  TX 00 04 5a   # admin echo (link check)
+   1.431  RX 5a   # echo  [1 bytes]
+   1.431  TX 00 07   # admin get values, HOST CLOSED
+   5.491  RX (nothing)   # get values standby  [0 bytes]
+   5.491  TX 00 02   # admin host open
+   8.093  RX 1f   # version + settle  [1 bytes]
+   8.094  TX 00 07   # admin get values, HOST OPEN after 2.5 s settle
+  13.160  RX (nothing)   # get values open  [0 bytes]
+  13.161  TX 15   # request status (still in sync?)
+  13.535  RX c0   # status  [1 bytes]
+  13.535  TX 00 03   # admin host close
+  16.555  RX (nothing)   # after close (late bytes?)  [0 bytes]
+  16.557  closed

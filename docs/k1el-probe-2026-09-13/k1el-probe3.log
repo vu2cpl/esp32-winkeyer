@@ -1,0 +1,73 @@
+   0.003  TX 00 02   # host open
+   0.024  -- watch 1.5s: version
+   0.035     RX 1f  BYTE
+   1.525  TX 0e 44   # mode reg 0x44: paddle echo + serial echo, iambic B
+   1.547  -- watch 0.5s: 
+   2.048  TX 02 14   # speed 20 WPM
+   2.068  -- watch 0.5s: 
+   2.574  TX 04 00 00   # PTT lead/tail 0 (so status timing is keying only)
+   2.605  -- watch 0.5s: 
+   3.106  TX 15   # status idle
+   3.117  -- watch 0.5s: 
+   3.128     RX c0  STATUS 11000000 (low5=00000)
+   3.618  TX 50 41 52 49 53 20 45   # text PARIS E
+   3.689  -- watch 0.7s: early in send
+   3.689     RX c4  STATUS 11000100 (low5=00100)
+   4.371     RX 50  ECHO 'P'
+   4.390  TX 15   # status while sending
+   4.401  -- watch 6.0s: rest of send + idle
+   4.418     RX c4  STATUS 11000100 (low5=00100)
+   4.849     RX 41  ECHO 'A'
+   5.455     RX 52  ECHO 'R'
+   5.805     RX 49  ECHO 'I'
+   6.299     RX 53  ECHO 'S'
+   6.650     RX 20  ECHO ' '
+   6.778     RX 45  ECHO 'E'
+   6.889     RX c0  STATUS 11000000 (low5=00000)
+  10.402  TX 04 05 0a   # PTT lead 50 ms / tail 100 ms
+  10.432  -- watch 0.3s: 
+  10.738  TX 45 45   # text EE with lead/tail
+  10.760  -- watch 2.5s: lead/tail status
+  10.810     RX c4  STATUS 11000100 (low5=00100)
+  10.937     RX 45  ECHO 'E'
+  11.177     RX 45  ECHO 'E'
+  11.305     RX c0  STATUS 11000000 (low5=00000)
+  13.261  TX 18 01   # PTT on
+  13.281  -- watch 0.8s: 
+  14.084  TX 15   # status PTT on
+  14.096  -- watch 0.5s: 
+  14.109     RX c0  STATUS 11000000 (low5=00000)
+  14.597  TX 18 00   # PTT off
+  14.619  -- watch 0.8s: 
+  15.419  TX 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20 54 45 53 54 20   # 150 bytes to fill buffer
+  16.921  -- watch 3.0s: buffer high-water / XOFF
+  16.922     RX c4  STATUS 11000100 (low5=00100)
+  16.922     RX 54  ECHO 'T'
+  16.922     RX 45  ECHO 'E'
+  16.923     RX 53  ECHO 'S'
+  16.923     RX c5  STATUS 11000101 (low5=00101)
+  16.923     RX 54  ECHO 'T'
+  17.186     RX 20  ECHO ' '
+  17.426     RX 54  ECHO 'T'
+  17.665     RX 45  ECHO 'E'
+  18.143     RX 53  ECHO 'S'
+  18.509     RX 54  ECHO 'T'
+  18.876     RX 20  ECHO ' '
+  19.115     RX 54  ECHO 'T'
+  19.354     RX 45  ECHO 'E'
+  19.832     RX 53  ECHO 'S'
+  19.928  TX 15   # status buffer loaded
+  19.938  -- watch 0.6s: 
+  19.960     RX c5  STATUS 11000101 (low5=00101)
+  20.199     RX 54  ECHO 'T'
+  20.544  TX 0a   # clear buffer
+  20.554  -- watch 2.0s: after clear
+  20.554     RX 20  ECHO ' '
+  20.567     RX c0  STATUS 11000000 (low5=00000)
+  20.789     RX 54  ECHO 'T'
+  22.555  TX 15   # status after clear
+  22.566  -- watch 0.6s: 
+  22.590     RX c0  STATUS 11000000 (low5=00000)
+  23.171  TX 00 03   # host close
+  23.192  -- watch 1.0s: 
+  24.197  closed
