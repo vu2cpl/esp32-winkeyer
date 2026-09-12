@@ -52,7 +52,17 @@ def confirm(auto):
     return auto
 
 
-VENV_PIO = Path.home() / ".pio-venv313" / "bin" / "pio"
+VENV_DIR = Path.home() / ".pio-venv313"
+
+
+def venv_bin(venv, exe):
+    """Windows puts venv executables in Scripts\\ and suffixes them .exe."""
+    if platform.system() == "Windows":
+        return venv / "Scripts" / (exe + ".exe")
+    return venv / "bin" / exe
+
+
+VENV_PIO = venv_bin(VENV_DIR, "pio")
 
 
 def pio_python_ok(pio_path):
@@ -64,11 +74,13 @@ def pio_python_ok(pio_path):
     """
     try:
         out = subprocess.run([str(pio_path), "system", "info", "--json-output"],
-                             capture_output=True, text=True, timeout=90)
+                             capture_output=True, text=True, timeout=300)
         if out.returncode != 0:
             return False
-        import json as _json
-        ver = _json.loads(out.stdout)["python_version"]["value"]
+        info = json.loads(out.stdout).get("python_version", "")
+        # PlatformIO reports {"title": ..., "value": "3.13.0"}; older cores
+        # returned the bare string.
+        ver = info.get("value", "") if isinstance(info, dict) else str(info)
         major, minor = (int(x) for x in ver.split(".")[:2])
         return (major, minor) >= (3, 10)
     except Exception:
@@ -77,8 +89,11 @@ def pio_python_ok(pio_path):
 
 def make_pio_venv():
     """Build a PlatformIO virtualenv on the newest Python we can find."""
-    for cand in ("python3.14", "python3.13", "python3.12", "python3.11",
-                 "python3.10", "python3"):
+    cands = ["python3.14", "python3.13", "python3.12", "python3.11",
+             "python3.10", "python3"]
+    if platform.system() == "Windows":
+        cands = ["python", "py"] + cands
+    for cand in cands:
         exe = shutil.which(cand)
         if not exe:
             continue
@@ -91,14 +106,18 @@ def make_pio_venv():
         except Exception:
             continue
         print(f"  creating a PlatformIO environment on {cand} ({v})…")
-        venv = Path.home() / ".pio-venv313"
-        if subprocess.run([exe, "-m", "venv", str(venv)]).returncode != 0:
+        if subprocess.run([exe, "-m", "venv", str(VENV_DIR)]).returncode != 0:
+            print("  could not create the virtualenv (python3-venv missing?)")
             return None
-        pip = venv / "bin" / "pip"
-        if subprocess.run([str(pip), "install", "-q", "platformio"]).returncode != 0:
+        pip = venv_bin(VENV_DIR, "pip")
+        print("  installing PlatformIO — this takes a minute…")
+        if subprocess.run([str(pip), "install", "platformio"]).returncode != 0:
             return None
-        return venv / "bin" / "pio"
+        return venv_bin(VENV_DIR, "pio")
     return None
+
+
+_PIO_CACHE = None
 
 
 def ensure_pio(host):
@@ -108,12 +127,23 @@ def ensure_pio(host):
     which needs Python 3.10+. A PlatformIO installed under an older Python —
     common on machines that have had it for a while — cannot build it at all.
     """
+    global _PIO_CACHE
+    if _PIO_CACHE:
+        return _PIO_CACHE
+
+    override = os.environ.get("PIO")
+    if override and pio_python_ok(override):
+        _PIO_CACHE = override
+        return _PIO_CACHE
+
     if VENV_PIO.exists() and pio_python_ok(VENV_PIO):
-        return str(VENV_PIO)
+        _PIO_CACHE = str(VENV_PIO)
+        return _PIO_CACHE
 
     on_path = shutil.which("pio")
     if on_path and pio_python_ok(on_path):
-        return on_path
+        _PIO_CACHE = on_path
+        return _PIO_CACHE
 
     if on_path:
         print("\nThe PlatformIO on PATH runs on Python older than 3.10, which")
@@ -130,7 +160,8 @@ def ensure_pio(host):
         pio = make_pio_venv()
         if pio and pio_python_ok(pio):
             print(f"  ready: {pio}")
-            return str(pio)
+            _PIO_CACHE = str(pio)
+            return _PIO_CACHE
         print("  that did not work — install one by hand.")
 
     print("\nInstall PlatformIO on Python 3.10+ and re-run, e.g.:")
@@ -214,7 +245,8 @@ def list_ports():
     device paths would need a branch per OS and still miss Windows."""
     try:
         out = subprocess.run([ensure_pio(detect()), "device", "list", "--json-output"],
-                             capture_output=True, text=True, check=True).stdout
+                             capture_output=True, text=True, check=True,
+                             cwd=HERE).stdout
         ports = [d["port"] for d in json.loads(out)]
     except Exception:
         return []
@@ -276,7 +308,15 @@ def main():
             return do_flash()
         if cmd == "monitor":
             return do_monitor(sys.argv[2] if len(sys.argv) > 2 else 1200)
-        print(f"Unknown command '{cmd}'. Use: flash | monitor [baud]")
+        if cmd in ("-h", "--help", "help"):
+            print("ESP32 WinKeyer installer\n"
+                  "  python3 install.py              set up the toolchain and verify the build\n"
+                  "  python3 install.py flash        build + upload (picks the serial port)\n"
+                  "  python3 install.py monitor [b]  serial monitor, default 1200 baud\n"
+                  "\nPlatformIO must run on Python 3.10+ (Arduino core 3.x); this\n"
+                  "script finds or creates one. PIO=/path/to/pio overrides.")
+            return
+        print(f"Unknown command '{cmd}'. Use: flash | monitor [baud] | --help")
         sys.exit(2)
 
     host = confirm(detect())
@@ -290,6 +330,8 @@ def main():
         ask_settings()
     ensure_secrets()
     print("\nBuilding firmware to verify the toolchain…")
+    print("  (the first build downloads the Arduino 3.x platform and its")
+    print("   toolchain — a few hundred MB, several minutes)")
     r = subprocess.run([pio, "run", "-e", "esp32-winkeyer"], cwd=HERE)
     if r.returncode == 0:
         print("\n✓ Build OK.")
