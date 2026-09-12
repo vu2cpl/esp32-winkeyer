@@ -868,6 +868,32 @@ makes the keyer feel slow.
   is on the drawing so nobody tidies the second adapter away. Also moved
   the two diagnostics that had been living in a scratchpad into `tools/`.
 
+12a. **OPEN (reported 2026-09-12 at wrap-up): characters missing from the
+    host echo, while the radio sends them all.** So the text reaches the
+    radio; only the echo stream back to the logger is short.
+
+    Where to look, in order:
+
+    - `WinKeyer::pumpEcho()` releases echoes as
+      `echoCount() - Flex::pending()`. `pending()` changed twice today —
+      it no longer clears early, and it is now zeroed when the radio stops
+      transmitting — so the echo release is paced by a counter with new
+      behaviour. Suspect echoes left sitting in `echoQ` at the end of a
+      message and surfacing during the NEXT one, which reads as "missing"
+      at the time and "wrong" later.
+    - `queuedIdx` is absolute (the radio's buffer index, from the
+      `cwx send` reply) while `sentIdx` starts at 0 after the reset, so
+      `pending()` is briefly enormous and the first characters' echoes are
+      withheld until the first `cwx sent=` arrives.
+    - The link is 1200 baud: status bytes, pot bytes and echo share
+      ~120 char/s. Saturation would delay, not drop — but worth measuring.
+
+    How to capture: `tools/uptime-watch.py` for liveness,
+    `tools/flex-ptt-watch.py` for `cwx sent=`, and RUMlogNG's CW window
+    for what actually arrived. Compare all three against the text sent.
+    Ask Manoj whether it is the FIRST characters, the LAST, or scattered —
+    that alone separates the three hypotheses above.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
