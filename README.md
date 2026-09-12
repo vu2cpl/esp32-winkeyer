@@ -860,7 +860,10 @@ the logger and the keyer, both directions, millisecond-stamped
 (`ms H>K|K>H hex char`; `?clear=1` empties it). The serial port cannot be
 sniffed while a logger holds it, and "the logger did not show it" looks
 exactly like "the keyer did not send it". `tools/wk-trace-check.py` reads
-it and lists any character the logger sent that was never echoed.
+it and lists any character the logger sent that was never echoed. `tools/wk-trace-collect.py`
+keeps a whole session (the trace is a ring), flagging drops as they happen;
+`tools/wk-echo-repro.py` sends a message repeatedly over TCP and checks each
+echo — it keys the radio and needs the logger closed.
 
 ## MQTT
 

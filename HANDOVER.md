@@ -360,7 +360,10 @@ logger sends its defaults, and a mid-session toggle can send nothing at all.
 **`GET /api/wktrace`** (2026-09-13) is the host wire: last 1024 bytes both
 ways, ms-stamped, `?clear=1` to reset. **`tools/wk-trace-check.py`** parses
 it as WinKeyer commands and lists text the host sent that never came back as
-echo. Poll it every few seconds to keep a whole session (it is a ring).
+echo. **`tools/wk-trace-collect.py`** polls it every 3 s for a whole session
+and writes `drop-N.txt` when an echo goes missing (read-only, runs beside
+RUMlogNG). **`tools/wk-echo-repro.py`** replays a message over TCP and checks
+every echo (keys the radio; close the logger).
 
 **`tools/uptime-watch.py`** polls `/api/state` and prints only events —
 restarts (with the reset reason), outages and their length, stalls. "The
