@@ -12,7 +12,7 @@ it found. On the local backend the keyer drives GPIO33/32 only, so nothing
 reaches the FlexRadio and nothing goes on air — but it DOES key whatever is
 wired to those pins, so use it into a dummy load or with nothing attached.
 
-    ./tools/ptt-check.py --ip 192.168.10.209
+    ./tools/ptt-check.py --ip 192.168.10.20
 
 Checks, in order:
   lead-in   an over started after a long idle keeps PTT for the whole over.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Replay a k1el-probeN.py against OUR keyer over WinKeyer TCP (port 8088).
 
-    run-tcp.py k1el-probe3.py 192.168.10.209
+    run-tcp.py k1el-probe3.py 192.168.10.20
 
 The probe is run unchanged except that serial.Serial is replaced by a socket
 with the same read/write/timeout semantics, and its log is written to

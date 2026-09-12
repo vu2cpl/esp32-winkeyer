@@ -13,7 +13,7 @@ configuration to 0x00 on every session open (HANDOVER 12e, 12f). Those are
 now recorded and ignored — run this against a new logger before assuming it
 behaves.
 
-    ./tools/host-watch.py --ip 192.168.10.209
+    ./tools/host-watch.py --ip 192.168.10.20
 
 Then open, close and re-open the logger's session. A logger sends its
 defaults at session OPEN, so a setting that looks untouched mid-session may

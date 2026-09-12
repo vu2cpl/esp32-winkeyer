@@ -1,4 +1,4 @@
-   0.010  opened tcp://192.168.10.209:8088 1200 8N2 dtr=True rts=True
+   0.010  opened tcp://192.168.10.20:8088 1200 8N2 dtr=True rts=True
    1.521  RX (nothing)   # unsolicited after open  [0 bytes]
    1.521  TX 00 04 a5   # admin echo 0xA5 (before host open)
    1.794  RX a5   # echo reply  [1 bytes]
