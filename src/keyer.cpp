@@ -151,6 +151,11 @@ volatile bool keyDownFlag = false;
 // sampling keyIsDown() at its own rate aliases badly — a dit at 22 WPM is
 // 55 ms — and shows a random-looking flicker instead of activity.
 volatile uint32_t lastKeyDownMs = 0;
+// When the PTT line last came UP. The backstop below needs this as well as
+// the last element: during the PTT lead-in — and through a whole RTTY over,
+// or a host's manual hold — the line is legitimately up with no key-down
+// behind it, and the last element can be from a transmission minutes ago.
+volatile uint32_t pttUpMs = 0;
 volatile bool     pttStuckCleared = false;
 
 // Debounced paddles
@@ -236,6 +241,10 @@ void pttAssert() {
   if (!cfgPtt) return;
   if (cfgRadio & 1) digitalWrite(PIN_PTT_OUT,  HIGH);
   if (cfgRadio & 2) digitalWrite(PIN_PTT_OUT2, HIGH);
+  // Only on the rising edge: a caller that re-asserts an already-up line
+  // (the Flex backend polls, a host can repeat 0x18) must not be able to
+  // push the backstop's deadline forward for ever.
+  if (!pttOn) pttUpMs = millis();
   pttOn = true;
 }
 void pttRelease() {
@@ -338,11 +347,19 @@ void samplePaddles() {
 // no keying for this long except tune, which is excluded.
 static const uint32_t PTT_MAX_IDLE_MS = 10000;
 
+// The deadline runs from the last sign of life on the line, which is the
+// LATER of "PTT came up" and "an element was keyed" — not the element alone.
+// Timing it from the element alone made the backstop fire one millisecond
+// into the PTT lead-in of any transmission that started more than 10 s after
+// the previous one: PTT flicked on and straight back off, the whole over
+// went out with no PTT, and the next over (keyed while the stamp was still
+// fresh) was fine. Nothing was stuck; the reference was simply stale.
 void pttSafety() {
   if (!pttOn || flagTune) return;
   if (keyDownFlag) { return; }
-  uint32_t since = lastKeyDownMs ? (millis() - lastKeyDownMs) : 0;
-  if (lastKeyDownMs && since > PTT_MAX_IDLE_MS) {
+  uint32_t ref = pttUpMs;
+  if (lastKeyDownMs && (int32_t)(lastKeyDownMs - ref) > 0) ref = lastKeyDownMs;
+  if (ref && (millis() - ref) > PTT_MAX_IDLE_MS) {
     digitalWrite(PIN_PTT_OUT, LOW);
     digitalWrite(PIN_PTT_OUT2, LOW);
     pttOn = false;
@@ -604,6 +621,8 @@ void pttManual(bool on) {
 bool busy()         { return state != ST_IDLE || queueDepth() > 0; }
 bool keyIsDown()    { return keyDownFlag; }
 bool pttIsOn() { return pttOn; }
+
+void pttKeepAlive() { if (pttOn) pttUpMs = millis(); }
 
 bool pttStuckWasCleared() {
   bool b = pttStuckCleared;

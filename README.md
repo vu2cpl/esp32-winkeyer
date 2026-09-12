@@ -556,6 +556,15 @@ lead-in and holds for the tail after the last.
 four, which is also the quickest way to confirm the `LOCALB` / `FLXB`
 indicator on the display.
 
+**A PTT line that is up for 10 s with nothing keying it is forced down**
+by a safety backstop, and the console says so
+(`PTT was stuck with no keying`). That is deliberate — a lost transition
+must never leave a transmitter keyed — and it does not apply to `/tune`,
+which is a key-down, or to RTTY, which holds the line for a whole over on
+purpose. If you see it during ordinary sending, it is a bug: report it
+with what you were sending and how long the keyer had been quiet
+beforehand.
+
 ## Connecting logging software
 
 The keyer speaks the WinKeyer protocol over a TCP socket. Loggers want a

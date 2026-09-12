@@ -77,6 +77,10 @@ inline void space() { digitalWrite(PIN_FSK_OUT, cfgInvert ? HIGH : LOW); }
 inline void setBit(bool one) { one ? mark() : space(); }
 
 void startChar(uint8_t code) {
+  // RTTY holds PTT for the whole over with no CW elements behind it, so
+  // without this the keyer's 10 s no-keying backstop would drop the line
+  // mid-message.
+  Keyer::pttKeepAlive();
   curCode  = code;
   phase    = PH_START;
   halfLeft = 2;          // start bit = one whole bit

@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-12 (early afternoon) · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-12 (evening) · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -868,6 +868,13 @@ makes the keyer feel slow.
   is on the drawing so nobody tidies the second adapter away. Also moved
   the two diagnostics that had been living in a scratchpad into `tools/`.
 
+- **2026-09-12 (evening)** — **the PTT safety backstop was firing on
+  legitimate transmissions.** Reported by a Windows user on the local
+  backend, keying by hand: *"on first tx, ptt blinks and then off, next tx
+  onwards it works."* See item 12c — one stale timestamp, fixed in
+  `pttSafety()`, plus an FSK keep-alive so an RTTY over longer than 10 s
+  keeps its PTT.
+
 12a. **OPEN (reported 2026-09-12 at wrap-up): characters missing from the
     host echo, while the radio sends them all.** So the text reaches the
     radio; only the echo stream back to the logger is short.
@@ -914,6 +921,55 @@ makes the keyer feel slow.
     `install.py` now prints the PlatformIO core and Python it is about to
     use, flags a Store-Python install, and prints this list when a build
     fails, so the next person gets the facts rather than "it failed".
+
+12c. **FIXED 2026-09-12 (evening), needs confirming on the reporter's
+    board: PTT dropped one millisecond into the lead-in.** VU2LBW's report,
+    keying by hand on the local backend: *"on first tx, ptt blinks and then
+    off, next tx onwards it works."*
+
+    Cause: the 10 s safety backstop (`pttSafety()`, `src/keyer.cpp`) timed
+    its idle window from `lastKeyDownMs` — **the last element keyed, which
+    can be from a transmission minutes ago** — and nothing else. The
+    sequence on any over that starts after a quiet spell:
+
+    1. Paddle pressed. `startActivity()` asserts PTT and enters `ST_LEAD`
+       for the 50 ms lead-in. No element has been keyed yet.
+    2. One tick later `pttSafety()` runs — before the state machine — sees
+       PTT up, `keyDownFlag` false, and a `lastKeyDownMs` older than 10 s.
+       It drops the line and sets the "stuck" flag.
+    3. The lead-in expires and the whole over is sent **with PTT down**.
+       Nothing re-asserts it: PTT goes up only on the way out of idle.
+    4. The next over, keyed while the stamp is fresh, is fine — until the
+       operator pauses for more than 10 s again.
+
+    So "first tx" is really **the first over after any gap longer than
+    10 s**, which on a bench is nearly always the first one. The only over
+    that was immune was the very first after boot, where `lastKeyDownMs` is
+    still 0 and the backstop is disabled. The console prints
+    `[KEYER] PTT was stuck with no keying` each time it happens — that line
+    is the confirmation to ask for.
+
+    Fix: the deadline now runs from the LATER of "PTT came up" (`pttUpMs`,
+    stamped on the rising edge only, so a repeated assert cannot push the
+    deadline forward for ever) and "an element was keyed". The backstop
+    still fires after a genuine 10 s of a held line with no keying.
+
+    Second bug, same root: **RTTY.** `Fsk::send()` holds PTT for the whole
+    over through `Keyer::pttManual(true)` and keys no CW elements, so any
+    over longer than 10 s — most of them — would have lost its PTT. FSK now
+    calls the new `Keyer::pttKeepAlive()` as each character starts.
+
+    Likely also the explanation for **item 11y's unexplained recurrence**
+    and for the 2026-09-11 observation that on Flex memory plays "the line
+    comes on only for a moment at the start": the Flex path asserts PTT
+    when the radio starts transmitting, and the local monitor copy does not
+    key its first element until the sidetone delay (~230 ms) has elapsed —
+    a window in which a stale `lastKeyDownMs` drops the line. Plausible,
+    not proven: it was never captured.
+
+    Builds clean on `esp32-winkeyer`; **not yet flashed to hardware here.**
+    Bench check: key a few characters, wait 15 s, key again — the PTT LED
+    must lead the first element and hold through the over both times.
 
 ## Network placement (measured 2026-09-10)
 
@@ -1171,7 +1227,11 @@ against exposing it beyond one.
     ends the message (not transmitting + no progress for 1 s ⇒ counters
     cleared). **But `[KEYER] PTT was stuck with no keying` printed once
     more at 12:13:46 after that fix**, on a web-page memory, so something
-    can still hold it. Next time it appears, capture `/api/state` at 5 Hz
+    can still hold it. **2026-09-12 (evening): that print was probably not
+    a stuck line at all** — see item 12c. The backstop was timing its
+    window from the last element keyed, so it dropped PTT (and printed)
+    one millisecond after the line came up whenever the previous element
+    was more than 10 s old. Re-test before chasing this further. Next time it appears, capture `/api/state` at 5 Hz
     across the whole over and compare `ptton` against the radio's
     interlock. Only the local line is affected; nothing is wired to it on
     Manoj's board. Original note follows.

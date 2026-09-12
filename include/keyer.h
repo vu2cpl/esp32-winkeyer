@@ -76,6 +76,10 @@ uint32_t msSinceKey();
 // whole over, so it shows the lead-in and the tail either side of the
 // elements — which is what makes those two settings visible.
 bool   pttIsOn();
+// Tell the backstop the line is still doing something useful. Needed by
+// anything that holds PTT without keying elements — RTTY, where a single
+// over is far longer than the 10 s idle limit.
+void   pttKeepAlive();
 // True once if the safety backstop had to drop a PTT line that nothing
 // else released. Worth logging: it means a transition was lost upstream.
 bool   pttStuckWasCleared();
