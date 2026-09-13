@@ -1426,8 +1426,18 @@ makes the keyer feel slow.
     three (paddle jack and devkit corner into screw bosses, lid lip into
     the tray's rounded inside corners, OLED post shoulders over the glass)
     — interior grew 130 → 140 mm to fix it. All empty now.
-  - **Not printed, and no part measured.** Every vendor-variable dimension
-    is a `MEASURE` parameter with a typical default — see open item 7.
+  - **Measured the same night, then committed again:** jack holes stay
+    6.3 (6 mm threads); DC hole 11.2 → **8.3** (8 mm thread); pot hole 7.3
+    → **7.0** (6.7 mm bushing), tab offset 8.0 with its recess widened to
+    3.6 mm because the measurement was "around 8". OLED: board 35 × 33,
+    glass 34 × 23, window **32 × 20** chosen by Manoj — which changed the
+    mounting: the pins through the PCB holes are now OFF (`oled_posts`),
+    replaced by a 0.8 mm glass pocket that aligns the window plus hot glue,
+    because the hole spacing was never measured and 23 mm glass leaves no
+    room for post shoulders. Window cut changed from a full-radius slot
+    (which would be a stadium at 32 × 20) to a rectangle with 1.5 mm
+    corners. Devkit and USB-C height confirmed; piezo 12 mm. Fit checks
+    re-run after each change: all empty. **Still not printed.**
 
 ## Network placement (measured 2026-09-10)
 
@@ -1510,12 +1520,14 @@ against exposing it beyond one.
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
-   **Box designed 2026-09-13 (`enclosure/`), not printed.** Caliper values
-   owed for its `MEASURE` parameters — jack and DC-jack threads, pot
-   bushing and tab offset, OLED active area / hole spacing / glass
-   thickness, devkit length/width and USB-C height, piezo diameter. After
-   any change re-run the three fit checks (enclosure/README). Suggested
-   first print: the back wall alone as a test strip for jacks and USB-C.
+   **Box designed and measured 2026-09-13 (`enclosure/`), NOT YET PRINTED.**
+   Every vendor-variable part was measured or confirmed by Manoj: jacks 6 mm,
+   DC jack 8 mm, pot bushing 6.7 mm with its tab ~8 mm off the shaft, OLED
+   board 35 × 33 with 34 × 23 glass (window chosen 32 × 20), devkit and its
+   USB-C height as modelled, piezo 12 mm. Fit checks all empty. Next: print,
+   ideally the back wall as a test strip first, and report what did not fit.
+   The OLED is held by a glass pocket + hot glue — its hole spacing was never
+   measured, so `oled_posts` stays off.
 8. **Repo is PUBLIC** since 2026-09-11 — github.com/vu2cpl/esp32-winkeyer.
    Manoj's friend can clone it directly; no invite needed.
 

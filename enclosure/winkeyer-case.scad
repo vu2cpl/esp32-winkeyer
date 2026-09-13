@@ -54,24 +54,33 @@ lip_gap = 0.3;              // clearance to the tray wall, per side
 // 1.3" SH1106 OLED module, glass against the inside of the front wall.
 oled_x = 40;                // module centre, interior x
 oled_z = 19;                // module centre, above floor top
-oled_pcb_w = 35.4;          // MEASURE
-oled_pcb_h = 33.5;          // MEASURE
-oled_win_w = 30.0;          // visible window — MEASURE the active area
-oled_win_h = 15.5;          // MEASURE
-oled_win_dz = 1.5;          // window centre above module centre (glass sits high) — MEASURE
-oled_hole_dx = 30.4;        // mounting hole spacing — MEASURE
-oled_hole_dz = 28.4;        // MEASURE
-oled_standoff = 1.6;        // = glass thickness, so the PCB bears on the posts — MEASURE
-oled_pin_d = 1.8;           // pins through the PCB holes; melt the tips or glue
-oled_post_d = 2.8;          // shoulder under the PCB: must fit between hole and glass — MEASURE
+oled_pcb_w = 35;            // board measured 35 × 33 (2026-09-13)
+oled_pcb_h = 33;
+oled_win_w = 32;            // window — chosen 32 × 20 against the 34 × 23 glass (2026-09-13)
+oled_win_h = 20;
+oled_glass_w = 34;          // glass measured 34 × 23 (2026-09-13)
+oled_glass_h = 23;
+oled_pocket_depth = 0.8;    // the glass drops into this, so the window lines up by itself
+oled_pocket_clear = 0.5;    // total, per axis
+oled_win_dz = 1.5;          // glass/window centre above the PCB centre — only moves the PCB stand-in
+// Mounting posts through the PCB holes. OFF: the hole spacing was never
+// measured, and the pocket plus a few dots of hot glue on the PCB edges holds
+// the module without depending on it. Turn on only with measured spacing —
+// with 23 mm glass the post shoulders crowd the glass.
+oled_posts = false;
+oled_hole_dx = 30.4;        // MEASURE if oled_posts
+oled_hole_dz = 28.4;        // MEASURE if oled_posts
+oled_standoff = 1.6;        // glass thickness
+oled_pin_d = 1.8;
+oled_post_d = 2.8;
 
 // 16 mm 10k linear pot, M7 bushing.
 pot_x = 104;
 pot_z = 20;
-pot_hole = 7.3;             // MEASURE the bushing
+pot_hole = 7.0;             // bushing measured 6.7 mm (2026-09-13) + 0.3 clearance
 pot_tab = true;             // blind hole for the anti-rotation tab
-pot_tab_dz = 7.8;           // tab offset above the shaft — MEASURE
-pot_tab_d = 3.2;
+pot_tab_dz = 8.0;           // tab offset above the shaft — measured "around 8 mm" (2026-09-13)
+pot_tab_d = 3.6;            // oversized for that "around": a blind recess, so slack costs nothing
 
 // Key-down LED (3 mm) — wired to GPIO2 in parallel with the onboard LED.
 led_x = 72;
@@ -80,26 +89,26 @@ led_hole = 3.2;
 
 // ── back panel ────────────────────────────────────────────
 // 3.5 mm panel jacks (PJ-392 style, M6 thread), left→right SEEN FROM THE FRONT.
-jack_hole = 6.3;            // MEASURE the thread
+jack_hole = 6.3;            // thread measured 6 mm (2026-09-13) + 0.3 clearance
 jack_z = 12;
 jack_x0 = 14;               // 10 put the paddle jack's body into the back-left boss
 jack_pitch = 13;
 jack_labels = ["PDL", "K1", "P1", "K2", "P2", "FSK"];
 
-// DC power jack (DC-022 style 5.5/2.1, 11 mm thread). 5 V ONLY — see README.
+// DC power jack (5.5/2.1 panel type). 5 V ONLY — see README.
 dc_x = 94;
 dc_z = 14;
-dc_hole = 11.2;             // MEASURE: DC-022 = 11 mm, DC-099 = 8 mm
+dc_hole = 8.3;              // thread measured 8 mm (2026-09-13) + 0.3 clearance
 
 // ── ESP32 devkit (38-pin, USB-C) ──────────────────────────
-kit_l = 55.3;               // MEASURE
-kit_w = 28.3;               // MEASURE
+kit_l = 55.3;               // confirmed against the board (2026-09-13)
+kit_w = 28.3;               // confirmed
 kit_t = 1.6;
 kit_x = 118;                // centre, interior x: PCB corner clears the back-right boss,
                             // pin row clears the DC jack body
 kit_z = 20;                 // PCB underside above floor top: room for Dupont leads on the pins
 kit_gap_back = 1.0;         // PCB end to inside of back wall (USB-C shell overhangs it)
-usb_dz = 1.6;               // USB-C centre above PCB top — MEASURE
+usb_dz = 1.6;               // USB-C centre above PCB top — confirmed (2026-09-13)
 usb_w = 9.6;
 usb_h = 4.0;
 usb_plug_w = 13.0;          // recess for the cable's overmould
@@ -115,7 +124,7 @@ shelf_len = 6;
 // ── lid ───────────────────────────────────────────────────
 piezo_x = 60;
 piezo_y = 50;               // interior y
-piezo_d = 12.4;             // passive piezo body — MEASURE
+piezo_d = 12.4;             // passive piezo body measured 12 mm (2026-09-13) + 0.4 clearance
 piezo_ring_h = 4;
 sound_hole = 1.8;
 
@@ -174,8 +183,8 @@ module tray() {
       // corner bosses, merged into the walls
       for (p = boss_xy) translate([ax(p[0]), ay(p[1]), 0]) cylinder(d = boss_d, h = tray_h);
 
-      // OLED posts on the inside of the front wall
-      for (sx = [-1, 1], sz = [-1, 1])
+      // OLED posts on the inside of the front wall (optional, see oled_posts)
+      if (oled_posts) for (sx = [-1, 1], sz = [-1, 1])
         translate([ax(oled_x + sx * oled_hole_dx / 2), wall - eps, az(oled_z + sz * oled_hole_dz / 2)])
           rotate([-90, 0, 0]) {
             cylinder(d = oled_post_d, h = oled_standoff + eps);
@@ -198,7 +207,13 @@ module tray() {
       cylinder(d = boss_hole, h = boss_hole_depth + 1);
 
     // front panel
-    translate([ax(oled_x), -1, az(oled_z + oled_win_dz)]) rslot(oled_win_w, oled_win_h, wall + 2);
+    // window: a rectangle with small corner radii (a full-radius slot at
+    // 32 × 20 would be a stadium), and behind it the pocket the glass sits in
+    translate([ax(oled_x), -1, az(oled_z + oled_win_dz)]) rotate([-90, 0, 0])
+      linear_extrude(wall + 2) offset(r = 1.5) square([oled_win_w - 3, oled_win_h - 3], center = true);
+    translate([ax(oled_x) - (oled_glass_w + oled_pocket_clear) / 2, wall - oled_pocket_depth,
+               az(oled_z + oled_win_dz) - (oled_glass_h + oled_pocket_clear) / 2])
+      cube([oled_glass_w + oled_pocket_clear, oled_pocket_depth + 1, oled_glass_h + oled_pocket_clear]);
     front_hole(pot_x, pot_z, pot_hole);
     if (pot_tab)
       translate([ax(pot_x), wall - 1.2, az(pot_z + pot_tab_dz)]) rotate([-90, 0, 0])
@@ -213,7 +228,7 @@ module tray() {
       back_label(jack_x0 + i * jack_pitch, jack_z - 7, jack_labels[i]);
     }
     back_hole(dc_x, dc_z, dc_hole);
-    back_label(dc_x, dc_z - 9.5, "5V");
+    back_label(dc_x, dc_z - dc_hole / 2 - 3.5, "5V");
     usb_z = kit_z + kit_t + usb_dz;
     translate([ax(kit_x), out_d - wall - 1, az(usb_z)]) rslot(usb_w, usb_h, wall + 2);
     translate([ax(kit_x), out_d - usb_plug_depth, az(usb_z)]) rslot(usb_plug_w, usb_plug_h, usb_plug_depth + 1);
@@ -294,14 +309,16 @@ module parts() {
     translate([ax(kit_x + sx * 12.7) - 1.27, ay(kit_y0 + 3.5), az(1)])
       cube([2.54, kit_l - 7, kit_z - 1 - s]);
   // OLED: glass, then PCB with its holes, then a 4-pin header on the back
-  translate([ax(oled_x - 17.5), wall + s, az(oled_z + oled_win_dz - 11)]) cube([35, oled_standoff - 2 * s, 22]);
-  translate([0, wall + oled_standoff + s, 0]) difference() {
+  gy = wall - oled_pocket_depth;          // glass front face, down in its pocket
+  translate([ax(oled_x) - oled_glass_w / 2 + s, gy + s, az(oled_z + oled_win_dz) - oled_glass_h / 2 + s])
+    cube([oled_glass_w - 2 * s, oled_standoff - 2 * s, oled_glass_h - 2 * s]);
+  translate([0, gy + oled_standoff + s, 0]) difference() {
     translate([ax(oled_x - oled_pcb_w / 2), 0, az(oled_z - oled_pcb_h / 2)]) cube([oled_pcb_w, 1.6, oled_pcb_h]);
     for (sx = [-1, 1], sz = [-1, 1])
       translate([ax(oled_x + sx * oled_hole_dx / 2), -1, az(oled_z + sz * oled_hole_dz / 2)])
         rotate([-90, 0, 0]) cylinder(d = 2.2, h = 4);
   }
-  translate([ax(oled_x - 5.1), wall + oled_standoff + 1.6 + s, az(oled_z + oled_pcb_h / 2 - 3.5)]) cube([10.2, 11, 2.54]);
+  translate([ax(oled_x - 5.1), gy + oled_standoff + 1.6 + s, az(oled_z + oled_pcb_h / 2 - 3.5)]) cube([10.2, 11, 2.54]);
   // pot body + lugs, key LED
   translate([ax(pot_x), wall + s, az(pot_z)]) rotate([-90, 0, 0]) cylinder(d = 17, h = 10);
   translate([ax(pot_x - 5), wall + 10, az(pot_z - 10)]) cube([10, 6, 4]);

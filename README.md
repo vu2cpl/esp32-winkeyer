@@ -45,8 +45,8 @@ Classic-Bluetooth-only keyboards are not supported by the core either way.
 
 **Enclosure:** a two-part 3D-printable case with OLED window, pot, KEY LED,
 six 3.5 mm jacks, 5 V and USB-C — parametric OpenSCAD with built-in fit
-checks, in [`enclosure/`](enclosure/README.md). Not yet printed; measure
-your parts first.
+checks, in [`enclosure/`](enclosure/README.md). Dimensioned from measured
+parts; not yet printed. Measure yours if they are a different make.
 
 **One hardware caveat on a devkit.** The USB-serial chip's DTR/RTS lines
 reach the ESP32's reset pin, so a logger holding that port can reset the

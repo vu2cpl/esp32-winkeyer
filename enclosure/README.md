@@ -19,19 +19,23 @@ Outside about **145 × 89 × 45 mm**.
 ## Measure before you print
 
 Every part dimension is a named parameter at the top of the `.scad` file,
-and the ones marked **MEASURE** vary between vendors. Check these with
-calipers — a jack hole 0.5 mm off wastes the print:
+and the ones below vary between vendors — a jack hole 0.5 mm off wastes the
+print. **For VU2CPL's build all of them were measured or confirmed on
+2026-09-13** (marked below); if your parts differ, measure yours and re-run
+the fit checks:
 
 | Parameter | Default | Part |
 |---|---|---|
-| `jack_hole` | 6.3 mm | 3.5 mm panel jack thread (PJ-392 = M6) |
-| `dc_hole` | 11.2 mm | DC jack thread (DC-022 = 11 mm, DC-099 = 8 mm) |
-| `pot_hole`, `pot_tab_dz` | 7.3, 7.8 mm | 16 mm pot bushing, anti-rotation tab offset |
-| `oled_win_w/h`, `oled_win_dz` | 30 × 15.5, +1.5 mm | OLED active area and where it sits on the module |
-| `oled_hole_dx/dz` | 30.4 × 28.4 mm | OLED module mounting holes |
-| `oled_standoff` | 1.6 mm | OLED glass thickness |
-| `kit_l`, `kit_w`, `usb_dz` | 55.3 × 28.3, 1.6 mm | devkit PCB, USB-C centre above the PCB |
-| `piezo_d` | 12.4 mm | passive piezo body |
+| `jack_hole` | 6.3 mm | 3.5 mm panel jack thread — **measured 6 mm** |
+| `dc_hole` | 8.3 mm | DC jack thread — **measured 8 mm** |
+| `pot_hole` | 7.0 mm | pot bushing — **measured 6.7 mm** |
+| `pot_tab_dz` | 8.0 mm | pot anti-rotation tab from the shaft — **measured ~8 mm**; recess is 3.6 mm so ±0.5 mm still seats |
+| `oled_pcb_w/h` | 35 × 33 mm | OLED board — **measured** |
+| `oled_glass_w/h` | 34 × 23 mm | OLED glass — **measured**; sits in a 0.8 mm pocket that lines the window up |
+| `oled_win_w/h` | 32 × 20 mm | OLED window — **chosen** against that glass |
+| `oled_hole_dx/dz` | 30.4 × 28.4 mm | only if you turn `oled_posts` on — not measured |
+| `kit_l`, `kit_w`, `usb_dz` | 55.3 × 28.3, 1.6 mm | devkit PCB, USB-C centre above the PCB — **confirmed** |
+| `piezo_d` | 12.4 mm | passive piezo body — **measured 12 mm** |
 
 A quick check before the full print: set `part="tray"`, add a
 `projection(cut=true)` or just print the back wall alone at 100% as a thin
@@ -91,8 +95,11 @@ not replace measuring your own parts.
   in the back wall, fences at the antenna end, and the lid's post pressing
   on the WROOM shield through the foam. Lower it in, then slide it back so
   the USB-C shell enters the wall.
-- **OLED**: glass against the inside of the front wall, PCB holes over the
-  four pins. Melt the pin tips with a soldering iron or add a drop of glue.
+- **OLED**: drop the glass into its pocket on the inside of the front wall —
+  that lines the window up — and hold the PCB with a few dots of hot glue
+  on its edges (keep glue off the glass). The mounting posts are off
+  (`oled_posts = false`): the hole spacing was never measured, and with
+  23 mm glass their shoulders crowd it.
 - **Key LED**: 3 mm LED + 330 Ω from GPIO2 to GND, in parallel with the
   onboard LED. GPIO2 is a strapping pin, but an LED to GND keeps it low at
   boot, which is the state it needs.
