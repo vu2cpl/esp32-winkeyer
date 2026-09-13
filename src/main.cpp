@@ -17,6 +17,7 @@
 //    /disp on|off          /disp sh1106|ssd1306      /i2c (scan the bus)
 //    /weight 50  /ratio 50  /farns 0  /lead 50  /tail 250
 //    /backend local|flex   /flex on|off /flex ip <addr>
+//    /bt on|off (takes a restart)        /bt scan    /bt forget
 //    /wifi     /wifi portal /wifi reset  /status     /net
 //    anything else is sent as CW.
 //
@@ -46,6 +47,7 @@
 #include "web.h"
 #include "fsk.h"
 #include "memories.h"
+#include "bt.h"
 
 WiFiClient   net;
 PubSubClient mqtt(net);
@@ -287,6 +289,21 @@ void handleLine(char* line) {
                       Flex::enabled() ? "enabled" : "disabled",
                       Flex::radioIp().c_str(), Flex::connected() ? "yes" : "no");
       }
+    } else if (!strcasecmp(cmd, "bt")) {
+      if (arg && (!strcasecmp(arg, "on") || !strcasecmp(arg, "off"))) {
+        setting("bt", arg);
+      } else if (arg && !strcasecmp(arg, "scan")) {
+        Log::println(Bt::scanStart() ? "[BT] scanning 10 s — pick the keyboard on the web page"
+                                     : "[BT] not running — /bt on, then restart");
+      } else if (arg && !strcasecmp(arg, "forget")) {
+        Bt::forget();
+      } else {
+        DynamicJsonDocument d(1536);
+        Bt::toJson(d.to<JsonObject>(), true);
+        String s;
+        serializeJson(d, s);
+        Log::printf("[BT] %s\n", s.c_str());
+      }
     } else if (!strcasecmp(cmd, "wifi")) {
       if (arg && !strcasecmp(arg, "reset")) {
         wm.resetSettings();
@@ -332,7 +349,7 @@ void handleLine(char* line) {
                      "      /weight /ratio /farns /lead /tail /baud /monitor /mondelay /pecho\n"
                      "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
                      "      /radio 1|2|both   /mem N [text]   /call <sign>\n"
-                     "      /backend /flex /wifi /paddle /net /status");
+                     "      /bt on|off|scan|forget   /backend /flex /wifi /paddle /net /status");
     }
     return;
   }
@@ -477,7 +494,12 @@ void setup() {
   // adds 100–300 ms of latency and heavy jitter to every inbound packet —
   // measured at 307 ms average on the bench, on the same subnet. A keyer
   // is mains-powered and wants a responsive host link, so trade the ~20 mA.
-  WiFi.setSleep(false);
+  //
+  // EXCEPT with the Bluetooth keyboard on: ESP-IDF requires modem sleep while
+  // WiFi and Bluetooth share the radio. Measured with BT up, ~85 ms average
+  // ping with spikes past 200 ms (HANDOVER, 2026-09-13) — that trade is what
+  // the switch exists to let the operator try.
+  WiFi.setSleep(Settings::btEnabled() && Bt::available());
   // Ask the core to reconnect on its own as well. Belt and braces: the
   // explicit retry in loop() is what actually guarantees it.
   WiFi.setAutoReconnect(true);
@@ -507,6 +529,8 @@ void setup() {
   boot("[WK] backend=%s, %u WPM, pot %s (restored)\n",
        useFlex ? "flex" : "local", Keyer::getWpm(),
        Keyer::getPotEnabled() ? "on" : "off");
+  // After the keyer, memories and settings it drives are all in place.
+  Bt::begin(Settings::btEnabled());
 
   // Watch loopTask. A hang there currently needs someone at the bench with
   // a power cable; with this it reboots itself and, crucially, records WHY
@@ -623,6 +647,7 @@ void loop() {
   Web::poll();
   WinKeyer::poll();
   Flex::poll();
+  Bt::poll();
 
   // MQTT is the lowest-priority thing here and the only blocking call in the
   // loop. PubSubClient::connect() waits on the socket, and while it waits the

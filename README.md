@@ -31,13 +31,17 @@ as a behavioural reference; the implementation here is original.
 | MQTT status + heartbeat | working against the shack broker |
 | Arduino core | **3.3.11 / IDF 5.5.5** (pioarduino); 2.0.17 crashes under load |
 
-**Bluetooth keyboard: proven in a standalone probe, not in the keyer yet.**
-A BLE keyboard (Amkette Optimus) pairs and types reliably alongside WiFi on
-this core — `src/probes/ble_kbd_probe.cpp`, flashed with
-`ENV=ble-kbd-probe ./flash.sh`. Classic-Bluetooth-only keyboards are not
-supported by the precompiled core. The open question before merging is
-WiFi latency: Bluetooth forces WiFi modem sleep on (~85 ms average, spikes
-past 200 ms) — see `HANDOVER.md`.
+**Bluetooth keyboard: built in, off by default, parked — it does not fit
+on a classic ESP32.** A BLE keyboard (Amkette Optimus) pairs and types
+reliably in a standalone probe (`src/probes/ble_kbd_probe.cpp`,
+`ENV=ble-kbd-probe ./flash.sh`), and the keyer has the full feature: a
+BT KEYBOARD card with scan/pair/forget, F1–F6 memories, Esc, PgUp/PgDn
+speed, `/bt` on the CLI. But with the whole keyer running, Bluedroid leaves
+only ~26 KB of heap — too little for WiFi, so the board drops off the
+network. A boot-time check now switches Bluetooth back off and restarts
+when free heap is under 60 KB, and the page says why. Realistic routes are
+an ESP32-S3 (lighter NimBLE stack) or a PSRAM board — see `HANDOVER.md`.
+Classic-Bluetooth-only keyboards are not supported by the core either way.
 
 **One hardware caveat on a devkit.** The USB-serial chip's DTR/RTS lines
 reach the ESP32's reset pin, so a logger holding that port can reset the
@@ -736,7 +740,8 @@ tells "not sent" from "reported late".
 `/disp on|off` `/disp sh1106|ssd1306`
 `/weight N` `/ratio N` `/farns N` `/lead N` `/tail N`
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
-`/i2c` `/net` `/status`. Any other line is sent as CW.
+`/bt on|off|scan|forget` (on/off takes a restart) `/i2c` `/net` `/status`.
+Any other line is sent as CW.
 
 ## Settings web page
 
@@ -746,7 +751,16 @@ does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
 tail**, pot enable and range, display, backend (with a **Find radio**
 LAN scan for the Flex), plus a send box and tune. Live status LEDs for
-host, TCP, key, tune, pot, Flex and OLED, polled once a second.
+host, TCP, key, tune, pot, Flex, OLED and KBD, polled once a second.
+
+The **BT KEYBOARD** card (off by default) enables Bluetooth — with a RESTART
+button, since the switch applies at boot — then SCAN lists keyboards in
+pairing mode, one click pairs, and a passkey is shown large if the keyboard
+asks for one. One keyboard is kept; FORGET drops it. `GET /api/bt` carries
+the detail and scan list; `POST /api/bt?scan=1|connect=<addr>&type=<n>|
+forget=1|restart=1` does the rest (restart is refused while transmitting).
+**On a classic ESP32 it switches itself back off at boot** for want of heap —
+see Status above.
 
 **Every button that starts something is its own STOP.** SEND, TUNE, a
 memory's PLAY and the FSK send all turn into a red STOP while that thing is
@@ -906,6 +920,7 @@ src/settings.cpp       validation + NVS, shared by the CLI and the web page
 src/display.cpp        SH1106/SSD1306 status panel (own task, core 0)
 src/web.cpp            settings web server (port 80)
 src/main.cpp           wiring, WiFi, MQTT, serial CLI
+src/bt.cpp             BLE keyboard host (off by default; S3 build = stubs)
 src/probes/ble_kbd_probe.cpp  standalone BLE keyboard test (env ble-kbd-probe)
 tools/wk-bridge.py     TCP → PTY bridge for logging software
 tools/wk-test.py       protocol test harness

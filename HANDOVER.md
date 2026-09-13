@@ -24,10 +24,12 @@ hardware.
 - Outstanding: FSK polarity and on-air fist quality unverified; the LCD
   slice warning never seen on a panel; the board mod that would end the
   reset problem for good is not done.
-- **BLE keyboard proven standalone (2026-09-13)** but not merged — see the
-  What-changed entry and open item 9. If the board answers on the console
-  with `=== BLE keyboard probe` instead of the keyer, it is still running
-  the probe: `./flash.sh` puts the keyer back (NVS settings survive).
+- **BLE keyboard: in the firmware, off by default, PARKED (2026-09-13
+  evening)** — it does not fit a classic ESP32's heap with the full keyer
+  (~26 KB left → no WiFi). A boot guard turns it back off automatically.
+  Open item 9 has the routes forward (S3/NimBLE, PSRAM). If the console
+  says `=== BLE keyboard probe`, the board is running the standalone probe:
+  `./flash.sh` puts the keyer back.
 
 ---
 
@@ -1378,6 +1380,39 @@ makes the keyer feel slow.
     - Occasional runs of `0xFF` over console lines on `usbserial-0001` —
       key counts stayed right, so it is serial-link noise, not lost input.
 
+- **2026-09-13 (evening)** — **Bluetooth keyboard built into the keyer,
+  then parked: it does not fit this board's heap.**
+  - **Built:** `include/bt.h` + `src/bt.cpp` (grown from the probe). Keys are
+    decoded in the HID task, queued, and acted on in `loop()` — text →
+    `WinKeyer::sendText()` per character, F1–F6 → `Memories::play()`, Esc →
+    abort + tune off, PgUp/PgDn/Up/Down → `Settings::apply("wpm")`.
+    `esp_hidh_dev_open()` runs in its own task (`btopen`) because it blocks
+    for seconds. One keyboard kept, other bonds pruned on connect; a
+    passive ~2%-duty scan reconnects it while away. Web card BT KEYBOARD +
+    KBD lamp, `GET/POST /api/bt`, `/bt on|off|scan|forget`, preview stubs.
+    Setting `bten` (default 0) is read by `bleInUse()` inside initArduino
+    (NVS is already up there), so off releases the BT memory exactly as
+    before; `WiFi.setSleep()` follows the setting. S3 build = stubs (NimBLE
+    core, no Bluedroid). Cost even when off: flash 39.8% → 62.6%, static RAM
+    +15 KB.
+  - **Failed on hardware:** enabled + restarted → no ping, no web page.
+    The FTDI RX-only console (1200 8N2) showed `fillBuffer(): Not enough
+    memory to allocate buffer`, `socket: 105`, `write(): fail ... errno 11`
+    every second. The probe had 59 KB free, but it runs no web server, Flex
+    client or MQTT; the keyer ran 126 KB free with BT off.
+  - **Could not be rescued from the CLI:** `/bt off` over `usbserial-0001`
+    never saved, sent once or 8×. The error flood at 1200 baud (~0.7 s per
+    line) kept loop() busy printing. An RTS pulse from pyserial also did not
+    reset the board; `esptool read_mac` (default_reset/hard_reset) did — run
+    it with `~/.platformio/penv/bin/python -m esptool`, the 3.13 venv lacks
+    `rich_click`.
+  - **Recovered by a boot guard (flashed, verified):** after the stack is up,
+    free heap < 60 KB → save `bten=0` and `bterr=<heap>`, restart. It
+    tripped at **25,896 B**; the board came back with BT off, 130 KB free,
+    Flex connected, ping 7–14 ms. The card shows "switched off at boot — only
+    25 KB free with Bluetooth"; ticking enabled clears the note. **Rule: no
+    setting may be able to take the keyer off the network.**
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1485,26 +1520,29 @@ against exposing it beyond one.
    built" — `src/display.cpp` implements it for SH1106/SSD1306 on I²C
    21/22 (see 7a for the bench test that still owes).
 
-   **Bluetooth keyboard — prototyped standalone 2026-09-13, not merged.**
-   The probe (`src/probes/ble_kbd_probe.cpp`, env `ble-kbd-probe`) answered
-   the unknowns: BLE works on the stock core, Classic does not (see
-   What changed). Before merging into the keyer:
-   - **Decide on WiFi latency first.** Bluetooth forces modem sleep on,
-     undoing `WiFi.setSleep(false)` in `main.cpp`. Ping measured ~85 ms avg,
-     spikes 220–280 ms. Typed text doesn't care; paddle keying to the Flex
-     might. Test by adding BT to the keyer and watching `/mondelay auto`
-     and the fist on air — the probe cannot answer this.
-   - **Heap:** BT costs ~90 KB, a connected keyboard ~11 KB more. Check the
-     keyer's real free heap (`/api/state`) before committing to it.
-   - **Bond pruning:** the Amkette takes a new address every time it enters
-     pairing mode and each became a separate bond (4 in one session). Keep
-     only the newest.
-   - **F-keys need Fn** on the Amkette — without it F1 is Play/Pause
-     (consumer 0xCD) and F6 is Win+Shift+S. Map F1–F6 → memories, Esc →
-     abort, PgUp/PgDn → speed, text → `WinKeyer::sendText()`.
-   - Must define `bleInUse()` true, or the core frees BT memory at boot.
-   - Wired USB keyboard / the K220's 2.4 GHz receiver needs USB host →
-     ESP32-S3 only.
+   **Bluetooth keyboard — built (`src/bt.cpp`), off by default, PARKED
+   2026-09-13: does not fit on the classic ESP32.** The code is complete
+   and the page/API/CLI are verified against the preview stub, but with the
+   whole keyer running Bluedroid leaves **25,896 bytes** free and lwIP
+   starves (see What changed, evening). A boot guard switches it back off.
+   Never verified on hardware past that point: pairing from the card, key
+   actions in the keyer, background reconnect, bond pruning.
+
+   Routes forward, in order of promise:
+   - **ESP32-S3 + NimBLE.** The S3 core ships NimBLE (much lighter than
+     Bluedroid) and `esp_hidh_nimble.h`; `bt.cpp` compiles to stubs there
+     today and would need a NimBLE transport (GAP scan/security are
+     different APIs; the key/queue/UI half carries over). The S3 also has
+     USB host for the K220's 2.4 GHz receiver. No S3 board has run the
+     keyer yet.
+   - **PSRAM board (ESP32-WROVER).** Unverified whether this precompiled
+     core lets Bluedroid/lwIP allocate from SPIRAM — check sdkconfig first.
+   - **Freeing ~35 KB on esp32dev.** Unlikely without dropping features.
+
+   Still true if it is revived: Bluetooth forces WiFi modem sleep on (~85 ms
+   avg ping, spikes 220–280 ms) — listen to paddle keying via the Flex
+   before relying on it. F-keys need Fn on the Amkette (without it F1 is
+   consumer Play/Pause, F6 is Win+Shift+S).
 
    Also not built, now that a display exists to make them worth having:
    a **command button** on one of the input-only spares (35/36/39) for

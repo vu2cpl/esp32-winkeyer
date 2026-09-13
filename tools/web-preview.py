@@ -50,7 +50,24 @@ STATE = {
              "slice": True, "slicewarn": "", "cmd": "key", "bind": True,
              "xmit": True, "xmiton": False},
     "rssi": -62, "txpower": 19, "ip": "192.168.1.20",
+    "bt": {"en": True, "on": True, "st": "connected", "name": "Optimus 1",
+           "batt": 100, "pk": -1},
 }
+
+# Fake Bluetooth scan: 10 s, two keyboards turn up.
+BT = {"t0": 0.0}
+
+
+def bt_state():
+    import time
+    running = bool(BT["t0"]) and time.time() - BT["t0"] < 10
+    found = bool(BT["t0"]) and time.time() - BT["t0"] > 2
+    hits = [{"addr": "aa:bb:cc:00:00:01", "name": "Optimus 1", "rssi": -63,
+             "type": 1, "paired": True},
+            {"addr": "aa:bb:cc:00:00:02", "name": "", "rssi": -81,
+             "type": 1, "paired": False}] if found else []
+    return dict(STATE["bt"], addr="aa:bb:cc:00:00:01", keys=97, heap=58000,
+                minheap=54000, scanning=running, hits=hits)
 
 
 # Fake radio finder: a sweep that takes ~6 s and finds one radio.
@@ -88,6 +105,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/flexscan"):
             self._send(json.dumps(scan_state()).encode(), "application/json")
+        elif self.path.startswith("/api/bt"):
+            self._send(json.dumps(bt_state()).encode(), "application/json")
         elif self.path.startswith("/api/state"):
             self._send(json.dumps(STATE).encode(), "application/json")
         else:
@@ -95,6 +114,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(extract_page(), "text/html")
 
     def do_POST(self):
+        if self.path.startswith("/api/bt") and "scan=1" in self.path:
+            import time
+            BT["t0"] = time.time()
+            self._send(b"scanning 10 s (preview stub)", "text/plain")
+            return
         if self.path.startswith("/api/flexscan"):
             import time, urllib.parse
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)

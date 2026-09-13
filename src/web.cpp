@@ -11,6 +11,8 @@
 //    POST /api/set?k=..&v=..   one setting, via Settings::apply()
 //    POST /api/send?t=..       queue text as CW
 //    POST /api/tune?v=on|off   key down for tuning
+//    GET  /api/bt              Bluetooth keyboard detail + scan list
+//    POST /api/bt?scan=1 | connect=<addr>&type=<n> | forget=1 | restart=1
 //
 //  Deliberately no authentication: this is shack-LAN kit on a
 //  trusted VLAN, same posture as the WinKeyer TCP port next to it.
@@ -25,6 +27,7 @@
 #include "memories.h"
 #include "winkeyer.h"
 #include "flex.h"
+#include "bt.h"
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
@@ -168,6 +171,7 @@ legend[title]{cursor:help}
 <div class="led" id="l-pot"><i></i>POT</div>
 <div class="led" id="l-flex"><i></i>FLEX</div>
 <div class="led" id="l-disp"><i></i>OLED</div>
+<div class="led" id="l-kbd"><i></i>KBD</div>
 </div>
 <div class="slicewarn" id="slicewarn" hidden></div>
 
@@ -225,6 +229,21 @@ legend[title]{cursor:help}
     <option value="lcd20x4">LCD 20x4 (I&sup2;C)</option>
     <option value="lcd16x2">LCD 16x2 (I&sup2;C)</option>
   </select></div>
+</fieldset>
+
+<fieldset><legend title="Type CW on a Bluetooth LE keyboard. Letters, digits and punctuation go out as you type; F1-F6 play the memories (hold Fn if the top row is media keys); Esc stops everything; PgUp/PgDn or the arrow keys change speed. BLE only: a keyboard that speaks only Classic Bluetooth will not show up.">BT KEYBOARD</legend>
+<div class="row full"><label title="Off by default, and changing it takes a restart. While Bluetooth runs, ESP-IDF forces WiFi modem sleep on, which measured about 85 ms average latency with spikes past 200 ms — typed text does not mind, but listen to your paddle through the Flex before relying on it. Off costs nothing: the Bluetooth memory is not even kept.">Bluetooth</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="bt"> enabled</label>
+  <span class="val" id="btState"></span>
+  <button id="btRestart" onclick="btRestart()" hidden>RESTART</button></div>
+<div class="row full btonly"><label title="Only one keyboard is kept; pairing another replaces it. A paired keyboard reconnects by itself when it wakes — press a key.">Keyboard</label>
+  <span class="val" id="btName"></span>
+  <button id="btForget" onclick="btForget()">FORGET</button></div>
+<div class="row full btonly"><label title="Put the keyboard in Bluetooth pairing mode first (not its USB-dongle mode), then SCAN. It takes 10 seconds; click the keyboard in the list to pair.">Pair</label>
+  <button onclick="btScan()">SCAN</button>
+  <span class="val" id="btScanState"></span>
+  <span id="btHits"></span></div>
+<div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
 </fieldset>
 
 <fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
@@ -382,6 +401,23 @@ async function pollScan(){
   if(j.running) setTimeout(pollScan,700);
 }
 function useRadio(ip){$('flexip').value=ip;set('flexip',ip);note('radio IP set to '+ip)}
+// Bluetooth keyboard. Like the radio finder, the device list is polled only
+// while a scan runs; the rest of the card comes from /api/state.
+async function btScan(){
+  const r=await fetch('/api/bt?scan=1',{method:'POST'});
+  note(await r.text(),!r.ok); if(r.ok) pollBt();
+}
+async function pollBt(){
+  let j;try{j=await(await fetch('/api/bt')).json()}catch(e){setTimeout(pollBt,1000);return}
+  $('btScanState').textContent=j.scanning?'scanning…'
+    :j.hits.length?'':'nothing found — is it in Bluetooth pairing mode?';
+  $('btHits').innerHTML=j.hits.map(h=>'<button onclick="btConnect(\''+esc(h.addr)+'\','+(h.type|0)+')">'
+    +esc(h.name||h.addr)+' &middot; '+h.rssi+' dBm'+(h.paired?' &middot; paired':'')+'</button>').join(' ');
+  if(j.scanning) setTimeout(pollBt,700);
+}
+function btConnect(a,t){post('/api/bt?connect='+encodeURIComponent(a)+'&type='+t)}
+function btForget(){post('/api/bt?forget=1')}
+function btRestart(){post('/api/bt?restart=1')}
 function led(id,on,warn){const e=$(id);e.className='led'+(on?(warn?' warn':' on'):'')}
 async function refresh(){
   let s;try{s=await(await fetch('/api/state')).json()}catch(e){return}
@@ -391,6 +427,25 @@ async function refresh(){
   led('l-tune',s.tune,true);led('l-pot',s.pot);
   led('l-flex',s.flex.enabled&&s.flex.connected,s.flex.enabled&&!s.flex.slice);
   led('l-disp',s.disp&&s.disphw);
+  {
+    const b=s.bt||{};
+    // led() only honours "warn" on a lit lamp: green = typing, amber = BT up
+    // but no keyboard, dark = off.
+    led('l-kbd',!!b.on,b.st!=='connected');
+    $('bt').checked=!!b.en;
+    // RESTART only when the saved switch and the running stack disagree.
+    $('btRestart').hidden=(!!b.en===!!b.on)||b.st==='unsupported';
+    $('btState').textContent=b.st==='unsupported'?'not in this build'
+      :(!b.en&&b.err)?'switched off at boot — only '+Math.round(b.err/1024)+' KB free with Bluetooth'
+      :(!!b.en!==!!b.on)?'restart to '+(b.en?'start':'stop')
+      :b.on?b.st:'off';
+    for(const el of document.querySelectorAll('.btonly')) el.hidden=!b.on;
+    $('btName').textContent=b.name?(b.name+(b.batt>=0?' · battery '+b.batt+'%':'')):'none paired';
+    $('btForget').hidden=!b.name;
+    const pk=(b.pk|0)>=0;
+    $('btPass').hidden=!pk;
+    if(pk) $('btPass').textContent='Type '+String(b.pk).padStart(6,'0')+' on the keyboard, then Enter';
+  }
   const w=s.flex.slicewarn||'';
   $('slicewarn').textContent='⚠ '+w; $('slicewarn').hidden=!w;
   $('flexState').textContent = !s.flex.enabled ? 'off'
@@ -507,7 +562,7 @@ $('flexip').onblur =()=>{editing=null;set('flexip',$('flexip').value)};
 for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio','flexcmd','txpower'])
   $(id).onchange=e=>set(id,e.target.value);
 for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid',
-                 'flex','flexbind','flexxmit'])
+                 'flex','flexbind','flexxmit','bt'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 $('fsktxt').addEventListener('keydown',e=>{if(e.key==='Enter')fsksend()});
@@ -520,7 +575,8 @@ void handleState() {
   // the memories and a String for the output, inside loopTask's 8 KB. The
   // page polls this every second, so the overflow presented as the board
   // rebooting at random rather than as anything pointing here.
-  DynamicJsonDocument doc(2560);
+  // 3072 since the Bluetooth block joined it.
+  DynamicJsonDocument doc(3072);
   Settings::toJson(doc);
   JsonArray mems = doc.createNestedArray("mems");
   for (uint8_t i = 1; i <= Memories::COUNT; i++) mems.add(Memories::get(i));
@@ -639,6 +695,53 @@ void handleScanState() {
   server.send(200, "application/json", out);
 }
 
+void handleBtState() {
+  DynamicJsonDocument doc(1536);
+  Bt::toJson(doc.to<JsonObject>(), true);
+  String out;
+  serializeJson(doc, out);
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
+void handleBtAction() {
+  if (server.hasArg("restart")) {
+    // A restart mid-over leaves a networked radio transmitting (it has
+    // happened: interlock timeout=0), so not while anything is keyed.
+    if (Keyer::busy() || Keyer::pttIsOn() || Flex::transmitting() || Fsk::busy()) {
+      server.send(409, "text/plain", "not while transmitting — try again when it has finished");
+      return;
+    }
+    server.send(200, "text/plain", "restarting — the page reconnects by itself");
+    delay(300);
+    ESP.restart();
+  }
+  if (!Bt::active()) {
+    server.send(409, "text/plain", "bluetooth is not running — tick enabled, then RESTART");
+    return;
+  }
+  if (server.hasArg("scan")) {
+    bool ok = Bt::scanStart();
+    server.send(ok ? 200 : 409, "text/plain",
+                ok ? "scanning 10 s — keyboard in Bluetooth pairing mode"
+                   : "busy connecting — try again in a moment");
+    return;
+  }
+  if (server.hasArg("connect")) {
+    bool ok = Bt::connect(server.arg("connect").c_str(), (uint8_t)server.arg("type").toInt());
+    server.send(ok ? 200 : 400, "text/plain",
+                ok ? "connecting — if a passkey appears, type it on the keyboard"
+                   : "bad address");
+    return;
+  }
+  if (server.hasArg("forget")) {
+    Bt::forget();
+    server.send(200, "text/plain", "keyboard forgotten");
+    return;
+  }
+  server.send(400, "text/plain", "need scan, connect, forget or restart");
+}
+
 void handleTune() {
   bool on = server.arg("v") == "on";
   Keyer::tune(on);
@@ -677,6 +780,8 @@ void begin() {
   server.on("/api/mem",   HTTP_POST, handleMem);
   server.on("/api/flexscan", HTTP_POST, handleScanStart);
   server.on("/api/flexscan", HTTP_GET,  handleScanState);
+  server.on("/api/bt", HTTP_GET,  handleBtState);
+  server.on("/api/bt", HTTP_POST, handleBtAction);
   server.onNotFound([]() { server.send(404, "text/plain", "no such page"); });
   // Listening is deferred to poll(): WiFiManager is non-blocking, so at
   // setup() time there is usually no IP to bind to yet. Net::poll() brings

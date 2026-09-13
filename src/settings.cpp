@@ -21,6 +21,7 @@
 #include "net.h"
 #include "display.h"
 #include "fsk.h"
+#include "bt.h"
 #include <WiFi.h>
 #include <Preferences.h>
 
@@ -137,6 +138,9 @@ uint32_t hostBaud() { return loadU32("baud", WK_HOST_BAUD_DEFAULT); }
 // Read before Display::begin(), which runs long before begin() restores
 // the rest — a disabled panel must not be probed at all.
 bool displayEnabled() { return loadU32("dispen", 1) != 0; }
+
+// Default OFF. Read at boot only — see bt.h for why it takes a restart.
+bool btEnabled() { return loadU32("bten", 0) != 0; }
 
 // Below ~9600 the boot log itself becomes the problem: every character
 // printed is a character the host is waiting through before its Host Open
@@ -461,6 +465,16 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     Flex::setManualIp(val);       // "" = back to discovery
     snprintf(msg, msgLen, "flex ip=%s", strlen(val) ? val : "(discovery)");
 
+  } else if (!strcasecmp(key, "bt")) {
+    // Saved now, applied at the next boot: the core decides whether to keep
+    // the Bluetooth memory before setup() runs (bt.h).
+    if (!boolish(val)) return fail("bt: on|off");
+    bool b = truthy(val);
+    saveU32("bten", b);
+    Bt::setSetting(b);
+    snprintf(msg, msgLen, "bluetooth keyboard=%s%s", b ? "on" : "off",
+             b == Bt::active() ? "" : " — restart to apply");
+
   } else {
     return fail("unknown setting");
   }
@@ -517,6 +531,7 @@ void toJson(JsonDocument& doc) {
   doc["disp"]    = Display::enabled();
   doc["dispctl"] = Display::controller();
   doc["disphw"]  = Display::present();
+  Bt::toJson(doc.createNestedObject("bt"), false);   // the scan list is /api/bt
 
   JsonObject f = doc.createNestedObject("flex");
   f["enabled"]   = Flex::enabled();
