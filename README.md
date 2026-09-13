@@ -356,6 +356,8 @@ its own reset pin. Fixes, in order of preference:
 2. **Give the logger a serial adapter with only TX/RX/GND wired** to the
    keyer, DTR/RTS unconnected. No soldering on the devkit, but a second lead.
 3. **Move to the ESP32-S3 env**, whose native USB has no DTR-driven reset.
+   The env builds (fixed 2026-09-13) but has not yet been run on an S3
+   board, and a logger opening its native USB port is untested.
 
 ## Sharing the port with a logger
 

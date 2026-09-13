@@ -1328,8 +1328,13 @@ makes the keyer feel slow.
   - **HANDOVER's wiring note was stale** (FTDI "TX/RX/GND"): the FTDI is now
     RX-only console and flashing is on the USB-C `usbserial-0001` — top of
     file corrected.
-  - Pre-existing, not touched: `esp32s3-winkeyer` does not build
-    (`HWCDC::begin(…, SerialConfig)` at `main.cpp:407`, `settings.cpp:414`).
+  - **`esp32s3-winkeyer` builds again.** With `ARDUINO_USB_CDC_ON_BOOT`
+    `Serial` is `HWCDC`, whose `begin()` takes a baud rate but no
+    `SerialConfig`, so the 1200 8N2 call in `setup()` and the `/baud`
+    handler would not compile (broken since the core 3.3.11 move). Both now
+    skip the framing under that flag — USB CDC has none to set. Build-only:
+    no S3 board has run it, and whether a logger opening native USB at 1200
+    baud behaves is untested.
 
 ## Network placement (measured 2026-09-10)
 

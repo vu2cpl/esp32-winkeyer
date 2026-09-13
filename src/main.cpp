@@ -404,7 +404,13 @@ void setup() {
   // has already sent its Host Open by the time we get here, and a real
   // WinKeyer answers at 1200 8N2 — see WK_HOST_BAUD_DEFAULT.
   uint32_t baud = Settings::hostBaud();
+#if ARDUINO_USB_CDC_ON_BOOT
+  // S3 native USB: Serial is USB CDC, which has no framing to set — the
+  // rate a logger opens at is accepted whatever it is.
+  Serial.begin(baud);
+#else
   Serial.begin(baud, baud == 1200 ? SERIAL_8N2 : SERIAL_8N1);
+#endif
   quiet = Settings::quietBoot();
   // BEFORE the first print. At the WinKeyer rate this port belongs to a
   // logger, and every character we emit is text in its CW window — boot

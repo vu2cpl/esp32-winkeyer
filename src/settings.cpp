@@ -411,7 +411,11 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
              n == 1200 ? "8N2 (WinKeyer)" : "8N1");
     Serial.flush();                       // get the reply out at the old rate
     Serial.end();
+#if ARDUINO_USB_CDC_ON_BOOT
+    Serial.begin(n);                      // USB CDC: no framing to set
+#else
     Serial.begin(n, n == 1200 ? SERIAL_8N2 : SERIAL_8N1);
+#endif
     // 1200 means a logger owns this port: console quiet. A console rate
     // means a human does: console on. Typing on the CLI overrides either.
     Log::setMuted(quietBoot());
