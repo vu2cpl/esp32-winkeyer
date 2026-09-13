@@ -31,7 +31,13 @@ as a behavioural reference; the implementation here is original.
 | MQTT status + heartbeat | working against the shack broker |
 | Arduino core | **3.3.11 / IDF 5.5.5** (pioarduino); 2.0.17 crashes under load |
 
-Bluetooth keyboard is considered but not built — see `HANDOVER.md`.
+**Bluetooth keyboard: proven in a standalone probe, not in the keyer yet.**
+A BLE keyboard (Amkette Optimus) pairs and types reliably alongside WiFi on
+this core — `src/probes/ble_kbd_probe.cpp`, flashed with
+`ENV=ble-kbd-probe ./flash.sh`. Classic-Bluetooth-only keyboards are not
+supported by the precompiled core. The open question before merging is
+WiFi latency: Bluetooth forces WiFi modem sleep on (~85 ms average, spikes
+past 200 ms) — see `HANDOVER.md`.
 
 **One hardware caveat on a devkit.** The USB-serial chip's DTR/RTS lines
 reach the ESP32's reset pin, so a logger holding that port can reset the
@@ -900,6 +906,7 @@ src/settings.cpp       validation + NVS, shared by the CLI and the web page
 src/display.cpp        SH1106/SSD1306 status panel (own task, core 0)
 src/web.cpp            settings web server (port 80)
 src/main.cpp           wiring, WiFi, MQTT, serial CLI
+src/probes/ble_kbd_probe.cpp  standalone BLE keyboard test (env ble-kbd-probe)
 tools/wk-bridge.py     TCP → PTY bridge for logging software
 tools/wk-test.py       protocol test harness
 tools/wk-timing.py     timestamped status — "not sent" vs "reported late"

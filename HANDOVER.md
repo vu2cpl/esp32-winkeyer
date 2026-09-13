@@ -24,6 +24,10 @@ hardware.
 - Outstanding: FSK polarity and on-air fist quality unverified; the LCD
   slice warning never seen on a panel; the board mod that would end the
   reset problem for good is not done.
+- **BLE keyboard proven standalone (2026-09-13)** but not merged — see the
+  What-changed entry and open item 9. If the board answers on the console
+  with `=== BLE keyboard probe` instead of the keyer, it is still running
+  the probe: `./flash.sh` puts the keyer back (NVS settings survive).
 
 ---
 
@@ -1336,6 +1340,44 @@ makes the keyer feel slow.
     no S3 board has run it, and whether a logger opening native USB at 1200
     baud behaves is untested.
 
+- **2026-09-13 (afternoon)** — **BLE keyboard proven in a standalone probe
+  on the keyer's board and core. Not merged into the keyer.**
+  - **What the core supports** (checked in the installed libs, not assumed):
+    Bluedroid dual-mode, WiFi/BT coexistence on, `libesp_hid.a` with the
+    **BLE** HID host (`esp_ble_hidh_*`). `CONFIG_BT_HID_HOST_ENABLED` is off
+    and there is no Classic transport, so **Classic-only keyboards would
+    need a rebuilt core** — not worth it.
+  - **Probe:** `src/probes/ble_kbd_probe.cpp`, env `ble-kbd-probe`,
+    flashed with `ENV=ble-kbd-probe ./flash.sh` (`flash.sh` now takes
+    `ENV=`). Scans for appearance 0x03C1 / service 0x1812, opens with
+    `esp_hidh_dev_open()`, prints keys, heap, RSSI and modem-sleep state.
+    Console at 115200.
+  - **Result with an Amkette Optimus ("Optimus 1", vid 32c2 pid 1001):**
+    paired Just-Works, 97 keys over ~8 min with **none dropped**
+    (`cq test vu2cpl 5nn ?` checked character by character), Shift, digits,
+    Esc, PgUp/PgDn correct, link held through ~3 min idle. F1/F6 without Fn
+    send consumer Play/Pause and Win+Shift+S; with Fn they are real F1/F6.
+    Logitech K220 is 2.4 GHz with a USB receiver, not Bluetooth — S3 USB
+    host territory.
+  - **Costs:** heap 164 → 74 KB with BT up, ~59 KB with the keyboard
+    connected (min 54 KB). **WiFi modem sleep is forced on** (`ps=1`): ping
+    avg 90 ms scanning / 83 ms connected+typing, max 221–280 ms, 0% loss.
+    The keyboard itself adds nothing measurable; modem sleep is the cost.
+  - **Traps hit:**
+    - `initArduino()` frees the BT controller's memory unless
+      `bleInUse()` returns true — the probe defines it; the keyer must too.
+    - A failed `esp_hidh_dev_open()` (GATT 0x85) returns NULL and sends **no**
+      open event; the first probe build waited forever. Now rescans.
+    - The Amkette uses a **new random address each pairing** (…9d, 9e, 9f,
+      a0) and each became its own bond, and it disconnects (0x13) every
+      5–15 s while still in pairing mode.
+    - `esp_hidh_dev_reports_get()` returns a malloc'd copy — caller frees
+      (verified by disassembling `esp_hidh.c.obj`).
+    - The first upload failed at esptool's verify stage after a 100% write
+      and the image still booted; the second verified clean.
+    - Occasional runs of `0xFF` over console lines on `usbserial-0001` —
+      key counts stayed right, so it is serial-link noise, not lost input.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1441,10 +1483,28 @@ against exposing it beyond one.
    it here alone would achieve nothing and break a shack-wide convention.
 9. **Recently resolved:** the display is no longer "considered but not
    built" — `src/display.cpp` implements it for SH1106/SSD1306 on I²C
-   21/22 (see 7a for the bench test that still owes). Still considered
-   but not built: **Bluetooth keyboard** (BT Classic HID *host* support is
-   thin on ESP32 and BT/WiFi share the radio; prototype standalone before
-   committing) — it was always the one with real unknowns.
+   21/22 (see 7a for the bench test that still owes).
+
+   **Bluetooth keyboard — prototyped standalone 2026-09-13, not merged.**
+   The probe (`src/probes/ble_kbd_probe.cpp`, env `ble-kbd-probe`) answered
+   the unknowns: BLE works on the stock core, Classic does not (see
+   What changed). Before merging into the keyer:
+   - **Decide on WiFi latency first.** Bluetooth forces modem sleep on,
+     undoing `WiFi.setSleep(false)` in `main.cpp`. Ping measured ~85 ms avg,
+     spikes 220–280 ms. Typed text doesn't care; paddle keying to the Flex
+     might. Test by adding BT to the keyer and watching `/mondelay auto`
+     and the fist on air — the probe cannot answer this.
+   - **Heap:** BT costs ~90 KB, a connected keyboard ~11 KB more. Check the
+     keyer's real free heap (`/api/state`) before committing to it.
+   - **Bond pruning:** the Amkette takes a new address every time it enters
+     pairing mode and each became a separate bond (4 in one session). Keep
+     only the newest.
+   - **F-keys need Fn** on the Amkette — without it F1 is Play/Pause
+     (consumer 0xCD) and F6 is Win+Shift+S. Map F1–F6 → memories, Esc →
+     abort, PgUp/PgDn → speed, text → `WinKeyer::sendText()`.
+   - Must define `bleInUse()` true, or the core frees BT memory at boot.
+   - Wired USB keyboard / the K220's 2.4 GHz receiver needs USB host →
+     ESP32-S3 only.
 
    Also not built, now that a display exists to make them worth having:
    a **command button** on one of the input-only spares (35/36/39) for

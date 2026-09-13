@@ -10,11 +10,12 @@
 #  Usage:
 #    ./flash.sh              # upload firmware (menu/auto port)
 #    ./flash.sh uploadfs     # upload LittleFS image (web UI), if present
+#    ENV=ble-kbd-probe ./flash.sh   # another PlatformIO env (BLE keyboard probe)
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ENV="esp32-winkeyer"
+ENV="${ENV:-esp32-winkeyer}"
 TARGET="${1:-upload}"      # upload | uploadfs
 
 # ── enumerate serial ports (macOS + Linux) ────────────────
