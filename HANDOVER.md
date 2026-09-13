@@ -1413,6 +1413,22 @@ makes the keyer feel slow.
     25 KB free with Bluetooth"; ticking enabled clears the note. **Rule: no
     setting may be able to take the keyer off the network.**
 
+- **2026-09-13 (night)** — **3D-printable enclosure: `enclosure/`.**
+  Parametric OpenSCAD (`winkeyer-case.scad`), STLs, README with renders.
+  Two parts, no supports, ~145 × 89 × 45 mm. Front: OLED window, 3 mm KEY
+  LED (GPIO2, parallel to the onboard LED), WPM pot. Back: PDL, K1, P1, K2,
+  P2, FSK 3.5 mm jacks, 5 V DC jack (VIN — 5 V only), USB-C. Lid: piezo
+  ring + sound holes, hold-down post onto the WROOM shield. Devkit (38-pin
+  USB-C) sits on shelves under its short ends 20 mm off the floor for
+  Dupont leads, since the pin rows run along the long edges.
+  - **Fit checks live in the .scad**: stand-ins for every part and three
+    `check_*` modes that must render empty. The first draft failed all
+    three (paddle jack and devkit corner into screw bosses, lid lip into
+    the tray's rounded inside corners, OLED post shoulders over the glass)
+    — interior grew 130 → 140 mm to fix it. All empty now.
+  - **Not printed, and no part measured.** Every vendor-variable dimension
+    is a `MEASURE` parameter with a typical default — see open item 7.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1494,6 +1510,12 @@ against exposing it beyond one.
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
+   **Box designed 2026-09-13 (`enclosure/`), not printed.** Caliper values
+   owed for its `MEASURE` parameters — jack and DC-jack threads, pot
+   bushing and tab offset, OLED active area / hole spacing / glass
+   thickness, devkit length/width and USB-C height, piezo diameter. After
+   any change re-run the three fit checks (enclosure/README). Suggested
+   first print: the back wall alone as a test strip for jacks and USB-C.
 8. **Repo is PUBLIC** since 2026-09-11 — github.com/vu2cpl/esp32-winkeyer.
    Manoj's friend can clone it directly; no invite needed.
 
