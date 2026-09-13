@@ -44,7 +44,8 @@ an ESP32-S3 (lighter NimBLE stack) or a PSRAM board — see `HANDOVER.md`.
 Classic-Bluetooth-only keyboards are not supported by the core either way.
 
 **Enclosure:** a two-part 3D-printable case with OLED window, pot, KEY LED,
-six 3.5 mm jacks, 5 V and USB-C — parametric OpenSCAD with built-in fit
+five RCA sockets for KEY/PTT/FSK, a 3.5 mm paddle jack, 5 V and USB-C, and
+a bay for the PC817 opto board — parametric OpenSCAD with built-in fit
 checks, in [`enclosure/`](enclosure/README.md). Dimensioned from measured
 parts; not yet printed. Measure yours if they are a different make.
 

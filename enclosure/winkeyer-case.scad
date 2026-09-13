@@ -88,17 +88,36 @@ led_z = 24;
 led_hole = 3.2;
 
 // ── back panel ────────────────────────────────────────────
-// 3.5 mm panel jacks (PJ-392 style, M6 thread), left→right SEEN FROM THE FRONT.
+// Positions are left→right SEEN FROM THE FRONT (interior x).
+// Paddle: 3.5 mm stereo jack, lower row.
 jack_hole = 6.3;            // thread measured 6 mm (2026-09-13) + 0.3 clearance
-jack_z = 12;
-jack_x0 = 14;               // 10 put the paddle jack's body into the back-left boss
-jack_pitch = 13;
-jack_labels = ["PDL", "K1", "P1", "K2", "P2", "FSK"];
+pdl_x = 16;
+pdl_z = 12;
 
-// DC power jack (5.5/2.1 panel type). 5 V ONLY — see README.
-dc_x = 94;
-dc_z = 14;
+// KEY / PTT / FSK to the rigs: RCA sockets, upper row — never 3.5 mm jacks
+// (Manoj, 2026-09-13). Each is the output of its own PC817 on the opto board.
+rca_hole = 8.3;             // thread measured 8 mm (2026-09-13) + 0.3 clearance
+rca_z = 28;                 // above the lower row; nuts stay under the lid lip
+rca_x0 = 16;                // nut clears the back-left boss
+rca_pitch = 16;             // RCA nuts are wide; last body ends clear of the devkit
+rca_labels = ["K1", "P1", "K2", "P2", "FSK"];
+
+// DC power jack (5.5/2.1 panel type), lower row. 5 V ONLY — see README.
+dc_x = 36;
+dc_z = 12;
 dc_hole = 8.3;              // thread measured 8 mm (2026-09-13) + 0.3 clearance
+
+// ── opto board ────────────────────────────────────────────
+// 30 × 40 perfboard: 5 × PC817 + 5 × 330 Ω + a header to the devkit, on four
+// posts at the back-left, in front of the RCA bodies and behind the OLED.
+opto_w = 40;                // x
+opto_d = 30;                // y
+opto_x = 12;                // board corner, interior
+opto_y = 24;
+opto_standoff = 6;          // room for the solder side
+opto_hole_inset = 2.5;      // drill the perfboard's corners to match
+opto_post_d = 5.5;
+opto_screw_hole = 2.2;      // M2.5 self-tapping
 
 // ── ESP32 devkit (38-pin, USB-C) ──────────────────────────
 kit_l = 55.3;               // confirmed against the board (2026-09-13)
@@ -200,11 +219,19 @@ module tray() {
       for (sx = [-1, 1])
         translate([ax(kit_x + sx * (kit_w / 2 + 1.1)) - 1, ay(kit_y0), floor_t - eps])
           cube([2, 3, kit_z + kit_t + 2]);
+
+      // opto perfboard posts
+      for (px = [opto_hole_inset, opto_w - opto_hole_inset], py = [opto_hole_inset, opto_d - opto_hole_inset])
+        translate([ax(opto_x + px), ay(opto_y + py), floor_t - eps])
+          cylinder(d = opto_post_d, h = opto_standoff + eps);
     }
 
     // screw holes
     for (p = boss_xy) translate([ax(p[0]), ay(p[1]), tray_h - boss_hole_depth])
       cylinder(d = boss_hole, h = boss_hole_depth + 1);
+    for (px = [opto_hole_inset, opto_w - opto_hole_inset], py = [opto_hole_inset, opto_d - opto_hole_inset])
+      translate([ax(opto_x + px), ay(opto_y + py), floor_t + 1])
+        cylinder(d = opto_screw_hole, h = opto_standoff + 1);
 
     // front panel
     // window: a rectangle with small corner radii (a full-radius slot at
@@ -222,10 +249,12 @@ module tray() {
     front_label(pot_x, pot_z - 9.5, "WPM");
     front_label(led_x, led_z - 5, "KEY");
 
-    // back panel
-    for (i = [0 : len(jack_labels) - 1]) {
-      back_hole(jack_x0 + i * jack_pitch, jack_z, jack_hole);
-      back_label(jack_x0 + i * jack_pitch, jack_z - 7, jack_labels[i]);
+    // back panel: paddle jack and DC low, RCA row above
+    back_hole(pdl_x, pdl_z, jack_hole);
+    back_label(pdl_x, pdl_z - 7, "PDL");
+    for (i = [0 : len(rca_labels) - 1]) {
+      back_hole(rca_x0 + i * rca_pitch, rca_z, rca_hole);
+      back_label(rca_x0 + i * rca_pitch, rca_z - rca_hole / 2 - 3.2, rca_labels[i]);
     }
     back_hole(dc_x, dc_z, dc_hole);
     back_label(dc_x, dc_z - dc_hole / 2 - 3.5, "5V");
@@ -323,11 +352,19 @@ module parts() {
   translate([ax(pot_x), wall + s, az(pot_z)]) rotate([-90, 0, 0]) cylinder(d = 17, h = 10);
   translate([ax(pot_x - 5), wall + 10, az(pot_z - 10)]) cube([10, 6, 4]);
   translate([ax(led_x), wall + s, az(led_z)]) rotate([-90, 0, 0]) cylinder(d = 3.8, h = 12);
-  // jacks and DC jack: nut on the inside face, body behind it
-  for (i = [0 : len(jack_labels) - 1])
-    translate([ax(jack_x0 + i * jack_pitch), out_d - wall - s, az(jack_z)]) rotate([90, 0, 0]) {
-      cylinder(d = 10.5, h = 2); cylinder(d = 10, h = 17);
+  // paddle jack, RCA sockets, DC jack: nut on the inside face, body behind it
+  translate([ax(pdl_x), out_d - wall - s, az(pdl_z)]) rotate([90, 0, 0]) {
+    cylinder(d = 10.5, h = 2); cylinder(d = 10, h = 17);
+  }
+  for (i = [0 : len(rca_labels) - 1])
+    translate([ax(rca_x0 + i * rca_pitch), out_d - wall - s, az(rca_z)]) rotate([90, 0, 0]) {
+      cylinder(d = 13, h = 2.5); cylinder(d = 12, h = 20);
     }
+  // opto perfboard and the parts on it
+  translate([ax(opto_x) + s, ay(opto_y) + s, az(opto_standoff) + s]) {
+    cube([opto_w - 2 * s, opto_d - 2 * s, 1.6]);
+    translate([2, 2, 1.6]) cube([opto_w - 4, opto_d - 4, 11]);
+  }
   translate([ax(dc_x), out_d - wall - s, az(dc_z)]) rotate([90, 0, 0]) {
     cylinder(d = 14, h = 2.5); cylinder(d = 13, h = 19);
   }

@@ -7,14 +7,15 @@ both printable without supports. Parametric OpenSCAD source in
 Outside about **145 × 89 × 45 mm**.
 
 ![Front: OLED window, key LED, speed pot](preview-front.png)
-![Back, lid lifted: USB-C, 5 V, FSK, P2, K2, P1, K1, paddle](preview-back.png)
+![Back, lid lifted: RCA row K1 P1 K2 P2 FSK, paddle and 5 V below, USB-C](preview-back.png)
 
 | Panel | What is on it |
 |---|---|
 | Front | 1.3" OLED window, speed pot (engraved WPM), 3 mm key LED (KEY) |
-| Back | 6 × 3.5 mm jacks — PDL, K1, P1, K2, P2, FSK — then 5 V DC jack, USB-C |
+| Back | upper row: 5 × RCA — K1, P1, K2, P2, FSK; lower row: PDL (3.5 mm stereo), 5 V DC; USB-C |
 | Lid | sound holes over the piezo, which clips into a ring underneath |
 | Sides | vent slots near the top |
+| Inside | 30 × 40 mm opto perfboard on four posts, back-left, behind the RCA sockets |
 
 ## Measure before you print
 
@@ -26,7 +27,8 @@ the fit checks:
 
 | Parameter | Default | Part |
 |---|---|---|
-| `jack_hole` | 6.3 mm | 3.5 mm panel jack thread — **measured 6 mm** |
+| `jack_hole` | 6.3 mm | paddle 3.5 mm jack thread — **measured 6 mm** |
+| `rca_hole` | 8.3 mm | RCA socket thread (KEY/PTT/FSK) — **measured 8 mm** |
 | `dc_hole` | 8.3 mm | DC jack thread — **measured 8 mm** |
 | `pot_hole` | 7.0 mm | pot bushing — **measured 6.7 mm** |
 | `pot_tab_dz` | 8.0 mm | pot anti-rotation tab from the shaft — **measured ~8 mm**; recess is 3.6 mm so ±0.5 mm still seats |
@@ -58,8 +60,8 @@ openscad -o stl/lid.stl  -D 'part="lid"'  --backend Manifold winkeyer-case.scad
 ## Fit checks — run these after changing any dimension
 
 The `.scad` carries stand-ins for the real parts (devkit with its pin rows
-and Dupont leads, OLED glass/PCB/header, pot, jack and DC-jack bodies with
-their nuts, piezo). Three modes intersect them, and **each must render
+and Dupont leads, OLED glass/PCB/header, pot, the paddle jack, RCA sockets and DC jack with
+their nuts, the opto board, piezo). Three modes intersect them, and **each must render
 empty** — OpenSCAD prints `Current top level object is empty.`:
 
 ```bash
@@ -84,8 +86,12 @@ not replace measuring your own parts.
   `boss_hole = 4.0` and fit M3 heat-set inserts.
 - 4 × 10 mm rubber feet (recesses on the underside).
 - A small square of foam tape on the lid's hold-down post.
-- 6 × 3.5 mm panel jacks (paddle stereo; KEY/PTT/FSK can be mono), a 3 mm
-  LED + 330 Ω, a 5.5/2.1 mm panel DC jack.
+- 5 × panel RCA sockets (8 mm thread) for K1, P1, K2, P2, FSK; 1 × 3.5 mm
+  stereo panel jack for the paddle; a 5.5/2.1 mm panel DC jack; a 3 mm LED
+  + 330 Ω.
+- 30 × 40 mm perfboard, 5 × PC817, 5 × 330 Ω, 4 × M2.5 × 6 self-tapping
+  screws. Drill the board's corners 2.5 mm in from each edge to meet the
+  posts.
 
 ## Assembly notes
 
@@ -100,6 +106,11 @@ not replace measuring your own parts.
   on its edges (keep glue off the glass). The mounting posts are off
   (`oled_posts = false`): the hole spacing was never measured, and with
   23 mm glass their shoulders crowd it.
+- **Opto board** (back-left, four posts): one PC817 per RCA socket.
+  GPIO → 330 Ω → PC817 pin 1 (anode); pin 2 (cathode) → keyer GND; pin 4
+  (collector) → RCA centre; pin 3 (emitter) → RCA shell. Keep every RCA
+  shell off the keyer's ground — that isolation is the reason for the opto.
+  GPIOs: K1 33, P1 32, K2 18, P2 19, FSK 27.
 - **Key LED**: 3 mm LED + 330 Ω from GPIO2 to GND, in parallel with the
   onboard LED. GPIO2 is a strapping pin, but an LED to GND keeps it low at
   boot, which is the state it needs.

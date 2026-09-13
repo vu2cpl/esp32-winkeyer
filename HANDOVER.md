@@ -1438,6 +1438,17 @@ makes the keyer feel slow.
     (which would be a stadium at 32 × 20) to a rectangle with 1.5 mm
     corners. Devkit and USB-C height confirmed; piezo 12 mm. Fit checks
     re-run after each change: all empty. **Still not printed.**
+  - **Rig connectors changed to RCA, and the optos got a home.** Manoj:
+    KEY/PTT never go on 3.5 mm jacks in this shack — RCA (8 mm thread, hole
+    8.3). Back panel is now two rows: K1 P1 K2 P2 FSK on RCA above (16 mm
+    pitch, kept left of the devkit), paddle 3.5 mm + 5 V DC below (DC moved
+    x 94 → 36), USB-C unchanged. The PC817s had been "loose wiring"; they
+    now sit on a 30 × 40 perfboard on four 6 mm posts (M2.5 self-tap) at the
+    back-left, directly in front of the RCA bodies — 5 optos + 5 × 330 Ω,
+    one per socket, RCA shells isolated from keyer GND. Stand-ins for the
+    RCA bodies and the board added to the fit checks: all empty. OLED stays
+    pocket + hot glue (asked, glue is fine). The earlier 3.5 mm jack
+    description in this entry is superseded.
 
 ## Network placement (measured 2026-09-10)
 
@@ -1521,8 +1532,9 @@ against exposing it beyond one.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
    **Box designed and measured 2026-09-13 (`enclosure/`), NOT YET PRINTED.**
-   Every vendor-variable part was measured or confirmed by Manoj: jacks 6 mm,
-   DC jack 8 mm, pot bushing 6.7 mm with its tab ~8 mm off the shaft, OLED
+   KEY/PTT/FSK are 5 × RCA with the PC817s on a 30 × 40 perfboard inside.
+   Every vendor-variable part was measured or confirmed by Manoj: paddle
+   jack 6 mm, RCA 8 mm, DC jack 8 mm, pot bushing 6.7 mm with its tab ~8 mm off the shaft, OLED
    board 35 × 33 with 34 × 23 glass (window chosen 32 × 20), devkit and its
    USB-C height as modelled, piezo 12 mm. Fit checks all empty. Next: print,
    ideally the back wall as a test strip first, and report what did not fit.
