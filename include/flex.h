@@ -102,6 +102,8 @@ uint8_t scanHits(ScanHit* out, uint8_t max);
 void send(const char* text);   // queue text for transmission (cwx send)
 void clear();                  // cwx clear
 void setWpm(uint8_t wpm);      // cwx wpm
+uint8_t radioWpm();            // cwx speed the RADIO last reported, 0 = unknown
+bool radioTransmitting();      // interlock state=TRANSMITTING, any source
 int  pending();                // characters queued but not yet keyed
 
 }  // namespace Flex

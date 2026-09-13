@@ -84,6 +84,12 @@ static const uint8_t IMM_PARAMS[32] = {
 // was safe to (echo test after each stayed in sync).
 static uint16_t adminParams(uint8_t sub) {
   switch (sub) {
+    // Calibrate: <00><00><nn>. Obsolete, but hosts still send it with its
+    // byte. Counted as 0, it desynced RUMlogNG's session setup (2026-09-13):
+    // "00 00 02 00 0B 00 0F 00 01 08 ..." read as speed 0, then 0x0F load
+    // defaults swallowing the next 15 bytes — pot range became 71..80 from
+    // the mode register byte, and the keyer ran at 60 WPM.
+    case 0x00: return 1;    // calibrate
     case 0x04: return 1;    // echo test
     case 0x0D: return 256;  // load EEPROM — the whole EEPROM image
     case 0x0E: return 1;    // send stored message

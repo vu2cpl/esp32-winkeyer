@@ -13,13 +13,14 @@ hardware.
   **PlatformIO must run on Python 3.10+** — the Mac's system one is 3.9 and
   cannot build this. `~/.pio-venv313` holds a suitable one; `flash.sh`,
   `monitor.sh` and `install.py` find it themselves.
-- **The keyer is driven through a SECOND USB-serial adapter** wired to
-  TX/RX/GND only (`usbserial-A9M9DV3R`), with the board's own USB-C
-  unplugged and external power. The devkit's USB chip can hold the ESP32 in
-  reset, which stops the keyer mid-over and leaves the radio transmitting.
-- **Flashing therefore needs BOOT held and RST tapped by hand**, then
-  `pio run -t upload --upload-port <the FTDI>`. The board cannot be reset
-  by the adapter.
+- **Wiring as of 2026-09-13 (this supersedes the 2026-09-12 two-adapter
+  setup described further down):** the keyer's **own USB-C** is back in use
+  (`usbserial-0001`, CP2102) and carries RUMlogNG. The FTDI
+  `usbserial-A9M9DV3R` has **RX only** — a read-only console for
+  monitoring; its TX was removed, so it **cannot flash**. Flash on the USB-C:
+  `pio run -e esp32-winkeyer -t upload --upload-port /dev/cu.usbserial-0001`
+  (auto-reset works). The devkit's USB chip can still hold the ESP32 in
+  reset when a logger drives RTS/DTR — watch for it.
 - Outstanding: FSK polarity and on-air fist quality unverified; the LCD
   slice warning never seen on a panel; the board mod that would end the
   reset problem for good is not done.
@@ -1300,6 +1301,35 @@ makes the keyer feel slow.
     changed with the status-bit fix. Break-in now clears the radio's
     cwx buffer too (`Flex::clear()`), as a WinKeyer clears its own — a
     change Manoj will hear on the air.
+
+- **2026-09-13 (morning)** — **"PTT drops before TX ends" was a speed
+  mismatch; fixing it exposed a protocol desync. Both fixed, verified on air
+  with RUMlogNG.**
+  - **Radio at 30 WPM, keyer at 25.** `tools/flex-ptt-watch.py` over three
+    CQ memories: the local PTT line dropped within 40 ms of the radio's
+    interlock going READY every time — it was not early. The sidetone copy
+    ran on 1.4–3 s longer, because the radio's `cwx wpm` had been changed
+    outside the keyer (SmartSDR's CWX control or similar) and `loop()` only
+    pushed the speed when the *keyer's* speed changed. Now `Flex` records the
+    radio's reported `cwx wpm=`, and `loop()` re-sends ours whenever the
+    radio is idle and differs (≤ every 2 s, never mid-message). Verified: the
+    radio followed the pot 14→25→24; radio READY, PTT drop and sidetone end
+    within ~0.6 s of each other.
+  - **Admin 0 (Calibrate) takes one byte; `adminParams` said none.** After
+    the first flash the keyer showed 60 WPM and the pot moved only
+    RUMlogNG's speed. `/api/wktrace`: RUMlogNG's setup began
+    `00 00 02 00 0B 00 0F 00 01 08 …`, parsed as speed 0 then a bogus
+    0x0F load-defaults eating 15 bytes — pot min 0x47 (the mode byte) = 71,
+    range 9 → clamped 60. With the argument counted, the stream frames into
+    RUMlogNG's normal set-up and the pot range is 10–40 again. It hit only
+    sessions whose open began with that stray `00 00 02` — later re-opens
+    (`00 02 00 0B …`) parsed fine, which is why it had not shown before.
+    Not probed on the genuine K1EL.
+  - **HANDOVER's wiring note was stale** (FTDI "TX/RX/GND"): the FTDI is now
+    RX-only console and flashing is on the USB-C `usbserial-0001` — top of
+    file corrected.
+  - Pre-existing, not touched: `esp32s3-winkeyer` does not build
+    (`HWCDC::begin(…, SerialConfig)` at `main.cpp:407`, `settings.cpp:414`).
 
 ## Network placement (measured 2026-09-10)
 

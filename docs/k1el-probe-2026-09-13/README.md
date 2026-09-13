@@ -26,7 +26,12 @@ unless marked otherwise.
 3. **Pot byte scaled wrong.** Real = WPM − MINWPM, unscaled (min 10 / range
    30 swept 0..30). Ours = (wpm−min)·31/range. Real sends one unsolicited
    byte per step.
-4. **Admin parameter counts desync the parser** (`adminParams`): 0x0D load
+4. **Admin parameter counts desync the parser** (`adminParams`). *Missed
+   here and found on air the next morning:* 0x00 Calibrate takes 1 byte
+   (`<00><00><nn>`); counted as 0 it turned RUMlogNG's `00 00 02 00 0B 00 0F
+   00 01 08 …` into speed 0 plus a bogus 0x0F load-defaults, setting the pot
+   range to 71..80 and the keyer to 60 WPM. Not probed on the K1EL — the
+   framing of RUMlogNG's own setup is the evidence. 0x0D load
    EEPROM takes 256 bytes (ours 15); 0x13 set RTTY registers takes 2 (ours
    0, treated as mode select); 0x14 is Set WK3 Mode, 0 params (ours 1, as
    sidetone volume); 0x16 load X2MODE takes 1 (ours 0); 0x19 sidetone volume

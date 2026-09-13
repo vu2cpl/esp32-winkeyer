@@ -16,7 +16,7 @@ as a behavioural reference; the implementation here is original.
 |---|---|
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
-| WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night; echo now paced per letter on both backends, within ~60 ms (local) / ~150 ms (Flex) of the K1EL** ([findings](docs/k1el-probe-2026-09-13/README.md)) |
+| WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night; echo now paced per letter on both backends, within ~60 ms (local) / ~150 ms (Flex) of the K1EL**; admin 0 (Calibrate) argument byte fixed the following morning — it had desynced RUMlogNG's session setup ([findings](docs/k1el-probe-2026-09-13/README.md)) |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
@@ -653,6 +653,14 @@ The monitor copy also ignores weighting and Farnsworth, because the radio
 has neither — it exposes speed, iambic, break_in and qsk, nothing else. A
 logger that sets Farnsworth (RUMlogNG sets 20 every session) would otherwise
 stretch the sidetone against an unstretched transmission.
+
+**The radio's CWX speed is kept equal to the keyer's.** Anything else on the
+API — SmartSDR's own CWX speed control, for one — can change it, and then
+the radio sends at its speed while the sidetone runs at ours: PTT drops with
+the radio while the sidetone carries on for seconds. The keyer reads the
+radio's reported `cwx wpm=` and, whenever the radio is idle and differs,
+sets it back (at most every 2 s; never mid-message, where a logger's
+buffered speed change is allowed to differ).
 
 Tuning knobs, should keying misbehave on a different radio or firmware:
 `/flex cmd key|ptt` (which keying command), `/flex bind on|off`,

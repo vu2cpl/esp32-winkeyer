@@ -56,6 +56,12 @@ String   guiHandle;          // ...and its handle, required on every cw key
 long     queuedIdx = 0;      // radio buffer index of the LAST character queued
 long     sentIdx   = 0;      // index reported by "cwx sent="
 uint8_t  cfgWpm    = 20;
+// What the radio says its cwx speed is, from "cwx wpm=" status. Not the same
+// thing as cfgWpm: SmartSDR's CWX panel (or anything else on the API) can
+// change it behind our back, and then the radio keys at one speed while the
+// local sidetone copy runs at another. Seen 2026-09-13: radio 30, keyer 25 —
+// PTT dropped with the radio while the sidetone ran on ~3 s.
+uint8_t  radioWpmVal = 0;
 uint32_t busyUntil = 0;      // backstop: see pending()
 
 // Replies to "cwx send" are matched to the send that caused them by sequence
@@ -252,6 +258,10 @@ void onLine(const String& line) {
     if (k >= 0) { sentIdx = body.substring(k + 5).toInt(); lastCwxMs = millis(); }
     int e = body.indexOf("erase_stop=");
     if (e >= 0) { sentIdx = body.substring(e + 11).toInt(); lastCwxMs = millis(); }
+    if (body.startsWith("cwx ")) {
+      String v;
+      if (kv(body, "wpm", v) && v.toInt() > 0) radioWpmVal = (uint8_t)v.toInt();
+    }
 
     // Track whether there is a slice to key on at all. A radio with no
     // slice in use transmits nothing and reports no error, which is an
@@ -374,6 +384,7 @@ void tryConnect() {
   subscribed = false;
   boundClientId = "";
   queuedIdx = sentIdx = 0;
+  radioWpmVal = 0;             // "sub cwx all" reports it again
   // A link that dropped mid-element never delivered its key-up, and the
   // radio is still keyed. Say so now. Only the key-up: "xmit 0" or a
   // "cwx clear" here could cut short a transmission from SmartSDR or MSHV.
@@ -444,6 +455,8 @@ void setKeyVerb(const char* verb) {
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
 uint16_t    startLatencyMs() { return startLatency; }
+uint8_t     radioWpm() { return radioWpmVal; }
+bool        radioTransmitting() { return radioTx; }
 
 void sliceWarning(char* out, size_t n, WarnForm form) {
   out[0] = '\0';

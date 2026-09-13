@@ -557,6 +557,20 @@ void loop() {
     } else {
       uint8_t w = Keyer::getWpm();
       if (w != lastWpmToRadio) { lastWpmToRadio = w; Flex::setWpm(w); }
+      // The cache above only notices OUR changes. Something else on the API
+      // (SmartSDR's CWX speed) can move the radio, and then it keys at its
+      // speed while the sidetone runs at ours: PTT drops with the radio, the
+      // sidetone carries on for seconds. So trust the radio's own report.
+      // Only when idle — a host's buffered speed escape is meant to differ
+      // mid-message — and at most every 2 s, in case the radio clamps it.
+      static uint32_t lastResyncMs = 0;
+      uint8_t r = Flex::radioWpm();
+      if (r && r != w && Flex::pending() == 0 && !Flex::radioTransmitting() &&
+          millis() - lastResyncMs > 2000) {
+        lastResyncMs = millis();
+        Log::printf("[FLEX] radio cwx speed %u != keyer %u — resyncing\n", r, w);
+        Flex::setWpm(w);
+      }
     }
   }
 
