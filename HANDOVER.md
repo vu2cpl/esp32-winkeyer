@@ -1,7 +1,7 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-13 · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-16 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
@@ -60,8 +60,8 @@ implemented — see "Flex backend" below.
 |---|---|---|
 | Paddle dit (tip) | 25 | INPUT_PULLUP, closes to GND |
 | Paddle dah (ring) | 26 | INPUT_PULLUP, closes to GND |
-| Key out | 33 | active high → PC817 opto (330 Ω) or NPN |
-| PTT out | 32 | active high → PC817 opto (330 Ω) or NPN |
+| Key out | 33 | active high → opto (PC817 + 330 Ω, or LTV847 + 220 Ω) or NPN |
+| PTT out | 32 | active high → opto (PC817 + 330 Ω, or LTV847 + 220 Ω) or NPN |
 | Sidetone | 4 | LEDC PWM → passive piezo |
 | Speed pot | 34 | ADC1_CH6 (input-only) — 10 k linear + 100 nF wiper→GND; **off until `/pot on`** (now persisted), pin floats otherwise |
 | Display SDA / SCL | 21 / 22 | OLED (SH1106/SSD1306 0x3C-0x3D) or HD44780 LCD backpack (16x2/20x4, 0x27-0x3F); family auto-detected |
@@ -1450,6 +1450,27 @@ makes the keyer feel slow.
     pocket + hot glue (asked, glue is fine). The earlier 3.5 mm jack
     description in this entry is superseded.
 
+- **2026-09-16** — **LTV847 written up as a second opto option; no build
+  change.** Manoj priced ready-made opto modules against the
+  documented 5 × PC817 + 330 Ω board and rejected all of them: the 7Semi
+  and SmartElex **ILD213T** breakouts, the **HW-399 TLP281-4** 4-channel
+  board and the generic green 4-channel **PC817** module. Every one of
+  them buffers the isolator's output with a transistor and a pull-up, so
+  the output needs a supply on the rig side (HV / HVCC / HGND pins) and is
+  a logic level, not the plain switch-to-ground a rig's KEY line wants;
+  powering that from the keyer would join the grounds and throw away the
+  isolation. Modifying one (cut the traces, bypass the buffer, wire the
+  isolator's collector/emitter straight to the output pins) is possible but
+  is more work at 1.27 mm SOIC pitch than soldering a through-hole chip.
+  What survived: **LTV847** (quad, DIP-16) + **LTV817** for the fifth line,
+  with **220 Ω** input resistors — ~9 mA per LED against ~6 mA now, so
+  ≥4.5 mA out at the worst-case 50 % CTR versus ~3 mA today, 5000 Vrms
+  isolation, every channel's emitter separate, ~₹50 for the pair. PC847 and
+  EL847 substitute pin for pin. `enclosure/README.md` now carries both
+  builds with the LTV847 pin table (channels 3 and 4 are mirrored: anodes
+  are pins 12 and 16). **Nothing is decided and no board is built** — the
+  PC817 build is still the documented default.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1528,11 +1549,15 @@ against exposing it beyond one.
    WK2/WK3 datasheet layout is now known: bit 0 PTT enable, bit 1 sidetone,
    bit 2 KeyOut 2, bit 3 KeyOut 1, bits 5-4 paddle hang time, 7-6 ultimatic
    priority. Not yet observed on real hardware (12h).
-7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω), enclosure.
+7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω, or the LTV847
+   + 220 Ω option added 2026-09-16 — undecided), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
    **Box designed and measured 2026-09-13 (`enclosure/`), NOT YET PRINTED.**
-   KEY/PTT/FSK are 5 × RCA with the PC817s on a 30 × 40 perfboard inside.
+   KEY/PTT/FSK are 5 × RCA with the optos on a 30 × 40 perfboard inside —
+   5 × PC817 + 330 Ω as documented, or 1 × LTV847 + 1 × LTV817 + 220 Ω
+   (see `enclosure/README.md`); ready-made opto modules were evaluated and
+   rejected, all of them need a supply on the rig side.
    Every vendor-variable part was measured or confirmed by Manoj: paddle
    jack 6 mm, RCA 8 mm, DC jack 8 mm, pot bushing 6.7 mm with its tab ~8 mm off the shaft, OLED
    board 35 × 33 with 34 × 23 glass (window chosen 32 × 20), devkit and its

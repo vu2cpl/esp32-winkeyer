@@ -45,8 +45,9 @@ Classic-Bluetooth-only keyboards are not supported by the core either way.
 
 **Enclosure:** a two-part 3D-printable case with OLED window, pot, KEY LED,
 five RCA sockets for KEY/PTT/FSK, a 3.5 mm paddle jack, 5 V and USB-C, and
-a bay for the PC817 opto board — parametric OpenSCAD with built-in fit
-checks, in [`enclosure/`](enclosure/README.md). Dimensioned from measured
+a bay for the opto board (5 × PC817, or an LTV847 quad + LTV817) —
+parametric OpenSCAD with built-in fit checks, in
+[`enclosure/`](enclosure/README.md). Dimensioned from measured
 parts; not yet printed. Measure yours if they are a different make.
 
 **One hardware caveat on a devkit.** The USB-serial chip's DTR/RTS lines
@@ -142,8 +143,8 @@ debug console and why it exists.
 |---|---|---|
 | Paddle dit (tip) | 25 | internal pullup, paddle closes to GND |
 | Paddle dah (ring) | 26 | internal pullup, paddle closes to GND |
-| Key out | 33 | active high → PC817 opto (330 Ω) or NPN → rig KEY |
-| PTT out | 32 | active high → PC817 opto (330 Ω) or NPN → rig PTT |
+| Key out | 33 | active high → opto (PC817 + 330 Ω, or LTV847 + 220 Ω) or NPN → rig KEY |
+| PTT out | 32 | active high → opto (PC817 + 330 Ω, or LTV847 + 220 Ω) or NPN → rig PTT |
 | Sidetone | 4 | passive piezo to GND |
 | Speed pot | 34 | ADC1, 10 k **linear** pot across 3V3–GND, wiper to 34; **enable with `/pot on`** |
 | Status LED | 2 | onboard — lit while the key is down |

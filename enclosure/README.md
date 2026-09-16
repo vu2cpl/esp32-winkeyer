@@ -91,7 +91,9 @@ not replace measuring your own parts.
   + 330 Ω.
 - 30 × 40 mm perfboard, 5 × PC817, 5 × 330 Ω, 4 × M2.5 × 6 self-tapping
   screws. Drill the board's corners 2.5 mm in from each edge to meet the
-  posts.
+  posts. **Alternative:** 1 × LTV847 (quad) + 1 × LTV817 with 5 × 220 Ω —
+  same circuit, two chips instead of five, more drive. See the opto board
+  note under Assembly notes.
 
 ## Assembly notes
 
@@ -111,6 +113,30 @@ not replace measuring your own parts.
   (collector) → RCA centre; pin 3 (emitter) → RCA shell. Keep every RCA
   shell off the keyer's ground — that isolation is the reason for the opto.
   GPIOs: K1 33, P1 32, K2 18, P2 19, FSK 27.
+- **Opto board, LTV847 option** (undecided as of 2026-09-16; either build
+  works). One **LTV847** quad optocoupler carries K1/P1/K2/P2 and one
+  **LTV817** carries FSK — two chips instead of five, and with **220 Ω**
+  input resistors about 9 mA per LED (≥4.5 mA out at the worst-case 50 %
+  CTR, typically far more) against ~3 mA from PC817 + 330 Ω. Circuit is
+  otherwise identical: GPIO → 220 Ω → anode, cathode → keyer GND, collector
+  → RCA centre, emitter → that socket's shell, every shell still off keyer
+  ground. LTV847 is a 16-pin DIP (~20 × 7.6 mm); channels 3 and 4 are
+  mirrored, so check the pins:
+
+  | Line | GPIO | 220 Ω → anode | Cathode → GND | Collector → RCA centre | Emitter → RCA shell |
+  |---|---|---|---|---|---|
+  | K1 | 33 | 1 | 2 | 4 | 3 |
+  | P1 | 32 | 5 | 6 | 8 | 7 |
+  | K2 | 18 | 12 | 11 | 9 | 10 |
+  | P2 | 19 | 16 | 15 | 13 | 14 |
+  | FSK | 27 | LTV817 1 | LTV817 2 | LTV817 4 | LTV817 3 |
+
+  PC847 or EL847 substitute for the LTV847 pin for pin; confirm against the
+  datasheet of the part that actually arrives before soldering. Ready-made
+  opto modules (7Semi/SmartElex ILD213T breakouts, HW-399 TLP281-4, the
+  generic green 4-channel PC817 boards) were all rejected: each buffers its
+  outputs and needs a supply on the rig side (HV/HVCC), so no channel is the
+  plain switch-to-ground a rig's KEY line wants.
 - **Key LED**: 3 mm LED + 330 Ω from GPIO2 to GND, in parallel with the
   onboard LED. GPIO2 is a strapping pin, but an LED to GND keeps it low at
   boot, which is the state it needs.
