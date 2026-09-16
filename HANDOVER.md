@@ -21,6 +21,9 @@ hardware.
   `pio run -e esp32-winkeyer -t upload --upload-port /dev/cu.usbserial-0001`
   (auto-reset works). The devkit's USB chip can still hold the ESP32 in
   reset when a logger drives RTS/DTR — watch for it.
+- **Hardware on order (2026-09-16):** 2 × ESP32-S3 N16R8 dual-USB-C
+  boards and 2 × LTV-847. Nothing in firmware or the enclosure changes until
+  a board is on the bench and measured — see open items 7, 9 and 10.
 - Outstanding: FSK polarity and on-air fist quality unverified; the LCD
   slice warning never seen on a panel; the board mod that would end the
   reset problem for good is not done.
@@ -1471,6 +1474,25 @@ makes the keyer feel slow.
   are pins 12 and 16). **Nothing is decided and no board is built** — the
   PC817 build is still the documented default.
 
+- **2026-09-16** — **ESP32-S3 boards ordered for the Bluetooth keyboard and
+  native USB.** Manoj ordered **2 × generic "ESP32-S3 N16R8 Dual C-Type USB"**
+  boards (₹798 each) and **2 × LTV-847** for the opto board. Why the S3:
+  NimBLE and 8 MB PSRAM are the first route in open item 9 for the parked
+  Bluetooth keyboard; native USB can carry WinKeyer to RUMlog, which ends the
+  CP2102 reset problem; and USB host can take the keyboard's 2.4 GHz dongle,
+  which avoids Bluetooth's WiFi ping spikes entirely. Considered and not
+  chosen: the **Waveshare ESP32-S3-DEV-KIT-N16R8** (one USB-C through a
+  CH334 hub, so the S3's USB is device-only and cannot host the dongle;
+  63.3 × 25.4 mm) and the **ESP32-C5 WiFi 6** board (single core — the keyer
+  task is pinned to core 1 in `keyer.cpp` and WiFi tasks would preempt it; no
+  USB OTG; Bluetooth still shares the radio even with WiFi on 5 GHz). The
+  ordered board looks like the common **YD-ESP32-S3 layout** from the listing
+  photo: both USB-C sockets on one short end, RGB LED, DevKitC-1 pin order,
+  probably a CH343, and solder pads by the LED (likely IN-OUT and USB-OTG —
+  USB-OTG must be bridged to power the dongle). PCB antenna, so no WiFi gain.
+  **The listing says 57 × 28 mm but the photo implies about 65–70 mm long** —
+  measure before touching `enclosure/`.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1550,7 +1572,8 @@ against exposing it beyond one.
    bit 2 KeyOut 2, bit 3 KeyOut 1, bits 5-4 paddle hang time, 7-6 ultimatic
    priority. Not yet observed on real hardware (12h).
 7. Hardware build: paddle/key/PTT interface (PC817 + 330 Ω, or the LTV847
-   + 220 Ω option added 2026-09-16 — undecided), enclosure.
+   + 220 Ω option added 2026-09-16 — 2 × LTV-847 ordered the same day, board
+   not built), enclosure.
    The speed pot and the OLED are **wired and working** (2026-09-10);
    what remains is the opto-isolated key/PTT interface and the box.
    **Box designed and measured 2026-09-13 (`enclosure/`), NOT YET PRINTED.**
@@ -1605,7 +1628,8 @@ against exposing it beyond one.
      today and would need a NimBLE transport (GAP scan/security are
      different APIs; the key/queue/UI half carries over). The S3 also has
      USB host for the K220's 2.4 GHz receiver. No S3 board has run the
-     keyer yet.
+     keyer yet. **Two S3 N16R8 dual-USB-C boards ordered 2026-09-16** (see
+     What changed).
    - **PSRAM board (ESP32-WROVER).** Unverified whether this precompiled
      core lets Bluedroid/lwIP allocate from SPIRAM — check sdkconfig first.
    - **Freeing ~35 KB on esp32dev.** Unlikely without dropping features.
@@ -1618,7 +1642,16 @@ against exposing it beyond one.
    Also not built, now that a display exists to make them worth having:
    a **command button** on one of the input-only spares (35/36/39) for
    menu/message playback, and showing **decoded sent text** on the panel.
-10. Future: ESP32-S3 env for a native-USB descriptor. **OTRSP/SO2R is not
+10. **ESP32-S3 port — boards ordered 2026-09-16, not yet arrived.** On
+    arrival: check the shield says WROOM-1-N16R8; photograph both sides
+    (identify the USB-serial chip, read the solder pads); `esptool flash_id`
+    and the PSRAM size at boot; measure length and both USB-C positions.
+    Port work: full pin remap (no GPIO 32/33/34 on the S3; speed pot to
+    ADC1 = GPIO 1–10; avoid 35–37 octal PSRAM, 19/20 native USB, 0/3/45/46
+    strapping), the `esp32s3-winkeyer` env's native-USB CDC as the WinKeyer
+    port, a NimBLE transport for `bt.cpp` or USB host for the dongle, and the
+    enclosure resized (currently modelled on the esp32dev 55.3 × 28.3 with one
+    USB-C cutout). **OTRSP/SO2R is not
     planned for this box** and its pin reservation has been dropped — SO2R
     stays in `~/projects/SO2R box`.
 11. **RTTY FSK on GPIO27** (2026-09-11): Baudot/ITA2, 45.45 baud, 1.5 stop
