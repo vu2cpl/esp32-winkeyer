@@ -1996,6 +1996,21 @@ against exposing it beyond one.
     fault. Steps 1, 3 and 5 below are answered, and step 2 (the exact
     `cw key` lines and their `index`) is next.
 
+    **Then it recovered on its own (13:39–13:42, same logs).** After the
+    reboot every transmission was 0 W until two memories had been played.
+    Paddle keys at 13:40:43–13:40:53 showed `source=SW > SW,SWCW`, so the
+    `cw key` elements DID reach the radio, and still made 0 W. This morning
+    the dead paddle keys showed `SW` only. The first memory (13:41:29,
+    `SWCW`) was 0 W, the second (13:41:32) was 10.2 W. From then on every
+    paddle key (`SW > SW,SWCW`) and memory made ~10.3 W, and paddle use no
+    longer killed the next memory. Manoj confirmed both by ear, and Tune
+    from the Maestro worked at 13:41:51 (after the recovery, so step 4 is
+    still open for the stuck state). Elements accepted but no RF points at
+    the radio's CW/TX chain needing the CWX path to start it, not at
+    dropped commands. **Untested:** whether a fresh keyer session (reboot
+    or Flex reconnect) brings the dead state back, which would reproduce it
+    on demand.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
