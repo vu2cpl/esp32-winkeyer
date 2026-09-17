@@ -488,6 +488,7 @@ void setBind(bool on) {
   if (tcp.connected()) tcp.stop();
 }
 bool bindEnabled() { return cfgBind; }
+String guiClientHandle() { return guiHandle; }
 
 // A key-up in the same form the elements use. "xmit 0" does NOT clear a
 // key the radio still believes is down: it stays in TX on source=SWCW.

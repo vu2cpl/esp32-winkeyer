@@ -541,6 +541,7 @@ void toJson(JsonDocument& doc) {
   { char w[128]; Flex::sliceWarning(w, sizeof w, Flex::WARN_LONG); f["slicewarn"] = w; }
   f["cmd"]       = Flex::keyVerb();
   f["bind"]      = Flex::bindEnabled();
+  f["guihandle"] = Flex::guiClientHandle();   // "" = not bound to a GUI client
   f["xmit"]      = Flex::useXmit();
   f["xmiton"]    = Flex::transmitting();  // is the RADIO keyed right now
 }

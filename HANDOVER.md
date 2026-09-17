@@ -1508,6 +1508,13 @@ makes the keyer feel slow.
   so the paddle keying and the memories reach the radio through this keyer.
   Full data and next steps: open item 13.
 
+- **2026-09-17 (later)** — **`/api/state` now reports `flex.guihandle`**,
+  the GUI client handle the keyer sends every `cw key` under (new accessor
+  `Flex::guiClientHandle()`). It makes step 1 of open item 13 a single
+  look, not a console read, which matters because the console is muted
+  while RUMlogNG holds the port. Both envs build; the preview stub carries
+  the field. **Not yet flashed or seen on hardware.**
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1979,10 +1986,14 @@ against exposing it beyond one.
     radio still believes is down*.
 
     **Next session, in order.**
-    1. Read the console for `[FLEX] bound to GUI client … (handle …)` and
-       compare it with the Maestro's current handle (`sub client all` from
-       any API session). `guiHandle` is not in `/api/state`; adding it
-       would make this a one-look check.
+    1. Compare `flex.guihandle` in `/api/state` (added later on 09-17;
+       needs this build flashed) with the Maestro's current handle
+       (`sub client all` from any API session). It is the handle every
+       `cw key` goes out under. `""` means no GUI client was seen. The
+       value is NOT cleared when the radio session drops, only overwritten
+       at the next bind, so right after a reconnect it can still show the
+       old client's handle. The console's
+       `[FLEX] bound to GUI client … (handle …)` line says the same thing.
     2. With the keying log on, record one paddle key and one memory: the
        exact `xmit` / `cw key` lines, their `client_handle` and `index`.
     3. Force a rebind (`setBind`, or drop and reconnect the Flex session)

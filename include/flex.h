@@ -57,6 +57,11 @@ bool useXmit();
 void setBind(bool on);
 bool bindEnabled();
 
+// Handle of the GUI client every cw key is sent on behalf of, e.g.
+// "0x3CF2DCF6"; "" until one is seen. Captured once per radio session, so
+// compare it with "sub client all" when keying goes quiet.
+String guiClientHandle();
+
 // "ptt" (FlexRadio wiki) or "key" (MORCONI). Both are accepted by the
 // radio; only a power meter can say which one keys.
 void        setKeyVerb(const char* verb);
