@@ -2068,6 +2068,32 @@ against exposing it beyond one.
     is on**, and the keyer also asserts `xmit 1` around paddle keying. The
     trace should show whether that combination plays a part.
 
+    **Trace evidence, 14:08–14:09: the stale handle DOES kill the paddle,
+    and the radio does not complain.** The same short paddle key was
+    traced both ways (raw traces kept in the local evidence folder):
+
+    | | working 14:08 | dead 14:09, after an AetherSDR restart |
+    |---|---|---|
+    | GUI client handle (radio) | `0x54A57F28` | `0x2311E20D` (new) |
+    | `cw key … client_handle=` | `0x54A57F28` | `0x54A57F28` (stale) |
+    | radio reply to every `xmit`/`cw key` | `R…\|0\|` | `R…\|0\|` (no error) |
+    | interlock after first `cw key 1` | `SW` → **`SW,SWCW`** | stays **`SW`** |
+
+    In both, `xmit 1` gives `PTT_REQUESTED`/`TRANSMITTING` under the *GUI
+    client's* handle, and `index`/`time` run in order. With the stale handle
+    the radio answers every `cw key` with 0 and never adds `SWCW`, so the
+    elements are dropped without an error. This explains this morning's 24
+    of 24 `SW`-only paddle keys: the GUI client changed at 11:52 and the
+    keyer was never re-bound.
+
+    **This partly retracts the 13:51 correction above**, which relied on
+    reports with no trace. Two observations there still do not fit: the
+    paddle stayed dead after a rebind that fixed the handle (13:47), and it
+    came back with a stale handle (13:50). Neither was traced. There is
+    also still a second signature: `SW,SWCW` at 0 W with a matching handle
+    (13:40, after a reboot), plus this morning's first memory after a
+    paddle key stalling at 0 W. That one is not explained by the handle.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
