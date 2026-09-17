@@ -703,6 +703,19 @@ the radio was idle first) and holds the monitor copy by it: measured 229 ms
 on a 6600 over WiFi here. `/mondelay 250` pins a value instead, `/mondelay 0`
 disables it. The first transmission after a reset has nothing measured yet.
 
+**The sidetone copy also follows the radio's real sending rate.** A Flex
+set to 25 WPM actually sends about 1.5 % slow (48.7 ms a unit, not 48.0),
+so a copy at the exact rate drifts ahead through a long message: about
+160 ms by the end of an 11 s CQ. The keyer times the radio's `cwx sent=`
+reports over any run of 40+ units of its own text and plays the copy at
+that rate (`cwrate` in `/api/state`, permille of nominal; 1000 until the
+first long message after a reboot). It carries the fraction of a
+millisecond from element to element, since rounding each element would
+itself be a 1–2 % error. It stays in step from 15 WPM up. At 5–10 WPM it
+still drifts towards the end of a long message: the radio's extra time
+looks like a fixed ~0.7 ms per unit rather than a percentage, so a rate
+learned at 25 WPM over-corrects there.
+
 The monitor copy also ignores weighting and Farnsworth, because the radio
 has neither — it exposes speed, iambic, break_in and qsk, nothing else. A
 logger that sets Farnsworth (RUMlogNG sets 20 every session) would otherwise

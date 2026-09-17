@@ -74,7 +74,7 @@ uint32_t busyUntil = 0;      // backstop: see pending()
 // radio had keyed the text. A reply to a send made before a "cwx clear" is
 // stale and must not re-arm pending() — that was the ~1 s BUSY a host saw
 // after Clear Buffer or a paddle break-in.
-struct CwxSend { uint32_t seq; uint16_t len; };
+struct CwxSend { uint32_t seq; uint16_t len; char text[64]; };
 CwxSend  cwxSends[8];
 uint8_t  cwxSendNext = 0;
 uint32_t clearSeq = 0;       // replies to commands before this are stale
@@ -126,6 +126,22 @@ uint32_t      lastCwxMs    = 0;
 // this so it stops running ahead of the air.
 uint32_t      cwxSendAt    = 0;
 uint16_t      startLatency = 0;
+
+// ── Radio CW rate ──
+// How fast the radio really sends CWX, against nominal 1200/WPM, from the
+// times of its "cwx sent=" reports. It sends about 1.5 % slow, and the
+// sidetone copy is played at this rate so it stays with the air through a
+// long message. Measured only over runs of consecutive characters whose text
+// the keyer queued itself, at one speed, with no clear in between.
+struct IdxChar { long idx; char c; };
+IdxChar  idxText[256];                 // radio buffer index -> character sent
+uint16_t cwRate = 1000;                // permille of nominal
+bool     cwRateMeasured = false;
+bool     rateActive = false, rateOk = false;
+uint32_t rateT0 = 0, rateLastT = 0;
+long     rateLastIdx = 0;
+uint32_t rateUnits = 0;
+uint8_t  rateWpm = 0;
 bool          forcedThisTx = false;   // one rescue per stuck transmission
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
@@ -234,6 +250,42 @@ bool kv(const String& body, const char* key, String& out) {
   return true;
 }
 
+void rateFinish() {
+  if (rateActive && rateOk && rateUnits >= 40 && rateWpm) {
+    uint32_t ms = rateLastT - rateT0;
+    uint32_t m = (uint32_t)((uint64_t)ms * rateWpm * 1000 / ((uint64_t)rateUnits * 1200));
+    if (m >= 950 && m <= 1100) {        // anything else was not a clean run
+      cwRate = cwRateMeasured ? (uint16_t)((cwRate * 3 + m) / 4) : (uint16_t)m;
+      cwRateMeasured = true;
+      Log::printf("[FLEX] radio CW rate %u permille (%u units in %u ms at %u WPM), using %u\n",
+                  (unsigned)m, (unsigned)rateUnits, (unsigned)ms, rateWpm, cwRate);
+    }
+  }
+  rateActive = false;
+}
+
+// One "cwx sent=" report. Consecutive reports extend the run; each adds the
+// length of the character just finished.
+void rateSent(long idx) {
+  uint32_t now = millis();
+  uint8_t wpm = radioWpmVal ? radioWpmVal : cfgWpm;
+  bool next = rateActive && idx == rateLastIdx + 1 && now - rateLastT < 3000 &&
+              wpm == rateWpm;
+  if (!next) {
+    rateFinish();
+    rateActive = true; rateOk = true;
+    rateT0 = rateLastT = now; rateLastIdx = idx; rateUnits = 0; rateWpm = wpm;
+    return;
+  }
+  const IdxChar& e = idxText[idx & 0xFF];
+  uint8_t u = 0;
+  if (e.idx == idx) u = (e.c == ' ') ? 4 : Keyer::charUnits(e.c);
+  if (!u) rateOk = false;                // not text we queued, or no Morse
+  rateUnits += u;
+  rateLastT = now;
+  rateLastIdx = idx;
+}
+
 void onLine(const String& line) {
   if (line.length() < 2) return;
   char t = line[0];
@@ -287,6 +339,8 @@ void onLine(const String& line) {
         if (v > 0) {
           long last = v + (long)e.len - 1;
           if (last > queuedIdx) queuedIdx = last;
+          for (uint16_t i = 0; i < e.len && i < sizeof(e.text) - 1; i++)
+            idxText[(v + i) & 0xFF] = { v + (long)i, e.text[i] };
         }
         e.len = 0;
         break;
@@ -305,6 +359,8 @@ void onLine(const String& line) {
     if (body.startsWith("cwx ")) {
       String v;
       if (kv(body, "wpm", v) && v.toInt() > 0) radioWpmVal = (uint8_t)v.toInt();
+      if (kv(body, "sent", v)) rateSent(v.toInt());
+      if (body.indexOf("erase") > 0) rateActive = false;   // a cut run proves nothing
     }
 
     // Track whether there is a slice to key on at all. A radio with no
@@ -530,6 +586,7 @@ void setKeyVerb(const char* verb) {
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
 uint16_t    startLatencyMs() { return startLatency; }
+uint16_t    cwRatePermille() { return cwRate; }
 uint8_t     radioWpm() { return radioWpmVal; }
 bool        radioTransmitting() { return radioTx; }
 
@@ -727,6 +784,8 @@ void pumpKeying() {
 void poll() {
   if (!cfgEnabled || WiFi.status() != WL_CONNECTED) return;
   pumpKeying();
+  if (rateActive && millis() - rateLastT > 3000) rateFinish();
+  if (Keyer::monitorRate() != cwRate) Keyer::setMonitorRate(cwRate);
 
   static bool listening = false;
   if (!listening) {
@@ -804,7 +863,9 @@ void send(const char* text) {
   if (!connected() || !text || !*text) return;
   String out;
   for (const char* p = text; *p; p++) out += (*p == ' ') ? (char)0x7F : *p;
-  cwxSends[cwxSendNext] = { seq, (uint16_t)strlen(text) };   // seq sendCmd will use
+  cwxSends[cwxSendNext].seq = seq;                            // seq sendCmd will use
+  cwxSends[cwxSendNext].len = (uint16_t)strlen(text);
+  strlcpy(cwxSends[cwxSendNext].text, text, sizeof(cwxSends[cwxSendNext].text));
   cwxSendNext = (cwxSendNext + 1) % (sizeof(cwxSends) / sizeof(cwxSends[0]));
   sendCmd("cwx send " + out);
   // Only time a start, not a continuation.
@@ -828,6 +889,7 @@ void clear(const char* why) {
   sendCmd("cwx clear");
   queuedIdx = sentIdx = 0;
   busyUntil = 0;
+  rateActive = false;
 }
 
 void setWpm(uint8_t wpm) {

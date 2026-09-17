@@ -221,11 +221,27 @@ inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
 // must be ignored, so the sound matches the air. Same condition as
 // hookWanted()'s exclusion, by construction.
 inline bool monitorOnly() { return hookPaddleOnly && curIsAuto; }
-inline uint16_t markDit()  { return monitorOnly() ? tMarkDitP : tMarkDit; }
-inline uint16_t markDah()  { return monitorOnly() ? tMarkDahP : tMarkDah; }
-inline uint16_t gapElem()  { return monitorOnly() ? tGapElemP : tGapElem; }
-inline uint16_t gapChar()  { return monitorOnly() ? tGapCharP : tGapChar; }
-inline uint16_t gapWord()  { return monitorOnly() ? tGapWordP : tGapWord; }
+
+// The sidetone copy follows the radio's MEASURED rate, not the nominal one.
+// A Flex at "25 WPM" sends about 1.5 % slow (48.7 ms a unit, not 48.0,
+// measured 2026-09-17), and a copy at the exact rate drifts ahead through a
+// long message. The fraction of a millisecond is carried from element to
+// element, because rounding each one to whole ms would itself be a 1-2 %
+// rate error at these speeds.
+volatile uint16_t monPermille = 1000;
+uint32_t monCarryUs = 0;                 // keyer task only
+uint16_t monUnits(uint8_t n) {
+  uint32_t unitUs = 1200000UL / (cfgWpm ? cfgWpm : 20) * monPermille / 1000;
+  uint32_t us = unitUs * n + monCarryUs;
+  monCarryUs = us % 1000;
+  uint16_t ms = (uint16_t)(us / 1000);
+  return ms < 5 ? 5 : ms;
+}
+inline uint16_t markDit()  { return monitorOnly() ? monUnits(1) : tMarkDit; }
+inline uint16_t markDah()  { return monitorOnly() ? monUnits(3) : tMarkDah; }
+inline uint16_t gapElem()  { return monitorOnly() ? monUnits(1) : tGapElem; }
+inline uint16_t gapChar()  { return monitorOnly() ? monUnits(2) : tGapChar; }
+inline uint16_t gapWord()  { return monitorOnly() ? monUnits(4) : tGapWord; }
 
 // ── Low-level outputs ─────────────────────────────────────
 void toneOn()  { if (cfgSidetone) ledcWriteTone(PIN_SIDETONE, cfgToneHz); }
@@ -676,6 +692,17 @@ bool pttStuckWasCleared() {
   pttStuckCleared = false;
   return b;
 }
+
+uint8_t charUnits(char c) {
+  const char* pat = morseFor(toupper((unsigned char)c));
+  if (!pat || !*pat) return 0;
+  uint8_t u = 0, n = 0;
+  for (const char* q = pat; *q; q++, n++) u += (*q == '-') ? 3 : 1;
+  return u + (n - 1) + 3;
+}
+
+void     setMonitorRate(uint16_t permille) { monPermille = permille; }
+uint16_t monitorRate() { return monPermille; }
 
 void chirp(char c) {
   const char* pat = morseFor(toupper((unsigned char)c));

@@ -1688,6 +1688,23 @@ makes the keyer feel slow.
   own sidetone (current), or wire the keyer's KEY output into the Maestro's
   key jack on the local backend (hardware, not tried).
 
+- **2026-09-17 (16:00)** — **The sidetone copy of memories now follows the
+  radio's real CW rate.** Manoj: the keyer's sidetone drifted from the
+  Maestro's through a long memory. Measured from the radio's
+  `cwx sent=` timestamps across today's memories, the radio sends CWX
+  **1.3–2.1 % slow** (48.7–49.0 ms a unit at 25 WPM against 48.0; 55.2 at
+  22 WPM against 54.5), and the rate inside words matches the overall rate,
+  so it is not a longer word gap. `flex.cpp` now records which character sits
+  at each radio buffer index (from the `cwx send` reply) and times runs of
+  consecutive `sent=` reports of its own text at one speed with no clear. A
+  run of 40+ units updates `cwRate` (permille, smoothed 3:1, accepted
+  950–1100, exposed as `cwrate` in `/api/state`, not persisted).
+  `Keyer::setMonitorRate()` scales only monitor-only elements (buffered text
+  on a network backend) with a microsecond carry. Paddle timing and the
+  local backend are unchanged. On hardware: 1017 measured on the first play
+  of memory 1 and held on the second. Manoj: **in sync from 15 to 50 WPM; at
+  5–10 WPM it drifts towards the end of a message, usable.**
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -2456,6 +2473,16 @@ against exposing it beyond one.
       memories 1–6, STOP, TUNE). Open: where the jack goes, since a second
       3.5 mm jack beside PDL invites mis-plugging, and the enclosure needs
       a hole.
+
+15. **Sidetone rate at 5–10 WPM (2026-09-17).** The radio's CWX looks slow
+    by a fixed ~0.7 ms per unit (25 WPM: 48.7 vs 48.0; 22 WPM: 55.2 vs 54.5),
+    not by a percentage. `cwRate` is a single permille learned at whatever
+    speed ran last, so at 5–10 WPM it over-corrects and the copy drifts
+    towards the end of a long message. Options: model it as nominal unit +
+    fixed offset (fit ms-per-unit against 1200/WPM across speeds), or learn
+    one rate per speed. Measure at 5, 10 and 40 WPM first to confirm the
+    offset model. Also: `cwRate` and the start delay are re-learned after
+    every reboot, so the first long memory after boot still drifts.
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 
