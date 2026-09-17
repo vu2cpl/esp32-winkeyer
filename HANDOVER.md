@@ -1857,8 +1857,9 @@ makes the keyer feel slow.
     run still sets it directly. Rejected option (offered): learn only from
     runs of 150+ units.
   - Flashed. The reboot came back with **852 µs / 32 runs**, not the stale
-    872 / 7, which confirms the 19:35 save fix. The weighting itself is
-    **not yet verified on air.**
+    872 / 7, which confirms the 19:35 save fix. On air: 4 runs took it
+    852 → 809 µs. A 44-unit `5NN TU` measuring 1091 moved it only about
+    +13. Manoj: **"very close"**; it should settle nearer 750 with more CQs.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
