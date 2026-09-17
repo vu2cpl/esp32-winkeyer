@@ -1513,7 +1513,8 @@ makes the keyer feel slow.
   `Flex::guiClientHandle()`). It makes step 1 of open item 13 a single
   look, not a console read, which matters because the console is muted
   while RUMlogNG holds the port. Both envs build; the preview stub carries
-  the field. **Not yet flashed or seen on hardware.**
+  the field. Flashed and seen on hardware the same day: `""` at 5 s
+  uptime, then the Maestro's handle by 13 s, once the keyer had bound.
 
 ## Network placement (measured 2026-09-10)
 
@@ -1986,10 +1987,11 @@ against exposing it beyond one.
     radio still believes is down*.
 
     **Next session, in order.**
-    1. Compare `flex.guihandle` in `/api/state` (added later on 09-17;
-       needs this build flashed) with the Maestro's current handle
+    1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
+       09-17) with the Maestro's current handle
        (`sub client all` from any API session). It is the handle every
-       `cw key` goes out under. `""` means no GUI client was seen. The
+       `cw key` goes out under. `""` means no GUI client was seen yet (it
+       stays empty for the first ~10 s after boot). The
        value is NOT cleared when the radio session drops, only overwritten
        at the next bind, so right after a reconnect it can still show the
        old client's handle. The console's
