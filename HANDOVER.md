@@ -2189,6 +2189,26 @@ against exposing it beyond one.
     itself (its CWX/keyboard, or a paddle on the radio). If AetherSDR's own
     first CW also stalls, it is the radio or AetherSDR.
 
+    **(d) 14:29: AetherSDR's own CW works straight after its restart,
+    with the keyer connected but NOT bound** (`flexbind off`). AetherSDR
+    reconnected as `0x1A141CB0` and sent CWX itself: `cwx sent=1374`,
+    `1375`, `1376`, three transmissions of `SWCW`, **4.47 W each**, on the
+    first attempt. So a new GUI client is not wedged by itself. What
+    differs from (c), where the first memory stalled, is that the text came
+    from the keyer, a bound non-GUI client, not from the GUI client.
+    Details from the same record:
+    - On connect AetherSDR resets CWX (`cwx wpm=5 break_in_delay=0`, then
+      back to 25/5). The keyer answered with `cwx wpm 25` within 5 ms, and
+      AetherSDR's CWX still worked, so that race is not the wedge.
+    - With bind off the keyer still captured a `guiHandle`, but the OLD
+      client's (`0x7D62C96C`, present when the keyer reconnected), and kept
+      it after that client disconnected. That is failure A again.
+    - `flexbind` persists in NVS. **Restore it to `on`** after testing.
+    Next test (e): bind off, keyer's handle refreshed, then a keyer memory
+    first. If it works, `client bind` is what wedges the radio. If it is
+    refused, binding is required and something else about a bound client's
+    first CWX wedges it.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
