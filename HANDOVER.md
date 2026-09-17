@@ -2136,6 +2136,15 @@ against exposing it beyond one.
     then `cwx clear` alone (STOP, which does not transmit), then a paddle
     key. If that works, the fix is to send `cwx clear` once bound.
 
+    **Rebind, STOP, then paddle first works (14:19), but it is not yet
+    conclusive.** Paddle `SW,SWCW`, 4.47 W, all 41 replies 0. There was no
+    control: the radio was already un-wedged by the 14:18 memory, and
+    AetherSDR had not been restarted. The 14:10 dead case followed an
+    AetherSDR restart as well as a rebind. So the priming may belong to
+    the GUI client, not the keyer session. Controls still needed:
+    (a) rebind then paddle first, no STOP; (b) restart AetherSDR, rebind,
+    STOP, then paddle.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
