@@ -2437,6 +2437,26 @@ against exposing it beyond one.
     README, `lines.log`, `meters.log`, `transmissions.txt` and
     `rumlog-to-radio.pcap`, plus the decoded capture.
 
+14. **TODO (2026-09-17): TS-990-style 8-key memory keypad.** Manoj has a
+    home-made 12-button keypad built for his TS-990's KEYPAD jack, and wants
+    it to play this keyer's memories. Nothing built yet.
+    - **Interface** (Kenwood TS-990S In-depth Manual p. 86, Fig. 134):
+      3.5 mm stereo plug, **tip = EXTP2, ring = EXTP1, sleeve = GND**. Two
+      series ladders of 4 keys each (1.5k, 1.5k, 2.2k, 4.7k). A key shorts
+      its chain point to GND: 1.5k / 3.0k / 5.2k / 9.9k, open when idle. The
+      radio pulls each line up to 3.3 V and reads it on an ADC. Only 8 of
+      the box's 12 keys are wired (8 resistors, 3-core cable).
+    - **Keyer side (proposed):** tip → GPIO 36, ring → GPIO 39 (input-only,
+      ADC1, no internal pull-ups), each with **4.7 kΩ to 3.3 V** and 100 nF
+      to GND. Sleeve → GND. Expected 0.80 / 1.29 / 1.73 / 2.24 V, open 3.3 V
+      (≥ 0.45 V apart).
+    - **Plan:** (1) firmware reads both channels with debounce and exposes
+      the raw values in `/api/state`; (2) Manoj presses each key to map
+      key → ladder/level (no meter needed); (3) assign actions (default idea:
+      memories 1–6, STOP, TUNE). Open: where the jack goes, since a second
+      3.5 mm jack beside PDL invites mis-plugging, and the enclosure needs
+      a hole.
+
 ## Conventions (see ~/.claude/CLAUDE.md)
 
 - **CDP** — Commit, Document, Push together on every substantive change.
