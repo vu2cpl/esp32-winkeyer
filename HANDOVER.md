@@ -1646,12 +1646,23 @@ makes the keyer feel slow.
   - **Lesson:** keep `flex_meters_watch.py` running whenever testing. Twice
     today a cause was inferred from `SW,SWCW` without a meter, and it was
     wrong both times.
-  - **Scrolling CW display: built, flashed, and it looked like junk on the
-    OLED** (Manoj, 15:07). It is **stashed** (`git stash list`: "scrolling
-    CW display…"), not committed. The WPM moved into the header and the
-    middle band showed the sent CW in `u8g2_font_10x20_tf`, newest on the
-    right. Still to get: what "junk" was (garbled pixels, or wrong text), a
-    photo if possible.
+  - **Scrolling CW display:** the first layout (WPM moved into the
+    header, CW in the middle band) looked like junk to Manoj and was
+    dropped. The second layout was kept; see What changed 15:30.
+
+- **2026-09-17 (15:30)** — **The sent CW scrolls on the display.** Manoj's
+  layout: the OLED's top half is unchanged (header, big WPM, KEY box). While
+  sending, the bottom two lines (backend/host and address) show the CW in
+  `u8g2_font_10x20_tf` (12 characters), newest on the right. They return 3 s
+  after the last character (`TXT_RECENT_MS`), or once keying and PTT are
+  both idle. 20x4 row 3 and 16x2 row 2 do the same with 20/16 characters.
+  Source: a 32-character ring in `display.cpp` fed by `Display::pushText()`
+  from `winkeyer.cpp`, from the paddle decoder (`decodedRead`) and from
+  buffered text as the local keyer finishes each character (`sentRead`, the
+  sidetone copy, so on the Flex it is held back to match the air). It is
+  written on core 1 and read by the display task on core 0 under a portMUX,
+  and repeated spaces collapse to one. Both envs build. Flashed; Manoj:
+  "new display is fine, will keep it".
 
 ## Network placement (measured 2026-09-10)
 

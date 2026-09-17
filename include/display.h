@@ -48,4 +48,9 @@ uint8_t scan();
 bool        setController(const char* name);
 const char* controller();
 
+// One character just sent, from the paddle decoder or from buffered text
+// (memories, typed text, a logger) as the keyer finishes it. Feeds the
+// scrolling CW line. Safe to call from loop(); the panel is drawn elsewhere.
+void pushText(char c);
+
 }  // namespace Display

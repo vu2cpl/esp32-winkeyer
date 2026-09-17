@@ -213,7 +213,7 @@ won; a 100 kHz fallback is your cue to add pull-ups or shorten leads.
 
 | Type | Address | Layout |
 |---|---|---|
-| OLED SH1106 128x64 (1.3") | 0x3C / 0x3D | large WPM digits, activity box |
+| OLED SH1106 128x64 (1.3") | 0x3C / 0x3D | large WPM digits, activity box, sent CW scrolling |
 | OLED SSD1306 128x64 (0.96") | 0x3C / 0x3D | as above |
 | LCD 20x4 via PCF8574 backpack | 0x27 / 0x3F | four text rows |
 | LCD 16x2 via PCF8574 backpack | 0x27 / 0x3F | speed + one status row |
@@ -244,7 +244,26 @@ FLX1   B  HOST+NET             backend+radio, iambic mode, host links
 192.168.1.20                   address, or "join <setup AP>"
 ```
 
-**LCD 20x4** carries the same fields as text:
+**While sending, the bottom two lines become the CW itself**, in large
+letters (12 characters), newest on the right and scrolling left: paddle
+and memories, typed text and a logger's text alike. They go back to the
+backend line and the address 3 s after the last character.
+
+```
+WinKeyer            -52dBm
+--------------------------
+ 28 WPM  POT        [ KEY ]
+--------------------------
+    CQ CQ VU2CPL               what is being sent, large
+```
+
+Paddle text is the keyer's own decode of your sending, so an odd letter
+there means the decoder read your spacing differently, not a fault in the
+radio. Buffered text appears as the keyer's sidetone copy finishes each
+character, which on the Flex is held back to match the air.
+
+**LCD 20x4** carries the same fields as text. Row 3 shows the last 20
+characters sent while sending, and the address otherwise:
 
 ```
 28 WPM POT   KEY
@@ -254,7 +273,8 @@ FLX1   B HOST+NET
 ```
 
 **LCD 16x2** has room for two rows, so the iambic mode letter is dropped —
-it changes once a year, whereas the live radio can change between overs:
+it changes once a year, whereas the live radio can change between overs.
+Row 2 shows the last 16 characters sent while sending:
 
 ```
 28WPM POT FLX1

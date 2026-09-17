@@ -75,6 +75,36 @@ volatile bool needReinit   = false;
 // behind it, and sits silent on the bus while idle.
 uint32_t lastSig = 0xFFFFFFFF;
 
+// ── Sent CW, newest last ─────────────────────────────────
+// Written from loop() on core 1, read by the display task on core 0.
+const uint8_t TXT_N = 32;
+char          txt[TXT_N];
+uint8_t       txtHead = 0;             // next slot to write
+uint8_t       txtLen  = 0;
+uint32_t      txtSeq  = 0;             // bumps on every character: forces a redraw
+uint32_t      txtLastMs = 0;
+portMUX_TYPE  txtMux = portMUX_INITIALIZER_UNLOCKED;
+// The CW shares its lines with the backend and the address, which is what
+// you need to reach the web page, so it shows only while sending: keying or
+// PTT now, or a character in the last few seconds (so it does not flick
+// back between words).
+const uint32_t TXT_RECENT_MS = 3000;
+
+// The newest n characters (fewer if not sent yet), NUL-terminated.
+void txtNewest(char* out, uint8_t n) {
+  portENTER_CRITICAL(&txtMux);
+  uint8_t k = txtLen < n ? txtLen : n;
+  for (uint8_t i = 0; i < k; i++)
+    out[i] = txt[(txtHead + TXT_N - k + i) % TXT_N];
+  out[k] = 0;
+  portEXIT_CRITICAL(&txtMux);
+}
+bool txtSending() {
+  if (!txtLen) return false;
+  return Keyer::tuning() || Keyer::pttIsOn() || Keyer::msSinceKey() < 150 ||
+         millis() - txtLastMs < TXT_RECENT_MS;
+}
+
 uint32_t stateSig() {
   uint32_t h = 2166136261u;
   auto mix = [&](uint32_t v) { h = (h ^ v) * 16777619u; };
@@ -99,6 +129,8 @@ uint32_t stateSig() {
   mix((uint32_t)WiFi.status());
   mix((uint32_t)WiFi.localIP());
   mix((uint32_t)((int)WiFi.RSSI() / 3));   // bucketed: RSSI jitters constantly
+  mix(txtSeq);
+  mix(txtSending());
   return h;
 }
 
@@ -248,7 +280,9 @@ void drawMainLcd() {
              WinKeyer::hostOpen() ? "HOST" : "----",
              Net::clientConnected() ? "+NET" : "");
     lcdLine(1, l);
-    if (WiFi.status() == WL_CONNECTED)
+    if (txtSending())
+      txtNewest(l, lcdCols);
+    else if (WiFi.status() == WL_CONNECTED)
       snprintf(l, sizeof l, "%s", WiFi.localIP().toString().c_str());
     else
       snprintf(l, sizeof l, "join %s", WIFI_AP_NAME);
@@ -276,7 +310,9 @@ void drawMainLcd() {
     // A slice warning alternates with the address rather than replacing it.
     char warn[24];
     Flex::sliceWarning(warn, sizeof warn, Flex::WARN_TINY);
-    if (*act)
+    if (txtSending())
+      txtNewest(l, lcdCols);
+    else if (*act)
       snprintf(l, sizeof l, "%s", act);
     else if (*warn && lcdPhase())
       snprintf(l, sizeof l, "%s", warn);
@@ -349,27 +385,36 @@ void drawMain() {
   }
   oled->drawHLine(0, 40, 128);
 
-  // ── backend + host links ──
-  const char* be = "LOCAL";
-  if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
-    // One glyph carries the whole Flex story: '?' not connected,
-    // '!' connected but the radio has no CW slice to key.
-    be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
-  }
-  char bere[10];
-  snprintf(bere, sizeof bere, "%s%s", be, radioTag());
-  snprintf(buf, sizeof buf, "%-6s %c %s%s", bere,
-           Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
-           WinKeyer::hostOpen() ? "HOST" : "----",
-           Net::clientConnected() ? "+NET" : "");
-  oled->drawStr(0, 51, buf);
+  // ── bottom band: the CW being sent while sending, else backend + address ──
+  // Paddle and buffered text alike, large, newest on the right.
+  if (txtSending()) {
+    char line[16];
+    txtNewest(line, 12);                  // 10x20 is 10 px a glyph: 12 fit
+    oled->setFont(u8g2_font_10x20_tf);
+    oled->drawStr(128 - 10 * (int)strlen(line), 60, line);
+    oled->setFont(u8g2_font_5x7_tf);
+  } else {
+    const char* be = "LOCAL";
+    if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
+      // One glyph carries the whole Flex story: '?' not connected,
+      // '!' connected but the radio has no CW slice to key.
+      be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
+    }
+    char bere[10];
+    snprintf(bere, sizeof bere, "%s%s", be, radioTag());
+    snprintf(buf, sizeof buf, "%-6s %c %s%s", bere,
+             Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
+             WinKeyer::hostOpen() ? "HOST" : "----",
+             Net::clientConnected() ? "+NET" : "");
+    oled->drawStr(0, 51, buf);
 
-  // ── address, or what to do about not having one ──
-  if (WiFi.status() == WL_CONNECTED)
-    snprintf(buf, sizeof buf, "%s", WiFi.localIP().toString().c_str());
-  else
-    snprintf(buf, sizeof buf, "join %s", WIFI_AP_NAME);
-  oled->drawStr(0, 62, buf);
+    // ── address, or what to do about not having one ──
+    if (WiFi.status() == WL_CONNECTED)
+      snprintf(buf, sizeof buf, "%s", WiFi.localIP().toString().c_str());
+    else
+      snprintf(buf, sizeof buf, "join %s", WIFI_AP_NAME);
+    oled->drawStr(0, 62, buf);
+  }
 
   oled->sendBuffer();
 }
@@ -516,6 +561,22 @@ const char* controller() {
 
 bool    present()  { return i2cAddr != 0; }
 uint8_t address()  { return i2cAddr; }
+void pushText(char c) {
+  c = toupper((unsigned char)c);
+  if (c < 0x20 || c > 0x7E) return;
+  portENTER_CRITICAL(&txtMux);
+  // One space between words, however the two sources space them.
+  const char last = txtLen ? txt[(txtHead + TXT_N - 1) % TXT_N] : ' ';
+  if (!(c == ' ' && last == ' ')) {
+    txt[txtHead] = c;
+    txtHead = (txtHead + 1) % TXT_N;
+    if (txtLen < TXT_N) txtLen++;
+    txtSeq++;
+  }
+  txtLastMs = millis();
+  portEXIT_CRITICAL(&txtMux);
+}
+
 void    setEnabled(bool en) {
   cfgEnabled = en;      // the task adopts, so this never blocks the caller
 }

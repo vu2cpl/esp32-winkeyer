@@ -17,6 +17,7 @@
 // ============================================================
 
 #include "winkeyer.h"
+#include "display.h"
 #include "keyer.h"
 #include "flex.h"
 #include "settings.h"
@@ -649,6 +650,7 @@ void pumpEcho() {
     // for it) is dropped when a later one matches.
     char c;
     while (Keyer::sentRead(c)) {
+      Display::pushText(c);
       const uint16_t N = sizeof(echoQ);
       for (uint16_t i = 0; i < echoCount(); i++) {
         if (echoQ[(echoHead + i) % N] != c) continue;
@@ -660,7 +662,8 @@ void pumpEcho() {
     }
     return;
   }
-  { char c; while (Keyer::sentRead(c)) {} }  // monitor copy: the radio's echo rules
+  // Monitor copy: the radio's echo rules the host, but the display shows it.
+  { char c; while (Keyer::sentRead(c)) Display::pushText(c); }
   if (!serialEcho) return;
   int outstanding = (int)echoCount() - Flex::pending();
   while (outstanding-- > 0 && echoCount() > 0)
@@ -673,8 +676,10 @@ void pumpEcho() {
 void pumpPaddleEcho() {
   char c;
   bool on = (paddleEchoCfg == 2) ? paddleEchoBit : (paddleEchoCfg == 1);
-  while (Keyer::decodedRead(c))
+  while (Keyer::decodedRead(c)) {
+    Display::pushText(c);
     if (on && hostIsOpen) emit((uint8_t)c);
+  }
 }
 
 void poll() {
