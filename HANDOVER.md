@@ -2169,6 +2169,26 @@ against exposing it beyond one.
     client starts wedged whatever the keyer sends. If it works, the first
     `cw key` to a new client is what wedges it.
 
+    **(c) 14:26: a new GUI client starts wedged, even with a memory
+    first.** AetherSDR was restarted (`0x7D62C96C`), the keyer re-bound
+    (handle checked), the record emptied, and a memory played with no
+    paddle key and no STOP. The keyer sent only
+    `cwx send CQCQVU2CPLVU2CPLK` (`R|0|1353`). The radio showed
+    `TRANSMITTING source=SWCW` under AetherSDR for **17 s at 0.00 W**, with
+    no `cwx sent=` at all. The keyer's own backstop then sent
+    `cwx clear` + `cw key 0` + `cwx clear`, the radio reported
+    `cwx erase=1354,1373` then `cwx sent=1353`, and it released. Manoj
+    heard this as **PTT stuck ~5 s after the memory**: local sidetone
+    finished at ~12 s, and the radio stayed keyed until the backstop fired.
+    That is the backstop working, not a new fault. So after a new GUI
+    client connects, the radio's CW generator is wedged before the keyer
+    has sent a single `cw key`. Nothing the keyer sends first avoids it,
+    and the first CWX has to be cleared to release it. **Decisive open
+    question: is it the keyer at all?** Restart AetherSDR with the keyer's
+    Flex backend off (or the keyer unplugged) and send CW from AetherSDR
+    itself (its CWX/keyboard, or a paddle on the radio). If AetherSDR's own
+    first CW also stalls, it is the radio or AetherSDR.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
