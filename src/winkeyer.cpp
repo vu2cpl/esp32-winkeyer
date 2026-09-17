@@ -443,7 +443,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
-      if (backend == WK_BACKEND_FLEX) { Flex::clear(); Keyer::clearBuffer(); echoReset(); monReset(); }
+      if (backend == WK_BACKEND_FLEX) { Flex::clear("clear: host 0x0A clear buffer"); Keyer::clearBuffer(); echoReset(); monReset(); }
       break;
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
@@ -686,7 +686,11 @@ void poll() {
     bufReset();
     flexLen = 0;
     if (backend == WK_BACKEND_FLEX && (Flex::pending() > 0 || echoCount())) {
-      Flex::clear(); monReset();
+      char why[48];
+      char c = Keyer::paddleSessionCause();
+      snprintf(why, sizeof why, "clear: paddle break-in (%s)",
+               c == 'd' ? "dit" : c == 'a' ? "dah" : c == 'e' ? "element" : "?");
+      Flex::clear(why); monReset();
     }
     echoReset();
   }
@@ -699,11 +703,11 @@ void poll() {
   emitPot(false);
 }
 
-void abort() {
+void abort(const char* why) {
   bufReset();
   flexLen = 0;
   Keyer::clearBuffer();
-  if (backend == WK_BACKEND_FLEX) { Flex::clear(); echoReset(); monReset(); }
+  if (backend == WK_BACKEND_FLEX) { Flex::clear(why); echoReset(); monReset(); }
 }
 
 void sendText(const char* text) {

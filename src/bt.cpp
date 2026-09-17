@@ -198,7 +198,7 @@ void handleKey(const KeyEv& e) {
     return;
   }
   switch (e.usage) {
-    case 0x29: WinKeyer::abort(); Keyer::tune(false); return;   // Esc
+    case 0x29: WinKeyer::abort("clear: Bluetooth keyboard Esc"); Keyer::tune(false); return;   // Esc
     case 0x4B: case 0x52: stepWpm(+1); return;                   // PgUp, Up
     case 0x4E: case 0x51: stepWpm(-1); return;                   // PgDn, Down
   }

@@ -46,7 +46,8 @@ void sendText(const char* text);
 
 // Stop everything queued and playing, here and on the radio — the page's
 // STOP. Same internals as the host's clear-buffer command (0x0A).
-void abort();
+// Stop everything buffered. `why` is recorded in /api/flextrace.
+void abort(const char* why);
 void setMonitor(bool on);
 bool monitor();
 

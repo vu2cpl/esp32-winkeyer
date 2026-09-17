@@ -136,6 +136,10 @@ volatile bool  flagPttHold  = false;
 // paddle hang time runs out (one word space plus a dit after the last
 // element, the K1EL default), then down. Measured on a genuine WK3.1.
 volatile bool  paddleSess   = false;
+// What opened the current paddle session: 'd' dit contact, 'a' dah contact,
+// 'e' a paddle element still running. For the break-in cause in the Flex
+// trace, where a glitch on a paddle line and a real paddle look the same.
+volatile char  paddleSessCause = 0;
 uint32_t       paddleIdleMs = 0;
 
 // ── Keyer-task state ──
@@ -444,6 +448,7 @@ void keyerTask(void*) {
     // Paddle session for WinKeyer BREAKIN. A paddle element in progress or
     // in its gap counts as activity; tune and buffered text do not.
     if (dit || dah || (!curIsAuto && (state == ST_KEYDOWN || state == ST_GAP))) {
+      if (!paddleSess) paddleSessCause = dit ? 'd' : dah ? 'a' : 'e';
       paddleSess = true;
       paddleIdleMs = 0;
     } else if (paddleSess && ++paddleIdleMs >= (uint32_t)tGapElemP * 8) {
@@ -703,6 +708,7 @@ bool decodedRead(char& c) {
 }
 
 bool   paddleSession() { return paddleSess; }
+char   paddleSessionCause() { return paddleSessCause; }
 int8_t potStep()       { return cfgPotEn ? potStepV : -1; }
 
 }  // namespace Keyer

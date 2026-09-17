@@ -609,7 +609,7 @@ void handleSend() {
   // too, not just the local one, and drop tune — the button is the only way
   // out of any of them now.
   if (server.hasArg("stop")) {
-    WinKeyer::abort();
+    WinKeyer::abort("clear: web STOP");
     Keyer::tune(false);
     Log::println("[WEB] stop");
     server.send(200, "text/plain", "stopped");

@@ -391,7 +391,8 @@ radio's replies (`R<seq>|<code>|`, so a refused command is visible), its
 messages, and its interlock, cwx and client statuses. Slice statuses are
 left out because they flood the ring when the radio is tuned. Lines are
 cut at 119 characters, so the end of a long interlock status is lost.
-`?clear=1` empties it. It is streamed in 1 KB chunks. This is the only way
+`?clear=1` empties it. It is streamed in 1 KB chunks. Since 14:55 each
+`cwx clear` is preceded by a `# clear: <cause>` line. This is the only way
 to see the keyer↔radio traffic: the Mac cannot sniff it (item 13), and the
 console is muted during a logger session.
 
@@ -1565,6 +1566,23 @@ makes the keyer feel slow.
   or a paddle break-in. The replays 4.8 s and 26 s later ran in full. Not
   yet exercised: the new NVS default on a keyer that never saved `flexbind`
   (Manoj's board had it saved as off).
+
+- **2026-09-17 (14:55)** — **Each `cwx clear` now records its cause in
+  `/api/flextrace`.** Prompted by the first memory after the Maestro
+  takeover being cut short 233 ms in by a keyer-sent `cwx clear`. Manoj did
+  not double-click or touch the paddle, and no host was attached. With the
+  stuck-key safety releases ruled out (both send a key-up first, and the
+  record has none), that leaves the web STOP or a paddle break-in. A 3 ms
+  contact is enough for a break-in (`DEBOUNCE_TICKS = 3`), so RF getting
+  onto a paddle line as the radio keys is the leading suspect. Unproven.
+  `Flex::clear(why)` and `WinKeyer::abort(why)` now take a reason, written
+  as a `#` line: `web STOP`, `paddle break-in (dit|dah|element)` (from the new
+  `Keyer::paddleSessionCause()`), `host 0x0A clear buffer`,
+  `Bluetooth keyboard Esc`, and the three backstops in `flex.cpp`. Both envs
+  build. Flashed; a web STOP read back as `# clear: web STOP`. **Next time a
+  memory is cut short, read the trace before anything else.** If it says
+  paddle break-in with nobody on the paddle, try a longer debounce (3 → 8 ms)
+  or look at RF on the paddle lead.
 
 ## Network placement (measured 2026-09-10)
 

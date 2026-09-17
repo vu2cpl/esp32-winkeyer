@@ -923,7 +923,11 @@ backend.** It holds the last 128 lines, millisecond-stamped: `>` is every
 command the keyer sent (`xmit`, `cw key` with its `time`, `index` and
 `client_handle`, `cwx …`), and `<` is the radio's replies, messages and
 interlock/cwx/client statuses. A reply other than `0` or `50001000` means
-the radio refused the command. `?clear=1` empties it. Read it when the radio
+the radio refused the command. Every `cwx clear` is preceded by a `#` line
+naming what asked for it (`web STOP`, `paddle break-in (dit|dah|element)`,
+`host 0x0A clear buffer`, `Bluetooth keyboard Esc`, or one of the keyer's own
+backstops), so a message cut short can be traced to its cause. `?clear=1`
+empties it. Read it when the radio
 keys up but sends nothing: that traffic goes over WiFi straight to the
 radio, where no other machine can watch it.
 

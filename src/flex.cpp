@@ -569,7 +569,7 @@ String guiClientHandle() { return guiHandle; }
 void traceDump(Print& out) {
   uint16_t n = ftTotal < FT_N ? (uint16_t)ftTotal : FT_N;
   uint16_t i = (ftHead + FT_N - n) % FT_N;
-  out.printf("# total %lu, showing %u, now %lu ms, > keyer to radio, < radio to keyer\n",
+  out.printf("# total %lu, showing %u, now %lu ms, > keyer to radio, < radio to keyer, # why\n",
              (unsigned long)ftTotal, n, (unsigned long)millis());
   for (uint16_t k = 0; k < n; k++, i = (i + 1) % FT_N)
     out.printf("%lu %c %s\n", (unsigned long)ftrace[i].ms, ftrace[i].dir,
@@ -678,6 +678,7 @@ void pumpKeying() {
       xmitOn = false;
     }
     if (stuck) {
+      ftAdd('#', "clear: forced release, no key event for 5 s");
       sendCmd("cwx clear");   // and drop anything the radio never sent
       queuedIdx = sentIdx = 0;
       busyUntil = 0;
@@ -713,6 +714,7 @@ void pumpKeying() {
       (!lastCwxMs  || millis() - lastCwxMs  > 5000) &&
       (!lastKeyMs || millis() - lastKeyMs > 5000)) {
     forcedThisTx = true;
+    ftAdd('#', "clear: radio transmitting CW with the keyer idle");
     sendKeyUp();
     sendCmd("cwx clear");
     queuedIdx = sentIdx = 0;
@@ -818,8 +820,9 @@ void send(const char* text) {
   busyUntil = millis() + estimateMs(strlen(text)) + 5000;
 }
 
-void clear() {
+void clear(const char* why) {
   if (!connected()) return;
+  ftAdd('#', why);
   clearSeq = seq;              // anything already sent is now stale
   for (auto& e : cwxSends) e.len = 0;
   sendCmd("cwx clear");
@@ -849,6 +852,7 @@ int pending() {
       (!lastCwxMs || millis() - lastCwxMs > 5000)) {
     Log::println("[FLEX] no progress from radio — clearing pending "
                    "(slice not in CW mode? another client transmitting?)");
+    ftAdd('#', "clear: no progress from radio");
     sendCmd("cwx clear");   // the radio can sit in TX on an unsent buffer
     queuedIdx = sentIdx = 0;
     busyUntil = 0;

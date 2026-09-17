@@ -112,7 +112,9 @@ String  scanError();                     // "" unless the sweep gave up
 uint8_t scanHits(ScanHit* out, uint8_t max);
 
 void send(const char* text);   // queue text for transmission (cwx send)
-void clear();                  // cwx clear
+// cwx clear. `why` goes into /api/flextrace as a "#" line just before it, so
+// a message cut short can be traced to what stopped it.
+void clear(const char* why);
 void setWpm(uint8_t wpm);      // cwx wpm
 uint8_t radioWpm();            // cwx speed the RADIO last reported, 0 = unknown
 bool radioTransmitting();      // interlock state=TRANSMITTING, any source

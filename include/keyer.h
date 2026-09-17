@@ -111,6 +111,8 @@ void setHookPaddleOnly(bool on);
 // hang time (one word space + a dit) has passed. Drives WinKeyer BREAKIN,
 // which is a level for the whole session, not a pulse.
 bool   paddleSession();
+// What opened the paddle session: 'd' dit, 'a' dah, 'e' paddle element.
+char   paddleSessionCause();
 // The speed pot's step above its minimum (0..range), or -1 when no pot is
 // enabled. What a WinKeyer pot byte reports — the knob, not the speed.
 int8_t potStep();
