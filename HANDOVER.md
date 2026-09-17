@@ -2126,6 +2126,16 @@ against exposing it beyond one.
     it, not the connect. Test: rebind, then play a memory **before** any
     paddle key.
 
+    **Rebind then memory FIRST works (14:18).** After a rebind, the first
+    thing sent was a memory. It ran normally: `cwx sent=1332…`, one per
+    character, 13.5 s, 4.47 W. The record was emptied after the rebind, so
+    the connect lines are not in it and the rebind is from Manoj's report.
+    Compare 14:10, where a rebind followed by a paddle key first was dead.
+    So the connect sequence does not wedge the radio. **The first `cw key`
+    of a fresh session does**, unless CWX has run first. Next test: rebind,
+    then `cwx clear` alone (STOP, which does not transmit), then a paddle
+    key. If that works, the fix is to send `cwx clear` once bound.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
