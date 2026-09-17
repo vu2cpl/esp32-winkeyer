@@ -1880,8 +1880,10 @@ makes the keyer feel slow.
       NVS `monextra` 0–1000 (default 0), `/monextra N`, `monextra` in
       `/api/state`, and a `+ [ ] ms` box in the Sidetone delay row that is
       greyed out unless auto is ticked. Both envs build and it is flashed;
-      1001 is rejected; the page row renders. Manoj was still on manual
-      245 at the flash, so auto + extra is **not yet tried by ear.**
+      1001 is rejected; the page row renders. **Tuned by ear: auto + 140**
+      (measured 102 at the time, 242 ms applied) "sounds better" than
+      manual 245. Manoj will keep fine-tuning the extra as network delay
+      changes.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
