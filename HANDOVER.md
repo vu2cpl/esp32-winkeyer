@@ -2094,6 +2094,23 @@ against exposing it beyond one.
     (13:40, after a reboot), plus this morning's first memory after a
     paddle key stalling at 0 W. That one is not explained by the handle.
 
+    **Failure B measured, 14:10–14:13 (handle correct, radio still silent).**
+    After a rebind the keyer sent `cw key` under AetherSDR's current handle
+    `0x2311E20D`. The radio answered every one with 0 and showed
+    `TRANSMITTING source=SW,SWCW`, and the meter watcher read **0.00 W on 5
+    of 5 paddle keys** (RF power 5, `tx_slice_mode=CW`). The record is
+    identical to the working 14:08 one apart from the `time`/`index`
+    values. A memory then showed this morning's freeze exactly: `cwx send`
+    accepted (`R|0|1269`), `TRANSMITTING source=SWCW` at 0 W, and **no
+    `cwx sent=` for 8 s** (Manoj heard one dot of sidetone and stopped
+    it). Only after `cwx clear` did the radio report `cwx erase=1270,1310`
+    and then `cwx sent=1269`. So in failure B the radio's CW generator is
+    wedged for both inputs, paddle `cw key` and CWX text, and `cwx clear`
+    is the only thing seen to un-wedge it (not every time). What wedges it
+    is unknown. Seen after a keyer reboot (13:40) and after a rebind
+    (14:10). Traces: `flextrace-1411-paddle-dead-metered.txt`,
+    `flextrace-1413-memory-frozen.txt`, `meters-1411.log`, `lines-1411.log`.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
