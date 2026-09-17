@@ -21,7 +21,7 @@ as a behavioural reference; the implementation here is original.
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600. **Fixed 2026-09-17:** CW went out at 0 W after a GUI client (SmartSDR/Maestro/AetherSDR) restarted or changed; the keyer now follows the GUI client and no longer sends `client bind` |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
 | Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
-| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
+| OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware; sent CW scrolls on the bottom band while sending (approved on hardware 2026-09-17) |
 | HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
 | Settings web page at `winkeyer.local` | working; one screen without scrolling from ~880x1150 upwards |
 | SEND / STOP as one button on the page | working; per control — text, tune, each memory, FSK |
@@ -247,7 +247,10 @@ FLX1   B  HOST+NET             backend+radio, iambic mode, host links
 **While sending, the bottom two lines become the CW itself**, in large
 letters (12 characters), newest on the right and scrolling left: paddle
 and memories, typed text and a logger's text alike. They go back to the
-backend line and the address 3 s after the last character.
+backend line and the address once sending has stopped: no key-down in the
+last 150 ms, no tune carrier, PTT off, and 3 s since the last character.
+PTT counts, so on a long PTT tail the text stays up until the tail ends.
+The LCDs switch back on the same rule.
 
 ```
 WinKeyer            -52dBm
