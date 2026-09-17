@@ -21,6 +21,10 @@ hardware.
     namespace `HostLink`.
   - The enclosure is `enclosure/vukeyer-case.scad`. OLED/LCD titles and
     the web page say VUKEYER.
+  - Diagnostics from this session are now in `tools/`: `wk-open-timing.py`,
+    `wk-trace-view.py`, `flex-trace-record.py` and `cw-runs.py`. Pass the
+    keyer as `KEYER=<ip>` (default `vukeyer.local`); no shack IPs are in
+    the repo. README "Tools" explains them.
   - Unchanged on purpose: wording that describes the **K1EL WinKeyer
     protocol** (loggers still pick "WinKeyer"), the `WK_` constants, and
     the K1EL / K3NG credits.

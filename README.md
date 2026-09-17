@@ -817,7 +817,25 @@ buffered text.
 ./tools/boot-listen.py /dev/cu.usbserial-0001        # is it boot-looping?
 ./tools/ptt-check.py --ip <ip>                       # PTT sequencing + every STOP
 ./tools/host-watch.py --ip <ip>                      # what is a logger changing?
+KEYER=<ip> ./tools/wk-trace-view.py                  # logger bytes, open floods folded
+KEYER=<ip> ./tools/wk-open-timing.py                 # time the logger open handshake
+KEYER=<ip> ./tools/flex-trace-record.py out.log      # record radio trace + CW table
+./tools/cw-runs.py out.log                           # time each CW run in a recording
 ```
+
+**`wk-open-timing.py` answers "is the keyer slow to connect?"** It opens
+the USB port as a logger does (1200 8N2), times one host-open at a time,
+then floods opens without waiting and measures how long the backlog takes
+to drain. Close the logger's port first. On 2026-09-17 it showed the keyer
+answers within ~8 ms, and that a flood of 5224 opens takes 95.7 s to drain
+at 1200 baud: the slow RUMlogNG open is a backlog, not the keyer.
+
+**`flex-trace-record.py` + `cw-runs.py` check the sidetone timing
+learner.** Record while operating, then `cw-runs.py` splits the radio's
+`cwx sent=` reports into runs the same way the firmware does and prints
+each run's µs-per-unit. Compare those with the table steps in the
+recording. That is how short typed words were found to pull the 25 WPM
+entry up.
 
 **`ptt-check.py` needs no paddle, no logger and no radio.** It drives the
 keyer through its own API on the local backend and polls `/api/state` at
