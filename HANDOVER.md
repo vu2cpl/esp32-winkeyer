@@ -2145,6 +2145,17 @@ against exposing it beyond one.
     (a) rebind then paddle first, no STOP; (b) restart AetherSDR, rebind,
     STOP, then paddle.
 
+    **Controls, 14:21–14:22.** (a) Rebind, then paddle first, no STOP:
+    **worked** (14:21:22, 4.47 W). A keyer reconnect alone does not wedge
+    the radio. (b) Restart AetherSDR, rebind, STOP, paddle: 0 W on 3 keys,
+    but **the test was invalid**. The keyer still held the old handle
+    `0x2311E20D` against AetherSDR's new `0x0E43A5E8`, and the radio showed
+    `SW` only, which is failure A. Most likely the rebind ran before
+    AetherSDR had reconnected, so the keyer re-bound to the old client and
+    then kept it. That is failure A's fix again: follow the GUI client, not
+    a one-shot bind. (b) needs a rerun with the rebind after AetherSDR is
+    back, confirmed by `flex.guihandle`.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
