@@ -2209,6 +2209,18 @@ against exposing it beyond one.
     refused, binding is required and something else about a bound client's
     first CWX wedges it.
 
+    **(e) 14:32: the keyer's memory works UNBOUND, but the test is not
+    clean.** With `flexbind off`, the handle refreshed to `0x1A141CB0` and
+    no `client bind` sent, the keyer's `cwx send` was accepted
+    (`R|0|1377`) and ran normally: `cwx sent=1377…1397`, one per
+    character, 12 s, 4.47 W. So an unbound keyer can transmit CWX on this
+    radio, contrary to the old comment in `flex.cpp` saying CWX from an
+    unbound client is refused. **Confound:** AetherSDR's own CWX in (d) had
+    already run on this client, which may have primed it. Clean rerun:
+    restart AetherSDR, `flexbind off` again (to refresh the handle), then a
+    keyer memory first, with no CW from AetherSDR. Then a paddle key, also
+    unbound.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
