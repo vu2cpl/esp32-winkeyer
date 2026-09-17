@@ -747,7 +747,9 @@ roughly fixed in milliseconds, a percentage learned at one speed is wrong at
 others. So the keyer learns it **per WPM, 5–50**: it times the radio's
 `cwx sent=` reports over any run of 40+ units of its own text sent without a
 pause (a run stops where the radio may have waited for typed text), refines that
-speed's entry (smoothed), interpolates for speeds not played yet (700 µs
+speed's entry (smoothed, weighted by run length: a 234-unit CQ moves it a
+quarter, a short typed word far less, because the radio's reports wobble by
+up to ~100 ms), interpolates for speeds not played yet (700 µs
 before anything is learned), and adds it to each unit of the copy, carrying
 the sub-millisecond remainder. The table and the start delay are kept in
 flash (written when an entry is first learned or has moved more than 50 µs

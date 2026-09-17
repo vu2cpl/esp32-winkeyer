@@ -1834,10 +1834,30 @@ makes the keyer feel slow.
   - Verified by script on the USB port: set 30 → 30, then pot range 10+30,
     get pot, `02 00` → **20, the knob's speed**. Then from RUMlogNG itself
     (K3NG type), opened without touching the knob: **both at 22** (Manoj).
-  - Seen, not changed: host close restores the operator's saved speed
+  - Seen, not changed (Manoj: not required): host close restores the operator's saved speed
     (`restoreKeyer()`, 15 here) even though the knob sits elsewhere, so the
     keyer and the knob disagree after a logger disconnects until the knob
     moves.
+
+- **2026-09-17 (21:15–21:45)** — **CW timing runs are now weighted by
+  length.** Manoj still heard a slight drift. The 25 WPM entry read 869 µs,
+  while a CQ timed by hand gave 735. I recorded `/api/flextrace` and
+  `/api/cwtable` while he sent CQs and one typed QSO, and matched each table
+  step to its run:
+  - CQs measured 709–782 µs, typed runs 735–1080. Per character, the typed
+    `NAVIGATION` was sent at normal timing: 88 units, only 29 ms long in
+    total. The radio did not pause.
+  - The error was noise. Single "sent=" reports wobble by up to ±100 ms, and
+    over a 40–90-unit run that is 300–700 µs, against ~120 µs for a 234-unit
+    CQ. Each run moved the entry by a quarter, so one typed word undid two
+    good CQs, and 25 WPM wandered 770–850.
+  - `rateFinish()` now moves the entry by `min(units, 240) / 960` of the
+    difference: a CQ a quarter, a 44-unit run a twentieth. A speed's first
+    run still sets it directly. Rejected option (offered): learn only from
+    runs of 150+ units.
+  - Flashed. The reboot came back with **852 µs / 32 runs**, not the stale
+    872 / 7, which confirms the 19:35 save fix. The weighting itself is
+    **not yet verified on air.**
 
 ## Network placement (measured 2026-09-10)
 

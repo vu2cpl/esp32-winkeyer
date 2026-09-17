@@ -298,7 +298,16 @@ void rateFinish() {
     if (extra > -limit && extra < limit && extra < 2000) {
       int i = rateWpm - CW_WPM_MIN;
       int16_t old = cwExtra[i];
-      cwExtra[i] = cwRuns[i] ? (int16_t)((old * 3 + extra) / 4) : (int16_t)extra;
+      // Weighted by length. The radio's "sent=" reports wobble by up to
+      // ~100 ms, and a run of 40-90 units (a typed word) turns that into
+      // 300-700 µs of error where a 234-unit CQ gives ~120. With every run
+      // moving the entry by a quarter, one typed word undid two good CQs:
+      // 25 WPM wandered 770-850 µs against ~740 from CQs (2026-09-17).
+      // A CQ-length run (240 units) still moves it a quarter; 44 units, a
+      // twentieth.
+      uint32_t w = rateUnits < 240 ? rateUnits : 240;             // of 960
+      cwExtra[i] = cwRuns[i] ? (int16_t)(old + (extra - old) * (int32_t)w / 960)
+                             : (int16_t)extra;
       if (cwRuns[i] < 255) cwRuns[i]++;
       // Against what is in flash, not the previous value: smoothing moves an
       // entry in small steps, and 872 -> 774 µs in steps under 50 was never
