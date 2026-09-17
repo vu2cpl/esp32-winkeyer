@@ -17,6 +17,17 @@ hardware.
   memory, both 4.47 W. Open item 13 has the full investigation; the method
   (`/api/flextrace` + a meter watcher, one variable per test) is worth
   reusing.
+- **Still open from 2026-09-17:** (a) the radio's CW got stuck at 0 W once
+  more at ~15:06 with the keyer unbound, trigger unknown (index, reboot,
+  `time=` jump and a Maestro restart all ruled out by meter). Recovery: let
+  a memory stall, let the backstop or STOP clear it, then replay. (b) One
+  memory at 14:44 was cut 233 ms in by a keyer-sent `cwx clear`, not
+  reproduced; every clear now names its cause in `/api/flextrace`. (c) The
+  Maestro gives no sidetone for paddle keying (by Flex design); the only
+  route left is wiring KEY out into the Maestro's key jack. **Never judge CW
+  working or dead without `flex_meters_watch.py` running.**
+- **New 2026-09-17:** the sent CW scrolls on the display's bottom band while
+  sending. `flexbind` now defaults to off.
 
 - **Arduino core 3.3.11 / IDF 5.5.5** via the pioarduino platform, and
   **PlatformIO must run on Python 3.10+** — the Mac's system one is 3.9 and
@@ -2091,8 +2102,9 @@ against exposing it beyond one.
       are cached in RAM and written through; the namespace is created
       read-write at boot.
 
-13. **RESOLVED 2026-09-17 (14:40) — Flex backend: CW keying dies after
-    every paddle key.** Fixed by following the GUI client and not binding;
+13. **RESOLVED 2026-09-17 (14:40), one loose end — Flex backend: CW keying
+    dies after every paddle key.** The loose end: failure B recurred once
+    unbound at ~15:06 (What changed, 15:00–15:22). Fixed by following the GUI client and not binding;
     see What changed, 14:40. The investigation below is kept as it ran,
     including leads that turned out wrong. A Maestro takeover, with a second
     GUI client present when the first left, was verified at 14:44.
