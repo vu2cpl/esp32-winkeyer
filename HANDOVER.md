@@ -1580,8 +1580,27 @@ makes the keyer feel slow.
   that clears the radio without a key-up and without touching the sidetone
   is `pending()`'s "no progress from radio" backstop in `flex.cpp`. On
   reading, that backstop should not be able to fire 233 ms after a
-  `cwx send`, so if it did, that is a bug. Still to confirm with Manoj:
-  whether the sidetone played in full.
+  `cwx send`, so if it did, that is a bug. **Manoj confirmed the sidetone
+  played the full message.** Reading the code with that:
+  - The web STOP calls `Keyer::clearBuffer()`, which would have cut the
+    sidetone, so it is excluded.
+  - A paddle *contact* would also have flushed the keyer's queue on its
+    edge (`keyer.cpp`, "Paddle break-in"), so a contact glitch is excluded.
+  - The two stuck-key safety releases are excluded (no key-up in the
+    record), and so is the "no progress" backstop (`send()` stamps
+    `lastCwxMs`, so it cannot fire for 5 s).
+  - Timing: the monitor copy is queued with one due time, now + the
+    measured start latency (~230 ms), and `monPump()` hands every character
+    to the keyer at once when it falls due. The clear came 233 ms after the
+    send, about 3 ms after that. At that point `monReset()` clears nothing,
+    so a break-in there would not cut the sidetone.
+  - So the best fit is a **paddle session opened by the keyer's own element
+    state** (`!curIsAuto && state == ST_KEYDOWN/ST_GAP`, cause `element`),
+    not by a contact, as the monitor copy starts after a paddle element
+    left `curIsAuto` false. The code path that would do it has not been
+    found. Paddle-then-memory played fine at 14:41, so it is intermittent.
+    The new `# clear:` line will say `paddle break-in (element)` if this is
+    right.
   `Flex::clear(why)` and `WinKeyer::abort(why)` now take a reason, written
   as a `#` line: `web STOP`, `paddle break-in (dit|dah|element)` (from the new
   `Keyer::paddleSessionCause()`), `host 0x0A clear buffer`,
