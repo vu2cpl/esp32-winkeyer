@@ -293,14 +293,14 @@ legend[title]{cursor:help}
   <button onclick="scan()">SCAN</button>
   <span class="val" id="scanState"></span>
   <span id="scanHits"></span></div>
-<div class="row flexonly"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
 <div class="row flexonly"><label title="The radio starts sending a few hundred ms after it is handed the text — network, then its own CW start — while the local sidetone copy starts at once, so the sidetone runs AHEAD of the air. This holds the copy back to match. Auto uses the delay the keyer measures from cwx send to the radio actually transmitting; set a number to override, 0 to disable.">Sidetone delay</label>
   <input type="number" id="mondelay" min="0" max="2000" placeholder="auto">
   <label style="flex:0 0 auto"><input type="checkbox" id="mondelayauto"> auto</label>
   <span class="val" id="mondelayNow"></span></div>
 <div class="row flexonly"><label title="Added to the measured delay while auto is ticked; ignored for a manual value. Auto lines the sidetone up with the radio, but a client that plays the radio's sidetone back as audio (AetherSDR, SmartSDR) adds its own network and audio delay that the keyer cannot measure. Tune by ear: AetherSDR needed about 140-160.">Delay extra</label>
   <input type="number" id="monextra" min="0" max="1000"><span class="unit">ms</span></div>
+<div class="row flexonly"><label title="The radio generates buffered CW itself via cwx send, so this keyer produces no elements and no sound while the rig transmits. Monitor runs a second copy of that text through the local keyer purely to make sidetone, so you can hear what is going out. Needs Audio/sidetone on as well. Does nothing on the local backend, where the keyer makes the elements itself.">Monitor</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="monitor"> sound what the radio sends</label></div>
 <div class="row"><label title="Which KEY/PTT pair the keyer drives. Radio 1 is GPIO33/32, radio 2 is GPIO18/19. Both keys them together — intended for a rig plus an amp or monitor, but it does mean two transmitters key at once.">Radio</label>
   <select id="radio"><option value="1">Radio 1</option>
   <option value="2">Radio 2</option><option value="both">Both</option></select></div>

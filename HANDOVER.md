@@ -1911,6 +1911,14 @@ makes the keyer feel slow.
       (67ae0c3, port 8792): MEMORIES starts at the same height again.
     - No overflow at 1200, 900 or 375 px, open or closed. Flashed, and the
       real page checked.
+  - **Follow-ups (22:30), from Manoj's Safari screenshot at ~1024 px,
+    where BACKEND is 480 px and holds two tiles per line:**
+    - Find radio box widened to 130 px, matching Radio IP.
+    - The applied delay reads "(auto N)", not "(measured N)".
+    - Rows reordered to Sidetone delay, Delay extra, Monitor, Radio, Keying,
+      Advanced. The pairs are now delay|extra, monitor|radio, keying|advanced
+      at two per line, and delay|extra|monitor, radio|keying|advanced at
+      three. No overflow at 1024 or 1300 px. Flashed.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
