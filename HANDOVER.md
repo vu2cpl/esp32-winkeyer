@@ -1572,17 +1572,24 @@ makes the keyer feel slow.
   takeover being cut short 233 ms in by a keyer-sent `cwx clear`. Manoj did
   not double-click or touch the paddle, and no host was attached. With the
   stuck-key safety releases ruled out (both send a key-up first, and the
-  record has none), that leaves the web STOP or a paddle break-in. A 3 ms
-  contact is enough for a break-in (`DEBOUNCE_TICKS = 3`), so RF getting
-  onto a paddle line as the radio keys is the leading suspect. Unproven.
+  record has none), the web STOP and a paddle break-in looked like the
+  only candidates. **Manoj's corrections:** RFI at 10 W is not credible
+  here; no Bluetooth keyboard is connected; and both STOP and break-in
+  would also have cut the local sidetone (`monReset()`). **If the sidetone
+  played the whole message, neither of them sent it.** The only path left
+  that clears the radio without a key-up and without touching the sidetone
+  is `pending()`'s "no progress from radio" backstop in `flex.cpp`. On
+  reading, that backstop should not be able to fire 233 ms after a
+  `cwx send`, so if it did, that is a bug. Still to confirm with Manoj:
+  whether the sidetone played in full.
   `Flex::clear(why)` and `WinKeyer::abort(why)` now take a reason, written
   as a `#` line: `web STOP`, `paddle break-in (dit|dah|element)` (from the new
   `Keyer::paddleSessionCause()`), `host 0x0A clear buffer`,
   `Bluetooth keyboard Esc`, and the three backstops in `flex.cpp`. Both envs
   build. Flashed; a web STOP read back as `# clear: web STOP`. **Next time a
   memory is cut short, read the trace before anything else.** If it says
-  paddle break-in with nobody on the paddle, try a longer debounce (3 → 8 ms)
-  or look at RF on the paddle lead.
+  paddle break-in with nobody on the paddle, look at the paddle input. If
+  it says no progress from radio, look at the `pending()` backstop.
 
 ## Network placement (measured 2026-09-10)
 
