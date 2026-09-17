@@ -289,7 +289,7 @@ legend[title]{cursor:help}
 <div class="row flexonly"><label title="Pin the radio's address. Discovery is a raw UDP broadcast and does not cross subnets or VLANs, so if the radio is on a different segment from the keyer it will never be found automatically — use Find radio below. Leave blank to use discovery.">Radio IP</label>
   <input type="text" id="flexip" style="width:130px" placeholder="auto (discovery)"></div>
 <div class="row flexonly"><label title="Discovery only hears a radio on the keyer's own subnet — it listens for a UDP broadcast, and routers do not pass those between subnets or VLANs. SCAN tries every address in one /24 for the radio's API port (TCP 4992) instead, which does cross a router, and lists what answers; click one to use it. Leave the box blank to scan the keyer's own subnet, or type the first three numbers of the radio's (e.g. 192.168.1). Takes about 15 seconds. Read-only: it asks each radio what it is and disconnects.">Find radio</label>
-  <input type="text" id="scannet" style="width:100px">
+  <input type="text" id="scannet" style="width:130px">
   <button onclick="scan()">SCAN</button>
   <span class="val" id="scanState"></span>
   <span id="scanHits"></span></div>
@@ -531,7 +531,7 @@ async function refresh(){
    $('monextra').disabled=!auto_;
    if(editing!=='monextra') $('monextra').value=s.monextra||0;
    $('mondelayNow').textContent=(s.mondelaynow||0)+' ms'+
-     (auto_?' (measured '+(s.flexlatency||0)+')':'');}
+     (auto_?' (auto '+(s.flexlatency||0)+')':'');}
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
   $('rssiVal').textContent = s.rssi + ' dBm rx';
   buildMems(s.mems||[]);
