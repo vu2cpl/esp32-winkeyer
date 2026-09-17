@@ -1619,6 +1619,40 @@ makes the keyer feel slow.
   paddle break-in with nobody on the paddle, look at the paddle input. If
   it says no progress from radio, look at the `pending()` backstop.
 
+- **2026-09-17 (15:00–15:22)** — **Failure B (radio's CW generator stuck,
+  0 W) came back once with the keyer UNBOUND, and its trigger is still
+  unknown.** No firmware change is committed from this. The board runs HEAD
+  again.
+  - **What happened:** the Maestro was restarted at ~15:00 (new handle
+    `0x31C28CA0`). The keyer followed it (fix verified). Paddle keys and
+    memory 5 at 15:04 seemed fine by ear, but **no power meter was running
+    14:55–15:10**. After a flash at 15:06 (the scrolling-display build),
+    paddle keys first showed `SW` only (index 85–131), then `SW,SWCW` at
+    **0.00 W** (15:10:18, metered), and memory 5 stalled at 0 W (15:13:42)
+    until the keyer's own backstops cleared it. After that, a replay made
+    10.3 W and CW worked again.
+  - **Ruled out by metered tests** (debug build, patch kept in the evidence
+    folder as `debug-index-timeoffset.patch`, not committed):
+    (1) the `cw key` index running backwards: set to 10 after the radio had
+    accepted 1041, 10.42 W; (2) a keyer reboot: flash at 15:17, 10.20 W;
+    (3) the `time=` stamps jumping back 31.7 s, like the 15:06 flash: 10.20
+    W; (4) a Maestro restart with the keyer unbound (15:20): 10.31 W.
+  - **So the known trigger is still only `client bind` to a newly connected
+    GUI client** (fixed). The 15:06 episode may have started at the 15:00
+    Maestro restart, in the unmetered gap, and not at the flash. When the
+    Maestro reconnects it sets `break_in_delay=390` (it was 5); noted, not
+    tested. Recovery that works: play a memory, let it stall, and let the
+    backstops (or STOP) clear it, then replay.
+  - **Lesson:** keep `flex_meters_watch.py` running whenever testing. Twice
+    today a cause was inferred from `SW,SWCW` without a meter, and it was
+    wrong both times.
+  - **Scrolling CW display: built, flashed, and it looked like junk on the
+    OLED** (Manoj, 15:07). It is **stashed** (`git stash list`: "scrolling
+    CW display…"), not committed. The WPM moved into the header and the
+    middle band showed the sent CW in `u8g2_font_10x20_tf`, newest on the
+    right. Still to get: what "junk" was (garbled pixels, or wrong text), a
+    photo if possible.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
