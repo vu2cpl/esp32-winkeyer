@@ -74,8 +74,13 @@ uint32_t busyUntil = 0;      // backstop: see pending()
 // radio had keyed the text. A reply to a send made before a "cwx clear" is
 // stale and must not re-arm pending() — that was the ~1 s BUSY a host saw
 // after Clear Buffer or a paddle break-in.
+// Room for a whole memory's worth: a logger hands text over a character per
+// command, faster than the radio answers, and 11 were outstanding at once on
+// 2026-09-17. With 8, the oldest were overwritten before their replies came,
+// those characters had no known text, and the CW timing learner threw the
+// whole message away — so it learned almost only from slowly typed text.
 struct CwxSend { uint32_t seq; uint16_t len; char text[64]; };
-CwxSend  cwxSends[8];
+CwxSend  cwxSends[32];
 uint8_t  cwxSendNext = 0;
 uint32_t clearSeq = 0;       // replies to commands before this are stale
 
@@ -135,8 +140,12 @@ uint16_t      startLatency = 0;
 // learned at 25 WPM over-corrected at 5-10 WPM, and kept in NVS so a reboot
 // does not start from nothing. Measured only over runs of consecutive
 // characters whose text the keyer queued itself, at one speed, with no clear
-// in between.
-struct IdxChar { long idx; char c; };
+// in between, and with the next character already in the radio's buffer when
+// the one before it ended. Without that last condition, a pause while the
+// radio waited for text (typed CW, or a second message just behind the
+// first) counted as sending time: by the evening of 2026-09-17 the 25 WPM
+// entry had climbed to 1168 µs against about 760 µs really on the air.
+struct IdxChar { long idx; char c; uint32_t at; };   // at: millis() it was queued
 IdxChar  idxText[256];                 // radio buffer index -> character sent
 const uint8_t  CW_WPM_MIN = 5, CW_WPM_MAX = 50;
 const uint8_t  CW_N = CW_WPM_MAX - CW_WPM_MIN + 1;
@@ -281,10 +290,11 @@ void rateFinish() {
     uint32_t ms = rateLastT - rateT0;
     int32_t unitUs = (int32_t)((uint64_t)ms * 1000 / rateUnits);
     int32_t extra  = unitUs - (int32_t)(1200000UL / rateWpm);
-    // A clean run is within a few percent of nominal; anything else was
+    // A clean run is within a few percent of nominal, and the radio adds well
+    // under 2 ms a unit at any speed (735-779 µs measured); anything else was
     // interrupted or not what it seemed.
     int32_t limit = (int32_t)(1200000UL / rateWpm) / 20;          // 5 %
-    if (extra > -limit && extra < limit * 2) {
+    if (extra > -limit && extra < limit && extra < 2000) {
       int i = rateWpm - CW_WPM_MIN;
       int16_t old = cwExtra[i];
       cwExtra[i] = cwRuns[i] ? (int16_t)((old * 3 + extra) / 4) : (int16_t)extra;
@@ -336,6 +346,15 @@ void rateSent(long idx) {
     return;
   }
   const IdxChar& e = idxText[idx & 0xFF];
+  // Queued too close to the end of the character before it: the radio may
+  // have sat idle waiting for it, which is not sending time. Keep the run up
+  // to the previous character and start a new one here.
+  if (e.idx == idx && e.at + 100 > rateLastT) {
+    rateFinish();
+    rateActive = true; rateOk = true;
+    rateT0 = rateLastT = now; rateLastIdx = idx; rateUnits = 0; rateWpm = wpm;
+    return;
+  }
   uint8_t u = 0;
   if (e.idx == idx) u = (e.c == ' ') ? 4 : Keyer::charUnits(e.c);
   if (!u) rateOk = false;                // not text we queued, or no Morse
@@ -398,7 +417,7 @@ void onLine(const String& line) {
           long last = v + (long)e.len - 1;
           if (last > queuedIdx) queuedIdx = last;
           for (uint16_t i = 0; i < e.len && i < sizeof(e.text) - 1; i++)
-            idxText[(v + i) & 0xFF] = { v + (long)i, e.text[i] };
+            idxText[(v + i) & 0xFF] = { v + (long)i, e.text[i], millis() };
         }
         e.len = 0;
         break;

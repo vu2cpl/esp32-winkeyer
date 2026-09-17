@@ -712,7 +712,8 @@ Flex sends each CWX dit unit a little long: about 0.7–0.8 ms more than
 at the exact rate drifts ahead through a long message. Because the extra is
 roughly fixed in milliseconds, a percentage learned at one speed is wrong at
 others. So the keyer learns it **per WPM, 5–50**: it times the radio's
-`cwx sent=` reports over any run of 40+ units of its own text, refines that
+`cwx sent=` reports over any run of 40+ units of its own text sent without a
+pause (a run stops where the radio may have waited for typed text), refines that
 speed's entry (smoothed), interpolates for speeds not played yet (700 µs
 before anything is learned), and adds it to each unit of the copy, carrying
 the sub-millisecond remainder. The table and the start delay are kept in

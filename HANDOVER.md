@@ -26,6 +26,11 @@ hardware.
   Maestro gives no sidetone for paddle keying (by Flex design); the only
   route left is wiring KEY out into the Maestro's key jack. **Never judge CW
   working or dead without `flex_meters_watch.py` running.**
+- **Fixed 2026-09-17 evening:** the learned sidetone timing had crept to
+  1168 µs at 25 WPM (real ~760) and drifted behind the radio. See What
+  changed 19:00. **Open:** RUMlogNG takes ~2 min to open a session after
+  the port is opened (it repeats admin-open and ignores the replies), to be
+  captured from the start.
 - **New 2026-09-17:** the sent CW scrolls on the display's bottom band while
   sending. `flexbind` now defaults to off.
 
@@ -1722,6 +1727,31 @@ makes the keyer feel slow.
   of the unit). Manoj: **10 WPM now in sync.** Reflashed as a reboot test:
   table and start delay (144 ms) came back. Calibration sweep (a button that
   sends at several speeds) was offered and declined.
+
+- **2026-09-17 (19:00–19:32)** — **Fixed: the learned CW timing crept up and
+  the sidetone drifted behind the radio again.** Manoj heard the keyer's
+  sidetone fall behind AetherSDR's. The 25 WPM entry had climbed to
+  **1168 µs** over 7 runs; timing a full CQ from `/api/flextrace` (234 units
+  in 11 410 ms) gave **~760 µs**, so the copy lost ~95 ms per CQ. Two faults
+  worked together:
+  - **The pending-send ring was 8 long.** A logger hands a memory over one
+    character per `cwx send`, faster than the radio answers, and 11 were
+    outstanding at once. The oldest were overwritten before their replies
+    came, so those characters had no known text and the whole message was
+    discarded. Fast memories were therefore almost never learned. Now 32
+    (`cwxSends`, +1.7 KB RAM).
+  - **Pauses counted as sending time.** Slowly typed text always fitted the
+    ring, and a run only needed each report within 3 s of the last, so time
+    the radio sat waiting for the next typed character went into the
+    average. A run now ends where a character was queued less than 100 ms
+    before the previous one finished (`IdxChar.at`), and a run is accepted
+    only within ±5 % of nominal **and** under 2000 µs extra.
+  Table reset with `POST /api/cwtable?reset=1`; a few CQs later it held
+  **774 µs from 11 runs** at 25 WPM. Manoj: **in sync.**
+  Seen in passing, not yet investigated: opening the port in RUMlogNG
+  rebooted the keyer, and RUMlogNG then sent admin-open (`00 02`) every
+  ~18 ms for minutes, ignoring each `0x17` reply, before the session came
+  up ~129 s after boot (`/api/wktrace`). A real WinKeyer answers at once.
 
 ## Network placement (measured 2026-09-10)
 
