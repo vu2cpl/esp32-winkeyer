@@ -122,6 +122,11 @@ legend{color:var(--amber);font-size:11px;letter-spacing:2px;padding:0 6px}
 /* An author rule beats the hidden attribute's default display:none, so
    .row{display:flex} kept "hidden" rows on screen. */
 .row[hidden]{display:none!important}
+details.adv{grid-column:1/-1;margin:6px 0 0;border-top:1px dashed #44444a;padding-top:4px}
+details.adv[hidden]{display:none!important}
+details.adv summary{cursor:pointer;color:var(--dim);font-size:12px}
+.advwarn{margin:6px 0;padding:6px 9px;border-radius:6px;font-size:12px;
+background:rgba(255,170,34,.12);border:1px solid var(--amber);color:var(--amber)}
 .row label{flex:0 0 92px;color:var(--dim);font-size:12px}
 input,select,button{font:inherit;background:#131315;color:var(--label);
 border:1px solid #44444a;border-radius:5px;padding:3px 8px;font-size:13px}
@@ -294,10 +299,6 @@ legend[title]{cursor:help}
   <label style="flex:0 0 auto" title="Added to the measured delay while auto is ticked; ignored for a manual value. Auto lines the sidetone up with the radio, but a client that plays the radio's sidetone back as audio (AetherSDR, SmartSDR) adds its own network and audio delay that the keyer cannot measure. Tune by ear: AetherSDR needed about 160.">+</label>
   <input type="number" id="monextra" min="0" max="1000" style="width:60px"><span class="unit">ms</span>
   <span class="val" id="mondelayNow"></span></div>
-<div class="row flexonly"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
-  <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
-  <label style="flex:0 0 auto"><input type="checkbox" id="flexbind"> bind GUI</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="flexxmit"> xmit</label></div>
 <div class="row"><label title="Which KEY/PTT pair the keyer drives. Radio 1 is GPIO33/32, radio 2 is GPIO18/19. Both keys them together — intended for a rig plus an amp or monitor, but it does mean two transmitters key at once.">Radio</label>
   <select id="radio"><option value="1">Radio 1</option>
   <option value="2">Radio 2</option><option value="both">Both</option></select></div>
@@ -305,6 +306,14 @@ legend[title]{cursor:help}
   <select id="backend"><option value="local">Local key line</option>
   <option value="flex">FlexRadio (network)</option></select>
   <span class="val" id="flexip"></span></div>
+<details class="adv flexonly"><summary>Advanced keying</summary>
+<div class="advwarn">These change how the paddle keys the radio. A wrong value can leave the radio silent (0 W) with no error shown. The working set is cw key, bind GUI off, xmit on &mdash; DEFAULTS puts it back.</div>
+<div class="row"><label title="Which command sends each paddle element to the radio. 'cw key' transmits. 'cw ptt' is what FlexRadio's wiki documents, but the radio accepts it and produces no RF (found with a power meter). Default: cw key.">Key verb</label>
+  <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
+  <label style="flex:0 0 auto" title="Send 'client bind' to the GUI client (SmartSDR, Maestro, AetherSDR). Off by default: binding wedged the radio's CW generator, so CW went out at 0 W after a GUI client restarted. The keyer follows the GUI client without it."><input type="checkbox" id="flexbind"> bind GUI</label>
+  <label style="flex:0 0 auto" title="Take the transmitter with 'xmit 1' before paddle keying and release it with 'xmit 0' after the tail. The radio only keys for the client that holds the transmitter, so paddle keying needs this on. Memories and typed text are not affected. Default: on."><input type="checkbox" id="flexxmit"> xmit</label>
+  <button onclick="flexDefaults()">DEFAULTS</button></div>
+</details>
 </fieldset>
 
 <fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
@@ -348,6 +357,12 @@ async function post(u){const r=await fetch(u,{method:'POST'});const t=await r.te
 const KEYMAP={fskbaud:'fskbaud',fskinv:'fskinv',fskdid:'fskdiddle',
               flexbind:'flexbind',flexxmit:'flexxmit',flexcmd:'flexcmd'};
 function set(k,v){post('/api/set?k='+(KEYMAP[k]||k)+'&v='+encodeURIComponent(v))}
+// Back to the combination verified on air: cw key, no bind, xmit on.
+async function flexDefaults(){
+  await post('/api/set?k=flexcmd&v=key');
+  await post('/api/set?k=flexbind&v=off');
+  await post('/api/set?k=flexxmit&v=on');
+  note('advanced keying back to defaults: cw key, bind GUI off, xmit on',false)}
 function send(){const t=$('txt').value.trim();if(!t)return;
   post('/api/send?t='+encodeURIComponent(t));$('txt').value='';setBtn('sendBtn',true)}
 function fsksend(){const t=$('fsktxt').value.trim();if(!t)return;

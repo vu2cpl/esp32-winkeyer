@@ -1885,6 +1885,20 @@ makes the keyer feel slow.
       manual 245. Manoj will keep fine-tuning the extra as network delay
       changes.
 
+- **2026-09-17 (22:00)** — **Key verb, bind GUI and xmit moved into a
+  collapsed "Advanced keying" section** (Manoj's request).
+  - The section is a `<details class="adv flexonly">` at the foot of
+    BACKEND, with an amber warning: a wrong value gives 0 W with no error,
+    and the working set is cw key, bind off, xmit on. Each control has
+    hover help.
+  - **DEFAULTS** (`flexDefaults()` in the page) posts `flexcmd=key`,
+    `flexbind=off` and `flexxmit=on`. It touches only those three.
+  - Checked in `tools/web-preview.py`, then on hardware: set `ptt`/`on`/`off`
+    over the API, ran DEFAULTS, and the keyer read `key`/`off`/`on` again.
+  - Toggling bind only drops and remakes the radio connection
+    (`setBind()`). No `client bind` went out, and the link came back ready
+    on the same GUI handle.
+
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
   - After the 21:1x flash, RUMlogNG (still on K3NG) took ~25 s to connect

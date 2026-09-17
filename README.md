@@ -860,7 +860,11 @@ dotted underline carries **hover help** — ranges, what a setting actually
 does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
 tail**, pot enable and range, display, backend (with a **Find radio**
-LAN scan for the Flex), plus a send box and tune. Live status LEDs for
+LAN scan for the Flex), plus a send box and tune. The Flex keying internals
+(key verb, bind GUI, xmit) sit in a collapsed **Advanced keying** section with
+a warning, because a wrong value leaves the radio silent with no error. Its
+**DEFAULTS** button puts back the working set: `cw key`, bind GUI off, xmit
+on. Live status LEDs for
 host, TCP, key, tune, pot, Flex, OLED and KBD, polled once a second.
 
 The **BT KEYBOARD** card (off by default) enables Bluetooth — with a RESTART
