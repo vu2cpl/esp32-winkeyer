@@ -741,6 +741,10 @@ like the radio unkeying early. The keyer times that gap itself (from
 the radio was idle first) and holds the monitor copy by it: measured 229 ms
 on a 6600 over WiFi here. `/mondelay 250` pins a value instead, `/mondelay 0`
 disables it. The first transmission after a reset has nothing measured yet.
+Auto lines the copy up with the **radio**. A client that plays the radio's
+sidetone back as audio (AetherSDR here) adds its own network and audio delay
+on top, which the keyer cannot measure. Matching that by ear took a manual
+245 ms here, against 87 ms measured.
 
 **The sidetone copy also follows the radio's real timing, per speed.** A
 Flex sends each CWX dit unit a little long: about 0.7–0.8 ms more than

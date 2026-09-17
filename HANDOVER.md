@@ -1860,6 +1860,22 @@ makes the keyer feel slow.
     872 / 7, which confirms the 19:35 save fix. On air: 4 runs took it
     852 → 809 µs. A 44-unit `5NN TU` measuring 1091 moved it only about
     +13. Manoj: **"very close"**; it should settle nearer 750 with more CQs.
+  - It settled at **729 µs** after 41 runs; the next CQ measured 714. Manoj
+    still heard a minute difference. A 15 µs gap is ~4 ms over a CQ, so it
+    was a fixed offset, not drift. The auto start delay measures only
+    keyer → radio TRANSMITTING (87 ms). AetherSDR's sidetone adds its own
+    radio → network → audio latency, which the keyer cannot see. By ear at
+    25 WPM: 250 good, **245 perfect**, 225 not. Manoj set **`mondelay` 245 ms
+    (manual, saved)** with auto measuring 87-88, so Aether adds ~158 ms and
+    the ear resolves ~20 ms.
+    - He asked whether measured × 2 + 50 fits better. My answer: probably
+      measured + a fixed ~160. The measured part is mostly the radio's TX
+      start plus one network hop, and Aether's audio does not repeat the TX
+      start. The two formulas agree at 87, but ×2 would give ~508 ms if auto
+      read 229, as it did on 2026-09-12.
+    - Needs a second point: when auto reads clearly different (140+), find
+      the right manual value by ear.
+    - Offered, not built: an "extra" ms added on top of auto.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
