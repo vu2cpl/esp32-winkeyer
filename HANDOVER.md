@@ -1,13 +1,20 @@
 # ESP32 WinKeyer — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-08-26 · **Updated:** 2026-09-16 · **Type:** ESP firmware
+**Created:** 2026-08-26 · **Updated:** 2026-09-17 · **Type:** ESP firmware
 (esp32dev, S3 env reserved) · **Status:** working keyer, **public repo**
 (MIT). RUMlogNG drives it over USB and keys the Flex; OLED/LCD panel,
 speed pot, settings web page, memories, second radio and RTTY FSK all on
 hardware.
 
 **Read this first if you are picking the project up after 2026-09-12:**
+
+- **OPEN BUG 2026-09-17, start here: on the Flex backend, CW keying dies after
+  every paddle key.** The paddle transmits with no CW element at 0 W; the
+  first memory after it transmits at 0 W with the radio's CWX queue frozen;
+  stop and replay recovers it. Measured on the radio's own meter, 40
+  transmissions. Open item 13 has the data, the lead to test first (the GUI
+  handle is bound once and never refreshed) and the next steps in order.
 
 - **Arduino core 3.3.11 / IDF 5.5.5** via the pioarduino platform, and
   **PlatformIO must run on Python 3.10+** — the Mac's system one is 3.9 and
@@ -1493,6 +1500,14 @@ makes the keyer feel slow.
   **The listing says 57 × 28 mm but the photo implies about 65–70 mm long** —
   measure before touching `enclosure/`.
 
+- **2026-09-17** — **Bug found, not fixed: on the Flex backend, CW keying
+  dies after every paddle key.** No firmware change. It was found while
+  chasing a radio-side problem ("CW is gone") from the Mac. Recorded read-only
+  with the radio's FWDPWR meter, interlock and CWX status, and a capture of
+  RUMlogNG's own radio session. The capture showed RUMlogNG sends no keying,
+  so the paddle keying and the memories reach the radio through this keyer.
+  Full data and next steps: open item 13.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1906,6 +1921,81 @@ against exposing it beyond one.
       seconds and the web server stopped responding entirely. Memories
       are cached in RAM and written through; the namespace is created
       read-write at boot.
+
+13. **OPEN 2026-09-17 — Flex backend: CW keying dies after every paddle
+    key.** Handover for the next session.
+
+    **Measured.** 40 transmissions, 13:15–13:27 IST, read-only from the Mac:
+    `flex_status_lines.py` and `flex_meters_watch.py` from
+    `~/projects/MSHV-Mac/tools/`, plus a packet capture. FlexRadio Maestro was
+    the only GUI client; slice in CW; RF power 10; the radio had been factory
+    reset that morning and was not restarted during the test.
+
+    | what Manoj did | interlock `source=` | forward power | count |
+    |---|---|---|---|
+    | paddle key | `SW` (PTT with **no CW element**) | **0.00 W** | 24 of 24 |
+    | first memory after a paddle key | `SWCW` | **0.00 W** | **5 of 5** |
+    | memory after a memory | `SWCW` | 9.46–9.75 W | 10 of 10 |
+
+    In a dead memory, **the radio's CWX queue never advances.** No
+    `cwx sent=` arrives until the operator presses stop; then `cwx erase=a,b`
+    clears the rest and only then is the first index reported sent. A good
+    memory reports its first `cwx sent=` about 0.7 s after keying. Stop and
+    replay recovers it, and no radio restart is needed. Manoj's summary:
+    *any time the paddle is used the keying goes; the first memory gives no
+    output, the next onwards are fine; the next paddle use kills it again.*
+    On the first memory he hears one character (local sidetone) then
+    nothing.
+
+    **Established.**
+    - RUMlogNG, on `usbserial-0001` and the only program on the Mac connected
+      to the radio, sent **only `cwx clear` + `xmit 0` pairs** during a
+      3-minute capture: 7 pairs, for Manoj's stops and his paddle
+      break-ins. It sent **no keying**.
+    - So paddle keying and memory text reach the radio **through this
+      keyer's own Flex session**. Every `cwx sent=` carried the Maestro's
+      handle.
+    - A client that is not on the Mac (`0x3CF2DCF6`) erased the CWX queue
+      at every paddle break-in. That is almost certainly this keyer; break-in
+      erasing the radio's remaining text is documented in
+      `docs/k1el-probe-2026-09-13/`.
+
+    **Lead to test first (from reading the code, NOT proven).**
+    `src/flex.cpp:308` binds to the **first GUI client it sees** and keeps
+    that client's handle in `guiHandle` for every
+    `cw key … client_handle=`. That is only re-evaluated when the keyer's
+    radio TCP session reconnects (`flex.cpp:385`) or `setBind()` runs.
+    The comment at `flex.cpp:318` says that with the wrong handle *the radio
+    accepts cw key but produces no RF*, which is exactly the paddle
+    symptom: `xmit 1` still keys PTT, and the elements go nowhere. On 09-17
+    the GUI client changed under a live radio: AetherSDR until 11:52:19, the
+    Maestro from 11:52:06. **Not reconciled yet:** CW "came back" around noon
+    and failed again at 13:15 with the Maestro still the GUI client, so a
+    stale handle may not be the whole story. **Also possible:** this keyer
+    sends `cw key` under the Maestro's handle with its own `index` counter
+    while the Maestro keeps its own for the same handle, and the radio may
+    drop out-of-sequence indices. The CWX freeze after a paddle key is also
+    unexplained; see `sendKeyUp()`: *"xmit 0" does NOT clear a key the
+    radio still believes is down*.
+
+    **Next session, in order.**
+    1. Read the console for `[FLEX] bound to GUI client … (handle …)` and
+       compare it with the Maestro's current handle (`sub client all` from
+       any API session). `guiHandle` is not in `/api/state`; adding it
+       would make this a one-look check.
+    2. With the keying log on, record one paddle key and one memory: the
+       exact `xmit` / `cw key` lines, their `client_handle` and `index`.
+    3. Force a rebind (`setBind`, or drop and reconnect the Flex session)
+       and repeat the paddle test on the meter.
+    4. In the stuck state, try Tune from the Maestro. If Tune is 0 W too, it
+       is the radio's own carrier fault seen 2026-09-15, not this keyer.
+    5. If the handle is the cause: re-bind whenever the bound client
+       disconnects, and prefer the GUI client that owns the TX slice.
+
+    **Evidence** (local, deliberately not in this public repo):
+    `~/projects/MSHV-Mac/user-reports/2026-09-17-cw-gone/`. It holds the
+    README, `lines.log`, `meters.log`, `transmissions.txt` and
+    `rumlog-to-radio.pcap`, plus the decoded capture.
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 

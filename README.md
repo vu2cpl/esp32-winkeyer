@@ -18,7 +18,7 @@ as a behavioural reference; the implementation here is original.
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
 | WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night; echo now paced per letter on both backends, within ~60 ms (local) / ~150 ms (Flex) of the K1EL**; admin 0 (Calibrate) argument byte fixed the following morning — it had desynced RUMlogNG's session setup ([findings](docs/k1el-probe-2026-09-13/README.md)) |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
-| FlexRadio backend — **paddle keying over the network** | working, verified on a 6600 |
+| FlexRadio backend — **paddle keying over the network** | working, verified on a 6600. **Known bug, 2026-09-17, under investigation:** after a paddle key, paddle keying sends no RF, and neither does the first memory after it; stopping and replaying a memory recovers it |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
 | Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
