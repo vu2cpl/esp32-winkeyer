@@ -372,7 +372,7 @@ web page or `/status` for detail.
 ./monitor.sh 115200   # when you have set the console rate
 ```
 
-The **SERIAL / USB** panel on the web page sets the same thing, and is the
+The **USB / WIFI** panel on the web page sets the same thing, and is the
 escape hatch if you pick a rate you cannot monitor at — WiFi is unaffected
 by the serial rate.
 

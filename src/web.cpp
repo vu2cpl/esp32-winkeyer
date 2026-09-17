@@ -81,7 +81,9 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 /* A slider does not get more useful past a few hundred pixels; without a
    cap a full-width card turns Speed into a metre of travel. */
 input[type=range]{max-width:340px}
-/* Memories shares a grid row with the backend panel, which is much taller.
+/* Memories and the backend panel share a grid row, as do USB / WIFI and
+   FSK / RTTY below them; each pair is stretched to one height.
+   Memories shares a grid row with the backend panel, which is much taller.
    .rig is align-items:start, so the card stopped at its content and the two
    ended at different heights. */
 .stretch{align-self:stretch}
@@ -258,31 +260,13 @@ legend[title]{cursor:help}
 <div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
 </fieldset>
 
-<fieldset><legend id="legSerial" title="">SERIAL / USB</legend>
-<div class="row full"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
-  <select id="txpower">
-    <option value="19">19 dBm (full)</option>
-    <option value="17">17 dBm</option>
-    <option value="15">15 dBm</option>
-    <option value="13">13 dBm</option>
-    <option value="11">11 dBm (low draw)</option>
-    <option value="8">8 dBm</option>
-    <option value="5">5 dBm</option>
-    <option value="2">2 dBm (minimum)</option>
-  </select>
-  <span class="val" id="rssiVal"></span></div>
-<div class="row full"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
-  <select id="baud">
-    <option value="1200">1200 8N2 &mdash; WinKeyer standard</option>
-    <option value="9600">9600 8N1</option>
-    <option value="19200">19200 8N1</option>
-    <option value="38400">38400 8N1</option>
-    <option value="57600">57600 8N1</option>
-    <option value="115200">115200 8N1 &mdash; console</option>
-  </select></div>
+<fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
+<div class="row"><label title="Expands wherever %C appears in a memory.">Callsign</label>
+  <input type="text" id="call" style="width:120px" placeholder="VU2CPL"></div>
+<div id="mems"></div>
 </fieldset>
 
-<fieldset class="wide"><legend>BACKEND</legend>
+<fieldset class="wide stretch"><legend>BACKEND</legend>
 <div class="row"><label title="Enable the FlexRadio backend: discovery, connection and keying over the network. Harmless with no radio present — it simply listens for a discovery broadcast that never arrives. Separate from Keying below, which decides where your CW actually goes.">FlexRadio</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="flex"> enabled</label>
   <span class="val" id="flexState"></span></div>
@@ -318,13 +302,31 @@ legend[title]{cursor:help}
 </details>
 </fieldset>
 
-<fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
-<div class="row"><label title="Expands wherever %C appears in a memory.">Callsign</label>
-  <input type="text" id="call" style="width:120px" placeholder="VU2CPL"></div>
-<div id="mems"></div>
+<fieldset class="stretch"><legend id="legSerial" title="">USB / WIFI</legend>
+<div class="row full"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
+  <select id="txpower">
+    <option value="19">19 dBm (full)</option>
+    <option value="17">17 dBm</option>
+    <option value="15">15 dBm</option>
+    <option value="13">13 dBm</option>
+    <option value="11">11 dBm (low draw)</option>
+    <option value="8">8 dBm</option>
+    <option value="5">5 dBm</option>
+    <option value="2">2 dBm (minimum)</option>
+  </select>
+  <span class="val" id="rssiVal"></span></div>
+<div class="row full"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
+  <select id="baud">
+    <option value="1200">1200 8N2 &mdash; WinKeyer</option>
+    <option value="9600">9600 8N1</option>
+    <option value="19200">19200 8N1</option>
+    <option value="38400">38400 8N1</option>
+    <option value="57600">57600 8N1</option>
+    <option value="115200">115200 8N1 &mdash; console</option>
+  </select></div>
 </fieldset>
 
-<fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
+<fieldset class="stretch"><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
 <div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
   <button id="fskBtn" onclick="fskSendOrStop()">SEND</button></div>
 <div class="row full"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
@@ -340,7 +342,7 @@ legend[title]{cursor:help}
   <label style="flex:0 0 auto"><input type="checkbox" id="fskdid"> diddle</label></div>
 </fieldset>
 
-<fieldset><legend title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
+<fieldset class="stretch"><legend title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
 <div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
   <button id="sendBtn" onclick="sendOrStop()">SEND</button>
   <button id="tuneBtn" onclick="tuneOrStop()">TUNE</button></div>

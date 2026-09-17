@@ -1919,6 +1919,13 @@ makes the keyer feel slow.
       Advanced. The pairs are now delay|extra, monitor|radio, keying|advanced
       at two per line, and delay|extra|monitor, radio|keying|advanced at
       three. No overflow at 1024 or 1300 px. Flashed.
+    - Panel order (Manoj): SERIAL / USB is renamed **USB / WIFI** and moved
+      below, beside FSK / RTTY. MEMORIES now comes before BACKEND, so the
+      two share a row. MEMORIES, BACKEND, USB / WIFI, FSK / RTTY and SEND
+      are `.stretch`, so each row's panels end level. 1200 baud option
+      label: "1200 8N2 — WinKeyer". At 1024 px: MEMORIES|BACKEND 369 px
+      tall each, then USB|FSK, then SEND. At 1300 px: MEMORIES|BACKEND (2
+      columns), then USB|FSK|SEND. No overflow. Flashed.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
