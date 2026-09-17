@@ -375,7 +375,7 @@ web page or `/status` for detail.
 ./monitor.sh 115200   # when you have set the console rate
 ```
 
-The **USB / WIFI** panel on the web page sets the same thing, and is the
+The **USB / WIFI** section of the SYSTEM card on the web page sets the same thing, and is the
 escape hatch if you pick a rate you cannot monitor at — WiFi is unaffected
 by the serial rate.
 
@@ -527,7 +527,7 @@ change.
 /mem                # list all six
 ```
 
-The web page has a MEMORIES panel with SAVE and PLAY per slot; the PLAY of
+The web page has a MEMORIES card with SAVE and PLAY per slot (Send and FSK / RTTY sit below them in the same card); the PLAY of
 the slot that is going out turns into a red STOP, so the stop is on the row
 you pressed rather than somewhere else on the page. No GPIO cost —
 front-panel buttons can be wired to these later.
@@ -863,14 +863,16 @@ dotted underline carries **hover help** — ranges, what a setting actually
 does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
 tail**, pot enable and range, display, backend (with a **Find radio**
-LAN scan for the Flex), plus a send box and tune. The Flex keying internals
+LAN scan for the Flex), plus a send box and tune. The page is four cards: **KEYER** (with Timing, Speed pot and
+PTT sections), **MEMORIES** (with Send and FSK / RTTY), **BACKEND** and
+**SYSTEM** (Display, USB / WIFI, BT keyboard). The Flex keying internals
 (key verb, bind GUI, xmit) sit in a collapsed **Advanced keying** section with
 a warning, because a wrong value leaves the radio silent with no error. Its
 **DEFAULTS** button puts back the working set: `cw key`, bind GUI off, xmit
 on. Live status LEDs for
 host, TCP, key, tune, pot, Flex, OLED and KBD, polled once a second.
 
-The **BT KEYBOARD** card (off by default) enables Bluetooth — with a RESTART
+The **BT KEYBOARD** section of the SYSTEM card (off by default) enables Bluetooth — with a RESTART
 button, since the switch applies at boot — then SCAN lists keyboards in
 pairing mode, one click pairs, and a passkey is shown large if the keyboard
 asks for one. One keyboard is kept; FORGET drops it. `GET /api/bt` carries
