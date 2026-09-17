@@ -23,6 +23,10 @@ void begin();   // GPIO + sidetone init, starts the keyer task. Call before WiFi
 
 // ── Settings ──────────────────────────────────────────────
 void      setWpm(uint8_t wpm);          // clamped 5..60; overrides pot until pot moves
+// Take the speed from the knob now, without waiting for it to move (WinKeyer
+// "set speed 0"). Applied on the next pot reading, within 50 ms. No effect
+// without a pot.
+void      usePotSpeed();
 uint8_t   getWpm();
 void      setMode(KeyerMode m);         // default IAMBIC_B
 KeyerMode getMode();

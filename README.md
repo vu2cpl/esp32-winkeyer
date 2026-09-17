@@ -652,6 +652,13 @@ That creates `/tmp/winkeyer` (a symlink to a PTY) and shuttles bytes to
 as the keyer type. Verified hosts: anything speaking WK2 — N1MM+, DXLog,
 RUMlogNG, MacLoggerDX, SkookumLogger, fldigi.
 
+**RUMlogNG: set the keyer type to K3NG, not K1EL.** Both send the same
+set-up. With K1EL, RUMlogNG keeps repeating host-open and ignores the
+keyer's version-23 reply for 18 s to 2 minutes. At 1200 baud the queued
+opens take that long to drain, and the keyer has to answer every one.
+K3NG's keyer also reports 23, and with that setting the session opens at
+once (measured 2026-09-17).
+
 For **N1MM+ in a VM**, map the VM's COM port to the host TCP socket with
 the VM's serial-over-TCP option instead of using the bridge.
 
@@ -963,7 +970,9 @@ The right-hand column is parsed and **recorded** — the status dump still
 reports what the host asked for, so nothing in the protocol breaks — and
 then not applied. Speed stays the host's because a logger changes it per
 QSO and per F-key, and the speed knob already overrides it the moment you
-turn it.
+turn it. Speed **0** means "use the knob", as on a K1EL: the keyer takes
+the knob's speed at once. RUMlogNG sends it at every session open, just
+after asking for the knob position, so the two show the same speed.
 
 This is not what a real K1EL WinKeyer does; it is a deliberate difference.
 RUMlogNG sets PTT lead/tail to 0, Farnsworth to 20, the sidetone to 1000 Hz

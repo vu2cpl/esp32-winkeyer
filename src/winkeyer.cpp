@@ -395,6 +395,9 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       break;
     case 0x02:                        // set speed
       if (n && p[0]) { cfgSpeed = p[0]; Keyer::setWpm(p[0]); }
+      // 0 = "use the speed pot" (K1EL): the knob's speed, now. Ignoring it
+      // left the keyer at its last speed while the host showed the knob's.
+      else if (n) { cfgSpeed = 0; Keyer::usePotSpeed(); }
       break;
     case 0x03:                        // weighting — RECORDED, NOT APPLIED
       if (n) cfgWeight = p[0];        // fist, not protocol: see 0x0D
@@ -478,6 +481,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
         applyModeRegister(p[0]);
         cfgSpeed = p[1];
         if (p[1]) Keyer::setWpm(p[1]);     // 0 = follow the pot, as 0x02
+        else      Keyer::usePotSpeed();
         cfgPotMin = p[6]; cfgPotRange = p[7];
         Keyer::setPotRange(p[6], p[7]);
         // Mode, speed and the pot range above are the host's; everything
@@ -516,7 +520,9 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       if (n) { bufPush(ESC_SPEED); bufPush(p[0]); }
       break;
     case 0x1E:                        // cancel buffered speed
-      bufPush(ESC_SPEED); bufPush(cfgSpeed);
+      // Back to the host's speed; if that is 0 (the pot), to where the
+      // keyer is now, since a 0 in the buffer is not a speed.
+      bufPush(ESC_SPEED); bufPush(cfgSpeed ? cfgSpeed : Keyer::getWpm());
       break;
     default:
       break;                          // consumed and ignored

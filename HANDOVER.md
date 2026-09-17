@@ -28,9 +28,9 @@ hardware.
   working or dead without `flex_meters_watch.py` running.**
 - **Fixed 2026-09-17 evening:** the learned sidetone timing had crept to
   1168 µs at 25 WPM (real ~760) and drifted behind the radio. See What
-  changed 19:00. **Open:** RUMlogNG takes 18 s to ~2 min to open a session
-  (captured 19:40: a backlog of admin-open commands drains at 1200 baud; see
-  What changed 19:35).
+  changed 19:00. **RUMlogNG: use keyer type K3NG.** With K1EL it takes 18 s
+  to ~2 min to open a session (it floods admin-open); with K3NG it opens at
+  once (What changed 20:00). WK set-speed 0 now follows the knob.
 - **New 2026-09-17 evening:** practice mode (sidetone only, no TX, not
   saved), `/practice on|off` or the web checkbox. Verified on hardware.
 - **New 2026-09-17:** the sent CW scrolls on the display's bottom band while
@@ -1813,6 +1813,32 @@ makes the keyer feel slow.
       untested idea is that it looks for a WK3 version (a K1EL WK3.1 answers
       31) and only accepts 23 after retrying. The deciding comparison is
       RUMlogNG against the real K1EL.
+
+- **2026-09-17 (20:00–20:20)** — **RUMlogNG keyer type K3NG opens at once.
+  Fixed: WK set-speed 0 was ignored.**
+  - Manoj switched RUMlogNG's keyer type from K1EL to K3NG, and the
+    session now opens immediately. Three opens in the trace each took the
+    first `0x17` and went straight into set-up. K3NG's WinKeyer emulation
+    also reports 23 (`WINKEY_2_REPORT_VERSION_NUMBER`), which fits RUMlogNG's
+    K1EL profile wanting a WK3 version. Both profiles send the same set-up:
+    `00 0F 00`, `01 08`, `10 00`, `0E 47`, `09 05`, `05 0A 1E 00`, `03 32`,
+    `0D 19`, `04 00 00`, `11 00`, `17 32`, `07`, `15`, `02 00`.
+  - **Speed mismatch** (RUMlogNG 12, keyer 16): RUMlogNG asks for the pot
+    (0x82 → 10+2 = 12), then sends `02 00`. On a K1EL, speed 0 means use
+    the pot. `winkeyer.cpp` ignored a 0, so the keyer kept a speed set
+    elsewhere (web, radio, an earlier session) until the knob was touched.
+    Now `0x02 00`, and a 0 speed in load defaults (`0x0F`), call
+    `Keyer::usePotSpeed()`. That re-reads the knob and adopts it on the next
+    reading (≤ 50 ms, `potAdopt`). Cancel-buffered-speed (`0x1E`) no longer
+    pushes a speed of 0.
+  - Verified by script on the USB port: set 30 → 30, then pot range 10+30,
+    get pot, `02 00` → **20, the knob's speed**. Not yet seen from RUMlogNG
+    itself: its one attempt after the flash overlapped the script and never
+    got past host-open.
+  - Seen, not changed: host close restores the operator's saved speed
+    (`restoreKeyer()`, 15 here) even though the knob sits elsewhere, so the
+    keyer and the knob disagree after a logger disconnects until the knob
+    moves.
 
 ## Network placement (measured 2026-09-10)
 

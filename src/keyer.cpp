@@ -204,6 +204,7 @@ int      potLastWpm = -1;
 // The knob's own step above MINWPM, for the WinKeyer pot byte. Kept apart
 // from potLastWpm, which setWpm() resets whenever a host sets a speed.
 volatile int8_t potStepV = -1;
+volatile bool   potAdopt = false;   // next reading sets the speed (usePotSpeed)
 // A pot parked on a step boundary alternates between two adjacent speeds
 // forever, and every flip is a speed change AND an unsolicited WinKeyer pot
 // byte — at 1200 baud that stream saturates the host link.
@@ -432,6 +433,14 @@ void samplePot() {
   if (potLastWpm < 0) {                   // don't stomp boot speed
     potLastWpm = (cwpm + 50) / 100;
     potStepV = (int8_t)constrain(potLastWpm - (int)cfgPotMin, 0, (int)cfgPotRange);
+    // ...unless a host asked for the knob's speed. RUMlogNG opens a session
+    // with pot range, get pot, then "speed 0"; ignoring the 0 left the keyer
+    // at 16 WPM while RUMlogNG showed the knob's 12 (2026-09-17).
+    if (potAdopt) {
+      potAdopt = false;
+      cfgWpm = constrain(potLastWpm, 5, 60);
+      recalc();
+    }
     return;
   }
   int cur = potLastWpm * 100;
@@ -626,6 +635,11 @@ void setWpm(uint8_t wpm) {
   cfgWpm = constrain(wpm, (uint8_t)5, (uint8_t)60);
   recalc();
   potLastWpm = -1;   // host speed rules until the pot moves again
+}
+void      usePotSpeed() {
+  if (!cfgPotEn) return;
+  potAdopt = true;
+  potLastWpm = -1;   // re-read the knob from scratch, then adopt it
 }
 uint8_t   getWpm()  { return cfgWpm; }
 void      setMode(KeyerMode m) { cfgMode = m; }
