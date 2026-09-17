@@ -2011,16 +2011,29 @@ against exposing it beyond one.
     or Flex reconnect) brings the dead state back, which would reproduce it
     on demand.
 
-    **Stale handle CONFIRMED as a second, separate fault (13:46).** Manoj
-    switched the GUI client from the Maestro to AetherSDR with no keyer
-    reboot, and the paddle went dead again. `sub client all` listed only
-    AetherSDR (`0x0D528C43`); the keyer's `flex.guihandle` still read the
-    Maestro's `0x7E7FD26E` (uptime 516 s, Flex session connected, slice in
-    CW). This is the lead above, now observed. It does NOT explain the
-    13:39–13:41 dead state, when the handles matched. So there are two
-    faults: a stale handle after a GUI client change (keyer bug, fix = step
-    5), and 0 W after a fresh keyer session until a second memory (cause
-    unknown).
+    **Stale handle: NOT the cause after all (13:46–13:51).** At 13:46,
+    after Manoj switched the GUI client from the Maestro to AetherSDR, the
+    paddle was dead and the keyer still held the Maestro's handle. That
+    looked like confirmation, but it was only correlation:
+    - A forced rebind (`POST /api/set?k=flexbind&v=on`) picked up
+      AetherSDR's handle (`0x0D528C43`, matching `sub client all`, slice 0
+      CW and TX), and the paddle **stayed dead**.
+    - Manoj then restarted AetherSDR, which got a new handle
+      (`0x54A57F28`); the keyer kept `0x0D528C43`. The paddle was dead.
+      He played a memory and stopped it, and **the paddle came back with
+      the keyer still holding the stale handle** (checked 13:50:46).
+
+    So the handle in `cw key` does not decide whether the paddle makes
+    RF. What does: after any fresh start (keyer reboot, keyer Flex
+    reconnect, GUI client change or restart), paddle keying makes 0 W
+    until a memory has been played. The radio still marks those paddle
+    transmissions as CW (`SW,SWCW`, 13:40). The first memory can itself
+    stall at 0 W; stopping and replaying works. Note: `client bind` uses
+    the `client_id`, which stays the same across AetherSDR restarts
+    (`9BC74D63-…`), while the handle changes each time. Unconfirmed: whether
+    Manoj's STOP (`cwx clear` alone) was tried before the memory, which
+    would show that the fix needs a `cwx send`. The stale handle is still
+    wrong and worth refreshing, but fixing it alone will not fix this.
 
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
