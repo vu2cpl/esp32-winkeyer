@@ -1796,6 +1796,23 @@ makes the keyer feel slow.
     drain (longer when the open also rebooted the keyer). Not proven.
     Deciding test: open the port from a script, send one `00 02`, time the
     reply, and compare RUMlogNG against a real K1EL.
+  - **Timing test run (19:55, pyserial, 1200 8N2, DTR/RTS asserted):**
+    - Opening the port did **not** reboot the keyer (uptime watched over
+      HTTP).
+    - The first `00 02` was answered with `0x17` at once. Over 20 clean
+      round trips the reply came min 6 / median 8 / max 20 ms after the
+      host's write returned.
+    - Flood (write `00 02` without waiting, as RUMlogNG appears to): the
+      OS took **5224 opens in 29 ms** before the first reply came back.
+      The keyer then answered every one, the last **95.7 s** later against
+      95.8 s predicted from 1200 baud.
+    - So the keyer is not slow. A logger that repeats open without waiting
+      builds a backlog that only the wire can drain, and RUMlogNG's 18 s
+      means it wrote ~1000 opens before it took a reply.
+    - Still unexplained: why RUMlogNG does not take the first reply. One
+      untested idea is that it looks for a WK3 version (a K1EL WK3.1 answers
+      31) and only accepts 23 after retrying. The deciding comparison is
+      RUMlogNG against the real K1EL.
 
 ## Network placement (measured 2026-09-10)
 
