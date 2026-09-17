@@ -11,6 +11,7 @@
 //    POST /api/set?k=..&v=..   one setting, via Settings::apply()
 //    POST /api/send?t=..       queue text as CW
 //    POST /api/tune?v=on|off   key down for tuning
+//    GET  /api/flextrace       recent lines to/from the radio (?clear=1)
 //    GET  /api/bt              Bluetooth keyboard detail + scan list
 //    POST /api/bt?scan=1 | connect=<addr>&type=<n> | forget=1 | restart=1
 //
@@ -772,6 +773,29 @@ void begin() {
     String out;
     WinKeyer::traceDump(out);
     server.send(200, "text/plain", out);
+  });
+  // Radio traffic trace — ?clear=1 empties it. Streamed in chunks: the full
+  // ring is ~15 KB of text, too much to build as one String on this heap.
+  server.on("/api/flextrace", HTTP_GET, []() {
+    if (server.hasArg("clear")) {
+      Flex::traceClear();
+      server.send(200, "text/plain", "cleared\n");
+      return;
+    }
+    struct Chunked : Print {
+      char buf[1024]; size_t n = 0;
+      size_t write(uint8_t c) override {
+        buf[n++] = (char)c;
+        if (n == sizeof buf) flush();
+        return 1;
+      }
+      void flush() override { if (n) server.sendContent(buf, n); n = 0; }
+    } out;
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/plain", "");
+    Flex::traceDump(out);
+    out.flush();
+    server.sendContent("");
   });
   server.on("/api/set",   HTTP_POST, handleSet);
   server.on("/api/send",  HTTP_POST, handleSend);

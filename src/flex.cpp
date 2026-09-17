@@ -28,6 +28,7 @@
 #include <WiFiUdp.h>
 #include <lwip/sockets.h>
 #include <errno.h>
+#include <cstdarg>
 #include <Preferences.h>
 #include "config.h"
 
@@ -171,9 +172,47 @@ void handleDiscovery(WiFiUDP& udp) {
   lastDiscovery = millis();
 }
 
-void sendCmd(const String& cmd) {
+// ── Radio traffic trace ──────────────────────────────────
+// Recent lines to and from the radio, stamped, for GET /api/flextrace. The
+// radio's reply to a refused "cw key" only ever reached the console, which
+// is muted while a logger holds the port, and the Mac cannot see this
+// traffic at all (HANDOVER open item 13). Everything sent is kept; of what
+// arrives only replies, messages and the interlock/cwx/client statuses —
+// slice statuses are long and arrive in bursts whenever the radio is tuned.
+// Everything here runs in loop(), so no locking.
+const uint16_t FT_N   = 128;
+const uint8_t  FT_LEN = 120;
+struct FlexTraceEnt { uint32_t ms; char dir; char text[FT_LEN]; };
+FlexTraceEnt ftrace[FT_N];
+uint16_t ftHead  = 0;
+uint32_t ftTotal = 0;
+
+void ftAdd(char dir, const char* text) {
+  FlexTraceEnt& e = ftrace[ftHead];
+  e.ms  = millis();
+  e.dir = dir;
+  size_t n = strcspn(text, "\r\n");       // one line, no terminator
+  if (n >= FT_LEN) n = FT_LEN - 1;
+  memcpy(e.text, text, n);
+  e.text[n] = 0;
+  ftHead = (ftHead + 1) % FT_N;
+  ftTotal++;
+}
+
+// Every command to the radio goes through here, so every one is traced.
+void txf(const char* fmt, ...) {
   if (!tcp.connected()) return;
-  tcp.printf("C%lu|%s\n", (unsigned long)seq++, cmd.c_str());
+  char buf[256];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof buf, fmt, ap);
+  va_end(ap);
+  tcp.print(buf);
+  ftAdd('>', buf);
+}
+
+void sendCmd(const String& cmd) {
+  txf("C%lu|%s\n", (unsigned long)seq++, cmd.c_str());
 }
 
 // Exact key lookup in a space-separated "k=v k=v" status body.
@@ -198,6 +237,11 @@ bool kv(const String& body, const char* key, String& out) {
 void onLine(const String& line) {
   if (line.length() < 2) return;
   char t = line[0];
+  if (t == 'R' || t == 'M' ||
+      (t == 'S' && (line.indexOf("|interlock ") > 0 ||
+                    line.indexOf("|cwx ") > 0 ||
+                    line.indexOf("|client ") > 0)))
+    ftAdd('<', line.c_str());
 
   if (t == 'H') {                      // handle assigned on connect
     radioHandle = line.substring(1);
@@ -490,11 +534,23 @@ void setBind(bool on) {
 bool bindEnabled() { return cfgBind; }
 String guiClientHandle() { return guiHandle; }
 
+void traceDump(Print& out) {
+  uint16_t n = ftTotal < FT_N ? (uint16_t)ftTotal : FT_N;
+  uint16_t i = (ftHead + FT_N - n) % FT_N;
+  out.printf("# total %lu, showing %u, now %lu ms, > keyer to radio, < radio to keyer\n",
+             (unsigned long)ftTotal, n, (unsigned long)millis());
+  for (uint16_t k = 0; k < n; k++, i = (i + 1) % FT_N)
+    out.printf("%lu %c %s\n", (unsigned long)ftrace[i].ms, ftrace[i].dir,
+               ftrace[i].text);
+}
+
+void traceClear() { ftHead = 0; ftTotal = 0; }
+
 // A key-up in the same form the elements use. "xmit 0" does NOT clear a
 // key the radio still believes is down: it stays in TX on source=SWCW.
 void sendKeyUp() {
   if (!tcp.connected()) return;
-  tcp.printf("C%lu|cw %s 0 time=0x%04X index=%u client_handle=%s\n",
+  txf("C%lu|cw %s 0 time=0x%04X index=%u client_handle=%s\n",
              (unsigned long)seq++, cfgKeyVerb,
              (unsigned)(millis() & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
              guiHandle.length() ? guiHandle.c_str() : "0x0");
@@ -523,7 +579,7 @@ void pumpKeying() {
                                 : "the slice is not in CW mode");
     }
     if (e.down && !xmitOn && cfgUseXmit) {
-      tcp.printf("C%lu|xmit 1\n", (unsigned long)seq++);
+      txf("C%lu|xmit 1\n", (unsigned long)seq++);
       xmitOn = true;
       if (logKeying) Log::println("[FLEX] xmit 1 (PTT)");
     }
@@ -543,7 +599,7 @@ void pumpKeying() {
     // MOX or key on/off"), while MORCONI's author shows "cw key". Both are
     // accepted by the radio, so which one actually keys is a question for
     // the meter — hence the runtime switch.
-    tcp.printf("C%lu|cw %s %d time=0x%04X index=%u client_handle=%s\n",
+    txf("C%lu|cw %s %d time=0x%04X index=%u client_handle=%s\n",
                (unsigned long)seq++, cfgKeyVerb,
                e.down ? 1 : 0,
                (unsigned)(e.at & 0xFFFF), (unsigned)(keyIndex++ & 0xFFFF),
@@ -586,7 +642,7 @@ void pumpKeying() {
   if ((xmitOn || keyIsDown) && ((quiet && !keyIsDown) || stuck)) {
     sendKeyUp();              // first, and always — see sendKeyUp()
     if (xmitOn) {
-      tcp.printf("C%lu|xmit 0\n", (unsigned long)seq++);
+      txf("C%lu|xmit 0\n", (unsigned long)seq++);
       xmitOn = false;
     }
     if (stuck) {

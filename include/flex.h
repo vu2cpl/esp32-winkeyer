@@ -62,6 +62,12 @@ bool bindEnabled();
 // compare it with "sub client all" when keying goes quiet.
 String guiClientHandle();
 
+// Last 128 lines to and from the radio with millisecond stamps: every
+// command sent, and the replies, messages and interlock/cwx/client statuses
+// received. Served at GET /api/flextrace (?clear=1 empties it).
+void traceDump(Print& out);
+void traceClear();
+
 // "ptt" (FlexRadio wiki) or "key" (MORCONI). Both are accepted by the
 // radio; only a power meter can say which one keys.
 void        setKeyVerb(const char* verb);

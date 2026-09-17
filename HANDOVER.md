@@ -382,6 +382,17 @@ and writes `drop-N.txt` when an echo goes missing (read-only, runs beside
 RUMlogNG). **`tools/wk-echo-repro.py`** replays a message over TCP and checks
 every echo (keys the radio; close the logger).
 
+**`GET /api/flextrace`** (2026-09-17) is the radio wire: the last 128 lines,
+ms-stamped. `>` lines are every command the keyer sends (`xmit`, `cw key`
+with `time`/`index`/`client_handle`, `cwx …`, `sub …`). `<` lines are the
+radio's replies (`R<seq>|<code>|`, so a refused command is visible), its
+messages, and its interlock, cwx and client statuses. Slice statuses are
+left out because they flood the ring when the radio is tuned. Lines are
+cut at 119 characters, so the end of a long interlock status is lost.
+`?clear=1` empties it. It is streamed in 1 KB chunks. This is the only way
+to see the keyer↔radio traffic: the Mac cannot sniff it (item 13), and the
+console is muted during a logger session.
+
 **`tools/uptime-watch.py`** polls `/api/state` and prints only events —
 restarts (with the reset reason), outages and their length, stalls. "The
 board died" is useless; "uptime 225 -> 2 at 12:31:35, reason PANIC" is not.
@@ -1516,6 +1527,15 @@ makes the keyer feel slow.
   the field. Flashed and seen on hardware the same day: `""` at 5 s
   uptime, then the Maestro's handle by 13 s, once the keyer had bound.
 
+- **2026-09-17 (13:58)** — **`GET /api/flextrace`: the keyer↔radio wire,
+  over HTTP.** It keeps a 128-line ring of every command sent (all
+  radio-bound writes now go through one `txf()` in `flex.cpp`) and of the
+  radio's replies, messages and interlock/cwx/client statuses. It is there
+  for open item 13: the radio's reply to a `cw key` had only ever reached
+  the console, and the Mac cannot see this traffic at all. About 16 KB of
+  static RAM (RAM 29.9%). Both envs build. Flashed, and read on hardware
+  straight after boot.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -2041,6 +2061,12 @@ against exposing it beyond one.
     fault may depend on timing. What the radio replies to each `cw key`
     (`R<seq>|<code>|`) has never been looked at, and the Mac cannot see
     that traffic (see above).
+
+    **`GET /api/flextrace` added and flashed (13:58)** so the next test can
+    be read line by line. The first read after boot shows the radio's CW
+    settings at connect: `cwx wpm=22 break_in_delay=5 qsk_enabled=1`. **QSK
+    is on**, and the keyer also asserts `xmit 1` around paddle keying. The
+    trace should show whether that combination plays a part.
 
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on

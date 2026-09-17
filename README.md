@@ -902,6 +902,15 @@ keeps a whole session (the trace is a ring), flagging drops as they happen;
 `tools/wk-echo-repro.py` sends a message repeatedly over TCP and checks each
 echo — it keys the radio and needs the logger closed.
 
+**`GET /api/flextrace` does the same for the radio link on the Flex
+backend.** It holds the last 128 lines, millisecond-stamped: `>` is every
+command the keyer sent (`xmit`, `cw key` with its `time`, `index` and
+`client_handle`, `cwx …`), and `<` is the radio's replies, messages and
+interlock/cwx/client statuses. A reply other than `0` or `50001000` means
+the radio refused the command. `?clear=1` empties it. Read it when the radio
+keys up but sends nothing: that traffic goes over WiFi straight to the
+radio, where no other machine can watch it.
+
 ## MQTT
 
 - Broker: `MQTT_HOST` in `secrets.h` (`config.h` default `192.168.1.10` is a
