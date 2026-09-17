@@ -1551,9 +1551,19 @@ makes the keyer feel slow.
   corrected: measured, it accepts both `cwx send` and `cw key`. Both envs
   build. Flashed and verified: AetherSDR restarted with no command, the
   keyer followed to `0x105F4906`, then a paddle key first (13 `cw key`, 4.47
-  W) and a memory (`cwx sent=1440…1444`, 4.47 W). Not yet exercised: a
-  second GUI client already connected when the first one leaves, the
-  Maestro, and the new NVS default on a keyer that never saved `flexbind`
+  W) and a memory (`cwx sent=1440…1444`, 4.47 W). **Maestro handover
+  verified 14:43–14:44.** The Maestro connected (`0x7157AD38`) while
+  AetherSDR was still up, and the keyer stayed on AetherSDR. AetherSDR then
+  left, and the keyer moved to the Maestro by itself. Paddle keys at
+  14:44:02/04 and memories after that were fine (Manoj). That covers the
+  second-GUI-client case. **Side observation, not a fault in the fix:** the
+  first memory after the switch (`cwx send qrl?`, 14:44:20) was cut short
+  because the keyer sent `cwx clear` **233 ms** after the send. The radio
+  had sent one character (`cwx erase=1446,1448`, then `cwx sent=1445`). No
+  logger or TCP host was attached, so the clear came from the web STOP
+  (the PLAY button turns into STOP when clicked, so a double click stops it)
+  or a paddle break-in. The replays 4.8 s and 26 s later ran in full. Not
+  yet exercised: the new NVS default on a keyer that never saved `flexbind`
   (Manoj's board had it saved as off).
 
 ## Network placement (measured 2026-09-10)
@@ -1973,8 +1983,8 @@ against exposing it beyond one.
 13. **RESOLVED 2026-09-17 (14:40) — Flex backend: CW keying dies after
     every paddle key.** Fixed by following the GUI client and not binding;
     see What changed, 14:40. The investigation below is kept as it ran,
-    including leads that turned out wrong. Still to exercise: a second GUI
-    client present when the first leaves, and a Maestro restart.
+    including leads that turned out wrong. A Maestro takeover, with a second
+    GUI client present when the first left, was verified at 14:44.
 
     **Measured.** 40 transmissions, 13:15–13:27 IST, read-only from the Mac:
     `flex_status_lines.py` and `flex_meters_watch.py` from
