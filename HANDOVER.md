@@ -2035,6 +2035,13 @@ against exposing it beyond one.
     would show that the fix needs a `cwx send`. The stale handle is still
     wrong and worth refreshing, but fixing it alone will not fix this.
 
+    **Recovery is not reliable either (Manoj, 13:53).** STOP (`cwx clear`)
+    does bring the paddle back sometimes, but it often takes several
+    presses. So neither STOP nor a memory is a guaranteed reset, and the
+    fault may depend on timing. What the radio replies to each `cw key`
+    (`R<seq>|<code>|`) has never been looked at, and the Mac cannot see
+    that traffic (see above).
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
