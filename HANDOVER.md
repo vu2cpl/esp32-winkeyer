@@ -2156,6 +2156,19 @@ against exposing it beyond one.
     a one-shot bind. (b) needs a rerun with the rebind after AetherSDR is
     back, confirmed by `flex.guihandle`.
 
+    **(b) rerun, 14:24: a new GUI client is the trigger, and `cwx clear`
+    does not prime it.** AetherSDR had restarted (`0x0E43A5E8`). The keyer
+    was re-bound and `flex.guihandle` checked to match before keying. Then
+    STOP (`cwx clear`), then a paddle key first: all 25 `cw key` commands
+    under the correct handle, all replies 0, radio `SW,SWCW`, **0.00 W**.
+    With (a): a keyer reconnect with the same GUI client is fine, while a
+    new GUI client starts in, or falls into, failure B, and `cwx clear`
+    beforehand does not prevent it. Not reconciled: 13:40, a keyer reboot
+    with the Maestro unchanged, was also failure B. Next: restart
+    AetherSDR, rebind, then a memory first. If that memory stalls, a new
+    client starts wedged whatever the keyer sends. If it works, the first
+    `cw key` to a new client is what wedges it.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
