@@ -183,8 +183,13 @@ inline void echoReset() { echoHead = echoTail = 0; }
 // anything else = that many milliseconds.
 static const uint16_t MON_DELAY_AUTO = 0xFFFF;
 uint16_t cfgMonDelayMs = MON_DELAY_AUTO;
+// Added to the measured latency in auto. Auto lines the copy up with the
+// radio, but a client that plays the radio's sidetone back as audio adds its
+// own delay the keyer cannot measure: AetherSDR needed 245 ms by ear against
+// 87 measured (2026-09-17).
+uint16_t cfgMonExtraMs = 0;
 inline uint16_t monDelayNow() {
-  if (cfgMonDelayMs == MON_DELAY_AUTO) return Flex::startLatencyMs();
+  if (cfgMonDelayMs == MON_DELAY_AUTO) return Flex::startLatencyMs() + cfgMonExtraMs;
   return cfgMonDelayMs;
 }
 struct MonChar { char c; uint32_t due; };
@@ -757,6 +762,8 @@ bool    echoEnabled()  { return serialEcho; }
 void     setMonitorDelayMs(uint16_t ms) { cfgMonDelayMs = ms; if (!ms) monReset(); }
 uint16_t monitorDelayMs()               { return cfgMonDelayMs; }
 uint16_t monitorDelayNowMs()            { return monDelayNow(); }
+void     setMonitorExtraMs(uint16_t ms) { cfgMonExtraMs = ms; }
+uint16_t monitorExtraMs()               { return cfgMonExtraMs; }
 
 bool hostOpen() { return hostIsOpen; }
 

@@ -197,6 +197,7 @@ void begin() {
   WinKeyer::setMonitor(loadU32("monitor", 1));
   // Default AUTO: the keyer measures the radio's start delay itself.
   WinKeyer::setMonitorDelayMs((uint16_t)loadU32("mondelay", 0xFFFF));
+  WinKeyer::setMonitorExtraMs((uint16_t)loadU32("monextra", 0));
   WinKeyer::setPaddleEcho(loadU32("pecho", 2));
   Keyer::setRadio(loadU32("radio", 1));
   // Flex keying details. These were CLI-only and unpersisted, so they had
@@ -419,6 +420,14 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     saveU32("mondelay", n);
     snprintf(msg, msgLen, "sidetone delay: %d ms%s", n, n ? "" : " (off)");
     return true;
+  } else if (!strcasecmp(key, "monextra")) {
+    // Added to the measured delay in auto; ignored for a manual value.
+    if (n < 0 || n > 1000) return fail("monextra: 0..1000 ms");
+    WinKeyer::setMonitorExtraMs((uint16_t)n);
+    saveU32("monextra", n);
+    snprintf(msg, msgLen, "sidetone delay extra: %d ms (auto now %u ms)", n,
+             (unsigned)WinKeyer::monitorDelayNowMs());
+    return true;
   } else if (!strcasecmp(key, "baud")) {
     // Only rates a WinKeyer host or a human console would actually use.
     const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
@@ -516,6 +525,7 @@ void toJson(JsonDocument& doc) {
   doc["mondelay"]   = WinKeyer::monitorDelayMs() == 0xFFFF
                         ? -1 : (int)WinKeyer::monitorDelayMs();   // -1 = auto
   doc["mondelaynow"]= WinKeyer::monitorDelayNowMs();
+  doc["monextra"]   = WinKeyer::monitorExtraMs();
   doc["cwextra"]    = Flex::cwExtraUs(Keyer::getWpm());   // µs/unit the radio adds at this speed
   doc["flexlatency"]= Flex::startLatencyMs();
   doc["pecho"]   = WinKeyer::paddleEcho();

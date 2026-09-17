@@ -291,6 +291,8 @@ legend[title]{cursor:help}
 <div class="row flexonly"><label title="The radio starts sending a few hundred ms after it is handed the text — network, then its own CW start — while the local sidetone copy starts at once, so the sidetone runs AHEAD of the air. This holds the copy back to match. Auto uses the delay the keyer measures from cwx send to the radio actually transmitting; set a number to override, 0 to disable.">Sidetone delay</label>
   <input type="number" id="mondelay" min="0" max="2000" placeholder="auto">
   <label style="flex:0 0 auto"><input type="checkbox" id="mondelayauto"> auto</label>
+  <label style="flex:0 0 auto" title="Added to the measured delay while auto is ticked; ignored for a manual value. Auto lines the sidetone up with the radio, but a client that plays the radio's sidetone back as audio (AetherSDR, SmartSDR) adds its own network and audio delay that the keyer cannot measure. Tune by ear: AetherSDR needed about 160.">+</label>
+  <input type="number" id="monextra" min="0" max="1000" style="width:60px"><span class="unit">ms</span>
   <span class="val" id="mondelayNow"></span></div>
 <div class="row flexonly"><label title="Which sub-command keys the radio. FlexRadio's wiki documents 'cw ptt'; MORCONI's author uses 'cw key'. Both are accepted by the radio and only a power meter can say which one actually keys, so it is switchable.">Key verb</label>
   <select id="flexcmd"><option value="key">cw key</option><option value="ptt">cw ptt</option></select>
@@ -509,7 +511,9 @@ async function refresh(){
   {const auto_=s.mondelay<0; $('mondelayauto').checked=auto_;
    $('mondelay').disabled=auto_;
    if(editing!=='mondelay') $('mondelay').value=auto_?'':s.mondelay;
-   $('mondelayNow').textContent=(s.mondelaynow||0)+' ms'+
+   $('monextra').disabled=!auto_;
+   if(editing!=='monextra') $('monextra').value=s.monextra||0;
+   $('mondelayNow').textContent='= '+(s.mondelaynow||0)+' ms'+
      (auto_?' (measured '+(s.flexlatency||0)+')':'');}
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
   $('rssiVal').textContent = s.rssi + ' dBm rx';
@@ -556,7 +560,7 @@ function bindNum(id,min,max){
   };
 }
 bindNum('farns',0,60); bindNum('lead',0,2000); bindNum('tail',0,2000);
-bindNum('mondelay',0,2000);
+bindNum('mondelay',0,2000); bindNum('monextra',0,1000);
 // The tickbox is the mode; the box is the manual value it falls back to.
 $('mondelayauto').onchange=e=>set('mondelay',
   e.target.checked ? 'auto' : ($('mondelay').value||'0'));

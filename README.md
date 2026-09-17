@@ -744,7 +744,10 @@ disables it. The first transmission after a reset has nothing measured yet.
 Auto lines the copy up with the **radio**. A client that plays the radio's
 sidetone back as audio (AetherSDR here) adds its own network and audio delay
 on top, which the keyer cannot measure. Matching that by ear took a manual
-245 ms here, against 87 ms measured.
+245 ms here, against 87 ms measured. To keep following the measurement and
+still cover the client, leave it on auto and add an **extra** (`/monextra N`,
+0–1000 ms, the `+` box on the web page, saved): about 160 for AetherSDR
+here. The extra is ignored for a manual value.
 
 **The sidetone copy also follows the radio's real timing, per speed.** A
 Flex sends each CWX dit unit a little long: about 0.7–0.8 ms more than
@@ -844,6 +847,7 @@ tells "not sent" from "reported late".
 `/ptt on|off` `/st N|on|off` (pitch 300-1000 Hz, default 600)
 `/disp on|off` `/disp sh1106|ssd1306`
 `/weight N` `/ratio N` `/farns N` `/lead N` `/tail N`
+`/mondelay auto|N` `/monextra N` (sidetone delay; extra ms on top of auto)
 `/practice on|off` (sidetone only, no TX; not saved)
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
 `/bt on|off|scan|forget` (on/off takes a restart) `/i2c` `/net` `/status`.

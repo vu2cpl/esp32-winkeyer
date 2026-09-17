@@ -253,6 +253,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
     } else if (!strcasecmp(cmd, "practice") && arg) { setting("practice", arg);
     } else if (!strcasecmp(cmd, "mondelay") && arg) { setting("mondelay", arg);
+    } else if (!strcasecmp(cmd, "monextra") && arg) { setting("monextra", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
     } else if (!strcasecmp(cmd, "ratio")  && arg) { setting("ratio", arg);
@@ -349,7 +350,7 @@ void handleLine(char* line) {
       printStatus();
     } else {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
-                     "      /weight /ratio /farns /lead /tail /baud /monitor /mondelay /pecho\n"
+                     "      /weight /ratio /farns /lead /tail /baud /monitor /mondelay /monextra /pecho\n"
                      "      /practice on|off (sidetone only, no TX)\n"
                      "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
                      "      /radio 1|2|both   /mem N [text]   /call <sign>\n"

@@ -57,6 +57,10 @@ bool monitor();
 void     setMonitorDelayMs(uint16_t ms);
 uint16_t monitorDelayMs();      // the setting (0xFFFF = auto)
 uint16_t monitorDelayNowMs();   // what is actually being applied
+// Extra ms on top of the measured latency, in auto only: for a client whose
+// sidetone audio arrives later than the radio transmits (0..1000).
+void     setMonitorExtraMs(uint16_t ms);
+uint16_t monitorExtraMs();
 
 // Echo of characters sent on the PADDLE (mode register bit 6), so a logger
 // captures hand-sent text. 0 off, 1 forced on, 2 follow the host — RUMlogNG

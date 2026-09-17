@@ -1875,7 +1875,13 @@ makes the keyer feel slow.
       read 229, as it did on 2026-09-12.
     - Needs a second point: when auto reads clearly different (140+), find
       the right manual value by ear.
-    - Offered, not built: an "extra" ms added on top of auto.
+    - **Built on Manoj's request (21:45): `monextra`**, extra ms added to
+      the measured latency in auto only. `WinKeyer::setMonitorExtraMs()`,
+      NVS `monextra` 0–1000 (default 0), `/monextra N`, `monextra` in
+      `/api/state`, and a `+ [ ] ms` box in the Sidetone delay row that is
+      greyed out unless auto is ticked. Both envs build and it is flashed;
+      1001 is rejected; the page row renders. Manoj was still on manual
+      245 at the flash, so auto + extra is **not yet tried by ear.**
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
