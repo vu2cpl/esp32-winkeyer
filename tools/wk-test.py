@@ -6,7 +6,7 @@ Acts as a host the way a logger does: opens host mode, checks the version
 byte, sets speed, sends text, and decodes the status/pot bytes coming back.
 Use it to verify the firmware without installing a logging program.
 
-    ./wk-test.py                          # winkeyer.local:8088
+    ./wk-test.py                          # vukeyer.local:8088
     ./wk-test.py --host 192.168.1.77
     ./wk-test.py --serial /dev/cu.usbserial-0001
     ./wk-test.py --text "CQ TEST VU2CPL"
@@ -89,7 +89,7 @@ def drain(link, secs, label=""):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--host", default="winkeyer.local")
+    ap.add_argument("--host", default="vukeyer.local")
     ap.add_argument("--port", type=int, default=8088)
     ap.add_argument("--serial")
     # A real WinKeyer runs 1200 8N2 and loggers open the port that way; the

@@ -7,7 +7,7 @@ the bootloader handed off to the app (`entry 0x...`).
 
     POWERON_RESET repeating  -> supply collapsing (try another supply)
     SW_RESET repeating, no app output -> suspect stale flash: erase first
-        (pio run -e esp32-winkeyer -t erase), then reflash, before
+        (pio run -e esp32-vukeyer -t erase), then reflash, before
         retiring the board. This is what fixed the original ESP32.
 
 Note: on a CP2102 devkit, macOS opening the port can still pulse the reset

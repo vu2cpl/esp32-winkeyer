@@ -64,6 +64,6 @@ PIO_BIN=$(find_pio) || exit 1
 
 BAUD="${1:-1200}"
 echo "→ $PIO_BIN device monitor --port $PORT -b $BAUD"
-echo "  (firmware default is 1200 8N2 — WinKeyer standard. Boot log is one"
-echo "   line at that rate; use http://winkeyer.local/ for full status.)"
+echo "  (firmware default is 1200 8N2 — logger standard. Boot log is one"
+echo "   line at that rate; use http://vukeyer.local/ for full status.)"
 exec "$PIO_BIN" device monitor --port "$PORT" -b "$BAUD"

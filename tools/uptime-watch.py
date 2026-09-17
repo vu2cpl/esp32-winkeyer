@@ -13,7 +13,7 @@ useless, "uptime 225 -> 2 at 12:31:35, reason PANIC / exception" is not.
 A restart reason of POWERON on a board nobody touched means something
 outside the firmware — on a devkit, usually its USB port's control lines.
 
-    ./uptime-watch.py                          # winkeyer.local
+    ./uptime-watch.py                          # vukeyer.local
     ./uptime-watch.py --keyer 192.168.1.77 --log /tmp/keyer.log
     ./uptime-watch.py --stall 1.0              # stricter stall threshold
 
@@ -27,7 +27,7 @@ import time
 import urllib.request
 
 ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
-ap.add_argument("--keyer", default="winkeyer.local", help="host or IP")
+ap.add_argument("--keyer", default="vukeyer.local", help="host or IP")
 ap.add_argument("--log", default="", help="sample log (default: no file)")
 ap.add_argument("--interval", type=float, default=0.25, help="seconds between polls")
 ap.add_argument("--stall", type=float, default=3.0, help="report replies slower than this")

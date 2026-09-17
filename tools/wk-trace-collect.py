@@ -10,7 +10,7 @@ and writes drop-N.txt the moment a character the host sent is never echoed.
 Read-only: safe to run while RUMlogNG holds the port.
 """
 import urllib.request, time, subprocess
-import os; URL = f"http://{os.environ.get('KEYER', 'winkeyer.local')}/api/wktrace"
+import os; URL = f"http://{os.environ.get('KEYER', 'vukeyer.local')}/api/wktrace"
 seen, allents, flagged = set(), [], 0
 end = time.time() + 20 * 60
 while time.time() < end:

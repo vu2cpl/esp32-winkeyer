@@ -1,14 +1,17 @@
-# ESP32 WinKeyer
+# VUKEYER
 
-A WinKeyer-compatible CW keyer on an ESP32, reachable over WiFi. Iambic
+VUKEYER is a WinKeyer-protocol compatible CW keyer on an ESP32, reachable over WiFi. Iambic
 paddle keying with local element generation, a K1EL-compatible host
 protocol so logging software talks to it as a WinKeyer, and an optional
 FlexRadio backend that keys a 6000/8000-series radio over the network.
 Settings are edited from a front-panel OLED's companion web page at
-`winkeyer.local` and persist across power cycles.
+`vukeyer.local` and persist across power cycles.
 
 WinKeyer protocol by Steve K1EL. K3ng CW keyer by Anthony Good K3NG used
 as a behavioural reference; the implementation here is original.
+
+Formerly "ESP32 WinKeyer". Renamed 2026-09-17, because WinKeyer is K1EL's
+product name: this is a compatible keyer, not a WinKeyer.
 
 ## Status
 
@@ -17,13 +20,13 @@ as a behavioural reference; the implementation here is original.
 | Keyer core — iambic A/B, sidetone, PTT, pot, break-in | working, bench-verified |
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
 | WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night; echo now paced per letter on both backends, within ~60 ms (local) / ~150 ms (Flex) of the K1EL**; admin 0 (Calibrate) argument byte fixed the following morning — it had desynced RUMlogNG's session setup ([findings](docs/k1el-probe-2026-09-13/README.md)) |
-| WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
+| WiFi TCP transport + mDNS `vukeyer.local` | working, verified over WiFi |
 | FlexRadio backend — **paddle keying over the network** | working, verified on a 6600. **Fixed 2026-09-17:** CW went out at 0 W after a GUI client (SmartSDR/Maestro/AetherSDR) restarted or changed; the keyer now follows the GUI client and no longer sends `client bind` |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
 | Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware; sent CW scrolls on the bottom band while sending (approved on hardware 2026-09-17) |
 | HD44780 LCD 16x2 / 20x4 | working; the slice warning on it is untested |
-| Settings web page at `winkeyer.local` | working; one screen without scrolling from ~880x1150 upwards |
+| Settings web page at `vukeyer.local` | working; one screen without scrolling from ~880x1150 upwards |
 | SEND / STOP as one button on the page | working; per control — text, tune, each memory, FSK |
 | Persisted settings (NVS) | working, verified across a hard reset |
 | Message memories (6) with `%C` expansion | working from the web page and a logger |
@@ -97,7 +100,7 @@ the core (`pip install -U platformio`); delete the half-installed
 install never repairs itself; on Windows use Python from python.org rather
 than the Microsoft Store build, whose sandboxed paths break virtualenv
 creation; and check that antivirus or a proxy is not blocking pip. `pio run
--e esp32-winkeyer -v` shows the underlying pip error.
+-e esp32-vukeyer -v` shows the underlying pip error.
 
 **On Windows** `flash.sh` / `monitor.sh` cannot run, so use the
 cross-platform equivalents, which pick the port the same way:
@@ -111,14 +114,14 @@ python install.py monitor 115200   # after /baud 115200
 The port is never guessed when several boards are attached — some CP2102s
 share factory serial `0001`, so the wrong board would be flashed silently.
 
-1. First boot opens WiFi AP **`vu2cpl-esp32-winkeyer-setup`** (password
+1. First boot opens WiFi AP **`vu2cpl-vukeyer-setup`** (password
    `vu2cpl1234`). Join it from a laptop or phone; a captive portal opens
    where you pick **your own network** and enter its password. Creds
    persist in NVS. The portal does not time out, and the keyer keys
    normally while it is open — onboarding is non-blocking by design.
 
    Put the keyer on the **same subnet as the logging computer** (and the
-   radio, if using the Flex backend): `winkeyer.local` and Flex discovery
+   radio, if using the Flex backend): `vukeyer.local` and Flex discovery
    are both broadcast-based and do not cross subnets or VLANs. For the
    radio there is a way round it — **Find radio** on the web page (see
    FlexRadio below).
@@ -237,7 +240,7 @@ What *cannot* be detected, because each pair shares an address:
 **OLED, 128x64:**
 
 ```
-WinKeyer            -52dBm     link quality, or "no wifi"
+VUKEYER             -52dBm     link quality, or "no wifi"
 --------------------------
  28 WPM  POT        [ KEY ]    speed, where it came from, activity
 --------------------------
@@ -254,7 +257,7 @@ PTT counts, so on a long PTT tail the text stays up until the tail ends.
 The LCDs switch back on the same rule.
 
 ```
-WinKeyer            -52dBm
+VUKEYER             -52dBm
 --------------------------
  28 WPM  POT        [ KEY ]
 --------------------------
@@ -309,7 +312,7 @@ Every indicator:
 | `----` | no host session — placeholder, so the field keeps its width |
 | `+NET` | a TCP client is connected over WiFi as well |
 | `-52dBm` | WiFi signal; `no wifi` if the link is down |
-| `SLICE USB, NOT CW` | the Flex's slice is in another mode; `NO SLICE IN USE` if there is none. OLED: replaces the `WinKeyer` title. 20x4: replaces row 4 (dBm/tail). 16x2: alternates with the IP every 2 s when not sending, as `SLICE USB NOT CW` (`DIGU: NOT CW` for 4-letter modes) |
+| `SLICE USB, NOT CW` | the Flex's slice is in another mode; `NO SLICE IN USE` if there is none. OLED: replaces the `VUKEYER` title. 20x4: replaces row 4 (dBm/tail). 16x2: alternates with the IP every 2 s when not sending, as `SLICE USB NOT CW` (`DIGU: NOT CW` for 4-letter modes) |
 
 The radio number is attached to the backend as one token — `LOCAL1`,
 `FLX2`, `FLXB` — rather than spaced, because the "both" letter `B` would
@@ -529,7 +532,7 @@ the slot that is going out turns into a red STOP, so the stop is on the row
 you pressed rather than somewhere else on the page. No GPIO cost —
 front-panel buttons can be wired to these later.
 
-**Anything that originates text must go through `WinKeyer::sendText()`**,
+**Anything that originates text must go through `HostLink::sendText()`**,
 not `Keyer::sendChar()`. On the Flex backend the radio generates the CW and
 those local elements are deliberately withheld from the key hook, so a
 direct send produces sidetone and no RF.
@@ -647,8 +650,8 @@ serial port, so run the bridge:
 ./tools/wk-bridge.py
 ```
 
-That creates `/tmp/winkeyer` (a symlink to a PTY) and shuttles bytes to
-`winkeyer.local:8088`. Point the logger at that path and choose WinKeyer
+That creates `/tmp/vukeyer` (a symlink to a PTY) and shuttles bytes to
+`vukeyer.local:8088`. Point the logger at that path and choose WinKeyer
 as the keyer type. Verified hosts: anything speaking WK2 — N1MM+, DXLog,
 RUMlogNG, MacLoggerDX, SkookumLogger, fldigi.
 
@@ -803,7 +806,7 @@ buffered text.
 
 ```bash
 ./tools/wk-test.py --serial /dev/cu.usbserial-0001   # exercise the protocol
-./tools/wk-test.py --host winkeyer.local             # ...over WiFi
+./tools/wk-test.py --host vukeyer.local             # ...over WiFi
 ./tools/wk-bridge.py                                 # TCP → serial port
 ./tools/wk-timing.py --text "CQ TEST"                # timestamped status
 ./tools/flex-check.py                                # why isn't it keying?
@@ -855,7 +858,7 @@ Any other line is sent as CW.
 
 ## Settings web page
 
-`http://winkeyer.local/` (or the IP — `/net` prints it). Every label with a
+`http://vukeyer.local/` (or the IP — `/net` prints it). Every label with a
 dotted underline carries **hover help** — ranges, what a setting actually
 does, and which GPIO it drives — so the panel stays scannable. Speed, mode,
 paddle swap, sidetone, **weighting, dah ratio, Farnsworth, PTT lead and
@@ -999,7 +1002,7 @@ PTT output switched off for as long as the logger was attached. Its own PTT
 and key-out checkboxes never reach the keyer at all — they drive its rig
 control. `/api/state` carries `pincfg` and `hostdef` if you want to see what
 your own logger sends. To hand any of it back, restore the setter named in the
-comment on that case in `src/winkeyer.cpp`. CLI and web page both go through
+comment on that case in `src/hostlink.cpp`. CLI and web page both go through
 `Settings::apply()`, so they cannot disagree about ranges or names.
 
 **`GET /api/wktrace` shows the wire itself** — the last 1024 bytes between
@@ -1029,21 +1032,21 @@ radio, where no other machine can watch it.
 
 - Broker: `MQTT_HOST` in `secrets.h` (`config.h` default `192.168.1.10` is a
   placeholder); auth required — role account in `secrets.h`. The account
-  needs **write** on `shack/esp32-winkeyer/#`, or the broker accepts the
+  needs **write** on `shack/esp32-vukeyer/#`, or the broker accepts the
   login and silently drops every publish.
 - A broker that is down or unreachable costs nothing: the connect is capped
   at 500 ms and never attempted while CW or PTT is active.
-- Status: `shack/esp32-winkeyer/status` (retained; LWT `{"event":"offline"}`),
+- Status: `shack/vukeyer/status` (retained; LWT `{"event":"offline"}`),
   heartbeat carries WPM, busy, backend, host/TCP/Flex connection state.
 
 ## Layout
 
 ```
-platformio.ini        env:esp32-winkeyer (esp32dev) + env:esp32s3-winkeyer
+platformio.ini        env:esp32-vukeyer (esp32dev) + env:esp32s3-vukeyer
 include/config.h       broker, topics, ports, AP name (+ git-ignored secrets.h)
 include/pins.h         GPIO map (I²C + OTRSP pins reserved)
 src/keyer.cpp          iambic keyer engine (1 kHz task, core 1)
-src/winkeyer.cpp       K1EL WinKeyer protocol engine
+src/hostlink.cpp       K1EL WinKeyer protocol engine
 src/flex.cpp           FlexRadio discovery + SmartSDR command API
 src/net.cpp            WinKeyer-over-TCP server + mDNS
 src/settings.cpp       validation + NVS, shared by the CLI and the web page

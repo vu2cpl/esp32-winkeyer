@@ -1,10 +1,10 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — settings web server
+//  VUKEYER — settings web server
 //
 //  A small synchronous HTTP server on port 80, served from the
-//  same mDNS name as the keyer link: http://winkeyer.local/
+//  same mDNS name as the keyer link: http://vukeyer.local/
 //
 //  Every setting it writes goes through Settings::apply(), so the
 //  web page, the serial CLI and NVS can never disagree about what

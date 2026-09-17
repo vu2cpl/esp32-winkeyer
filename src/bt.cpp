@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — Bluetooth LE keyboard
+//  VUKEYER — Bluetooth LE keyboard
 //
 //  Grown from src/probes/ble_kbd_probe.cpp, which proved the parts
 //  on this board and core (HANDOVER, 2026-09-13).
@@ -19,7 +19,7 @@
 #include "log.h"
 #include "settings.h"
 #include "keyer.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "memories.h"
 #include "sdkconfig.h"
 
@@ -198,14 +198,14 @@ void handleKey(const KeyEv& e) {
     return;
   }
   switch (e.usage) {
-    case 0x29: WinKeyer::abort("clear: Bluetooth keyboard Esc"); Keyer::tune(false); return;   // Esc
+    case 0x29: HostLink::abort("clear: Bluetooth keyboard Esc"); Keyer::tune(false); return;   // Esc
     case 0x4B: case 0x52: stepWpm(+1); return;                   // PgUp, Up
     case 0x4E: case 0x51: stepWpm(-1); return;                   // PgDn, Down
   }
   // Typed text goes out a character at a time, as a keyboard keyer does —
   // no Enter needed. Backspace cannot unsend, so it is ignored.
   char c = charFor(e.usage, e.mods & 0x22);
-  if (c) { char s[2] = {c, 0}; WinKeyer::sendText(s); }
+  if (c) { char s[2] = {c, 0}; HostLink::sendText(s); }
 }
 
 // ── scanning ──────────────────────────────────────────────

@@ -24,7 +24,7 @@ capture at 115200 8N1.
 Decoding a backtrace afterwards:
 
     xtensa-esp32-elf-addr2line -pfiaC \\
-      -e .pio/build/esp32-winkeyer/firmware.elf <addresses>
+      -e .pio/build/esp32-vukeyer/firmware.elf <addresses>
 
 The ELF must be the one that was running: check the "ELF file SHA256" the
 panic prints against the build you still have.

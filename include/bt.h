@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — Bluetooth LE keyboard
+//  VUKEYER — Bluetooth LE keyboard
 //
 //  Type CW on a BLE keyboard: letters, digits and punctuation go
 //  out as they are typed, F1-F6 play the memories, Esc stops

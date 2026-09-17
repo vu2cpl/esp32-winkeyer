@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — K1EL WinKeyer protocol engine
+//  VUKEYER — K1EL WinKeyer protocol engine
 //
 //  Transport-agnostic: bytes arrive via feed() together with the
 //  sink to answer on, so the same engine serves the WiFi TCP
@@ -16,7 +16,7 @@ enum WkBackend : uint8_t {
   WK_BACKEND_FLEX  = 1,   // FlexRadio over the network, via "cwx send"
 };
 
-namespace WinKeyer {
+namespace HostLink {
 
 typedef void (*WriteFn)(const uint8_t* data, size_t len);
 
@@ -87,4 +87,4 @@ void traceClear();     // drop host mode (transport disconnected)
 void      setBackend(WkBackend b);
 WkBackend getBackend();
 
-}  // namespace WinKeyer
+}  // namespace HostLink

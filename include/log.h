@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — console logging
+//  VUKEYER — console logging
 //
 //  The console and the WinKeyer host protocol share one serial
 //  port. Once a logger opens a host session, every byte on that

@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — GPIO map (classic ESP32 devkit, esp32dev)
+//  VUKEYER — GPIO map (classic ESP32 devkit, esp32dev)
 //
 //  Chosen to avoid strapping pins (0,2,5,12,15) and boot-glitch
 //  outputs. Pot must be on ADC1 (GPIO32-39): WiFi disables ADC2.

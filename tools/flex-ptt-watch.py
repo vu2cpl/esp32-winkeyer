@@ -15,7 +15,7 @@ This is how the 2026-09-11 memory-PTT report was checked — the radio unkeyed
 import argparse, json, re, socket, threading, time, urllib.request
 
 ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-ap.add_argument("--keyer", required=True, help="keyer IP or winkeyer.local")
+ap.add_argument("--keyer", required=True, help="keyer IP or vukeyer.local")
 ap.add_argument("--radio", required=True, help="radio IP (API on TCP 4992)")
 ap.add_argument("--minutes", type=float, default=20)
 args = ap.parse_args()

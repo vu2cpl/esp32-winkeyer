@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — persisted operator settings
+//  VUKEYER — persisted operator settings
 //
 //  NVS namespace "wk". Keys are <=15 chars (an NVS limit) and are
 //  stored as u32 regardless of their logical type, so adding a
@@ -16,7 +16,7 @@
 #include "config.h"
 #include "keyer.h"
 #include "memories.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "flex.h"
 #include "net.h"
 #include "display.h"
@@ -96,7 +96,7 @@ constexpr uint32_t D_POTMIN = 10, D_POTRNG = 25;
 namespace Settings {
 
 void applyBackend(bool useFlex, bool persist) {
-  WinKeyer::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
+  HostLink::setBackend(useFlex ? WK_BACKEND_FLEX : WK_BACKEND_LOCAL);
   // On the Flex path the radio is keyed over the network; the local key
   // line stays idle so the rig is not keyed twice. Sidetone stays local,
   // generated from the operator's own paddle timing, so the fist sounds
@@ -194,11 +194,11 @@ void begin() {
   String ctl = loadStr("dispctl");
   Display::setController(ctl.length() ? ctl.c_str() : "sh1106");
   Display::setEnabled(loadU32("dispen", 1));
-  WinKeyer::setMonitor(loadU32("monitor", 1));
+  HostLink::setMonitor(loadU32("monitor", 1));
   // Default AUTO: the keyer measures the radio's start delay itself.
-  WinKeyer::setMonitorDelayMs((uint16_t)loadU32("mondelay", 0xFFFF));
-  WinKeyer::setMonitorExtraMs((uint16_t)loadU32("monextra", 0));
-  WinKeyer::setPaddleEcho(loadU32("pecho", 2));
+  HostLink::setMonitorDelayMs((uint16_t)loadU32("mondelay", 0xFFFF));
+  HostLink::setMonitorExtraMs((uint16_t)loadU32("monextra", 0));
+  HostLink::setPaddleEcho(loadU32("pecho", 2));
   Keyer::setRadio(loadU32("radio", 1));
   // Flex keying details. These were CLI-only and unpersisted, so they had
   // to be re-entered after every reflash or board swap.
@@ -358,15 +358,15 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     else if (truthy(val))              m = 1;
     else if (boolish(val))             m = 0;
     else return fail("pecho: on|off|auto");
-    WinKeyer::setPaddleEcho(m); saveU32("pecho", m);
+    HostLink::setPaddleEcho(m); saveU32("pecho", m);
     snprintf(msg, msgLen, "paddle echo=%s (now %s)",
              m == 2 ? "auto" : (m ? "on" : "off"),
-             WinKeyer::paddleEchoActive() ? "active" : "inactive");
+             HostLink::paddleEchoActive() ? "active" : "inactive");
 
   } else if (!strcasecmp(key, "monitor")) {
     if (!boolish(val)) return fail("monitor: on|off");
     bool b = truthy(val);
-    WinKeyer::setMonitor(b); saveU32("monitor", b);
+    HostLink::setMonitor(b); saveU32("monitor", b);
     snprintf(msg, msgLen, "sidetone monitor=%s", b ? "on" : "off");
 
   } else if (!strcasecmp(key, "practice")) {
@@ -377,7 +377,7 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     if (!boolish(val)) return fail("practice: on|off");
     bool b = truthy(val);
     if (b != Keyer::practice()) {
-      WinKeyer::abort(b ? "clear: practice on" : "clear: practice off");
+      HostLink::abort(b ? "clear: practice on" : "clear: practice off");
       Fsk::abort();
       Keyer::setPractice(b);
     }
@@ -409,34 +409,34 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     // Holds the local sidetone copy of RADIO-generated text, so it stops
     // running ahead of the air. "auto" follows the measured latency.
     if (!strcasecmp(val, "auto")) {
-      WinKeyer::setMonitorDelayMs(0xFFFF);
+      HostLink::setMonitorDelayMs(0xFFFF);
       saveU32("mondelay", 0xFFFF);
       snprintf(msg, msgLen, "sidetone delay: auto (now %u ms)",
-               (unsigned)WinKeyer::monitorDelayNowMs());
+               (unsigned)HostLink::monitorDelayNowMs());
       return true;
     }
     if (n < 0 || n > 2000) return fail("mondelay: auto, or 0..2000 ms");
-    WinKeyer::setMonitorDelayMs((uint16_t)n);
+    HostLink::setMonitorDelayMs((uint16_t)n);
     saveU32("mondelay", n);
     snprintf(msg, msgLen, "sidetone delay: %d ms%s", n, n ? "" : " (off)");
     return true;
   } else if (!strcasecmp(key, "monextra")) {
     // Added to the measured delay in auto; ignored for a manual value.
     if (n < 0 || n > 1000) return fail("monextra: 0..1000 ms");
-    WinKeyer::setMonitorExtraMs((uint16_t)n);
+    HostLink::setMonitorExtraMs((uint16_t)n);
     saveU32("monextra", n);
     snprintf(msg, msgLen, "sidetone delay extra: %d ms (auto now %u ms)", n,
-             (unsigned)WinKeyer::monitorDelayNowMs());
+             (unsigned)HostLink::monitorDelayNowMs());
     return true;
   } else if (!strcasecmp(key, "baud")) {
     // Only rates a WinKeyer host or a human console would actually use.
     const uint32_t allowed[] = {1200, 4800, 9600, 19200, 38400, 57600, 115200};
     bool ok = false;
     for (uint32_t a : allowed) if ((uint32_t)n == a) ok = true;
-    if (!ok) return fail("baud: 1200 (WinKeyer) 4800 9600 19200 38400 57600 115200");
+    if (!ok) return fail("baud: 1200 (loggers) 4800 9600 19200 38400 57600 115200");
     saveU32("baud", n);
     snprintf(msg, msgLen, "serial %d baud %s — switching now", n,
-             n == 1200 ? "8N2 (WinKeyer)" : "8N1");
+             n == 1200 ? "8N2 (loggers)" : "8N1");
     Serial.flush();                       // get the reply out at the old rate
     Serial.end();
 #if ARDUINO_USB_CDC_ON_BOOT
@@ -519,25 +519,25 @@ void toJson(JsonDocument& doc) {
   doc["txpower"] = txPower();
   doc["resetreason"] = resetReason();
   doc["uptime"]      = (uint32_t)(millis() / 1000);
-  doc["echo"]    = WinKeyer::echoEnabled();
-  doc["monitor"] = WinKeyer::monitor();
+  doc["echo"]    = HostLink::echoEnabled();
+  doc["monitor"] = HostLink::monitor();
   doc["practice"] = Keyer::practice();
-  doc["mondelay"]   = WinKeyer::monitorDelayMs() == 0xFFFF
-                        ? -1 : (int)WinKeyer::monitorDelayMs();   // -1 = auto
-  doc["mondelaynow"]= WinKeyer::monitorDelayNowMs();
-  doc["monextra"]   = WinKeyer::monitorExtraMs();
+  doc["mondelay"]   = HostLink::monitorDelayMs() == 0xFFFF
+                        ? -1 : (int)HostLink::monitorDelayMs();   // -1 = auto
+  doc["mondelaynow"]= HostLink::monitorDelayNowMs();
+  doc["monextra"]   = HostLink::monitorExtraMs();
   doc["cwextra"]    = Flex::cwExtraUs(Keyer::getWpm());   // µs/unit the radio adds at this speed
   doc["flexlatency"]= Flex::startLatencyMs();
-  doc["pecho"]   = WinKeyer::paddleEcho();
-  doc["pechoon"] = WinKeyer::paddleEchoActive();
+  doc["pecho"]   = HostLink::paddleEcho();
+  doc["pechoon"] = HostLink::paddleEchoActive();
   doc["radio"]   = Keyer::getRadio();
   doc["fskbaud"] = Fsk::baud();
   doc["fskinv"]  = Fsk::invert();
   doc["fskdid"]  = Fsk::diddle();
   doc["fskbusy"] = Fsk::busy();
-  doc["modereg"] = WinKeyer::modeRegister();
-  doc["pincfg"]  = WinKeyer::lastPinCfg();      // -1 until a host sends one
-  doc["hostdef"] = WinKeyer::lastDefaults();    // last 0x0F payload, hex
+  doc["modereg"] = HostLink::modeRegister();
+  doc["pincfg"]  = HostLink::lastPinCfg();      // -1 until a host sends one
+  doc["hostdef"] = HostLink::lastDefaults();    // last 0x0F payload, hex
   doc["weight"]  = Keyer::getWeighting();
   doc["ratio"]   = Keyer::getRatio();
   doc["farns"]   = Keyer::getFarnsworth();
@@ -552,8 +552,8 @@ void toJson(JsonDocument& doc) {
   // always and appeared impossible to turn on.
   doc["ptton"]   = Keyer::pttIsOn();      // the line right now, GPIO32/19
   doc["tune"]    = Keyer::tuning();
-  doc["backend"] = WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
-  doc["host"]    = WinKeyer::hostOpen();
+  doc["backend"] = HostLink::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
+  doc["host"]    = HostLink::hostOpen();
   doc["tcp"]     = Net::clientConnected();
   doc["disp"]    = Display::enabled();
   doc["dispctl"] = Display::controller();

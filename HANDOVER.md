@@ -1,4 +1,4 @@
-# ESP32 WinKeyer — Project Handover
+# VUKEYER — Project Handover
 *For continuation in a new Claude session*
 
 **Created:** 2026-08-26 · **Updated:** 2026-09-17 · **Type:** ESP firmware
@@ -8,6 +8,30 @@ speed pot, settings web page, memories, second radio and RTTY FSK all on
 hardware.
 
 **Read this first if you are picking the project up after 2026-09-12:**
+
+- **RENAMED 2026-09-17 (22:20): ESP32 WinKeyer → VUKEYER.** WinKeyer is
+  K1EL's product name, and the repo is public. What changed:
+  - GitHub repo `vu2cpl/vukeyer` (old URL redirects); local folder
+    `~/projects/esp32-vukeyer`.
+  - mDNS `vukeyer.local` (service `_vukeyer._tcp`); setup AP
+    `vu2cpl-vukeyer-setup`; MQTT client `esp32-vukeyer` and topic
+    `shack/vukeyer/status` (MQTT is not in use).
+  - PlatformIO envs `esp32-vukeyer` / `esp32s3-vukeyer`.
+  - The protocol engine is `src/hostlink.cpp` / `include/hostlink.h`,
+    namespace `HostLink`.
+  - The enclosure is `enclosure/vukeyer-case.scad`. OLED/LCD titles and
+    the web page say VUKEYER.
+  - Unchanged on purpose: wording that describes the **K1EL WinKeyer
+    protocol** (loggers still pick "WinKeyer"), the `WK_` constants, and
+    the K1EL / K3NG credits.
+  - History entries below keep the old names where they describe what
+    happened then.
+- **Web page merged into cards (22:20):** KEYER (with Timing, Speed pot and
+  PTT sections), MEMORIES (with Send), BACKEND, SYSTEM (Display, USB /
+  WIFI, BT keyboard) and FSK / RTTY. Sections use `.sub` headings, and the
+  old legend ids `legPtt` / `legSerial` moved onto them. At 3 columns the
+  grid uses `grid-auto-flow: row dense`. Manoj reviewed it in the preview
+  at 1024 px; flashed.
 
 - **FIXED 2026-09-17: on the Flex backend, CW went out at 0 W after a GUI
   client restarted or changed.** There were two faults: the keyer kept a stale
@@ -46,7 +70,7 @@ hardware.
   (`usbserial-0001`, CP2102) and carries RUMlogNG. The FTDI
   `usbserial-A9M9DV3R` has **RX only** — a read-only console for
   monitoring; its TX was removed, so it **cannot flash**. Flash on the USB-C:
-  `pio run -e esp32-winkeyer -t upload --upload-port /dev/cu.usbserial-0001`
+  `pio run -e esp32-vukeyer -t upload --upload-port /dev/cu.usbserial-0001`
   (auto-reset works). The devkit's USB chip can still hold the ESP32 in
   reset when a logger drives RTS/DTR — watch for it.
 - **Hardware on order (2026-09-16):** 2 × ESP32-S3 N16R8 dual-USB-C
@@ -72,9 +96,9 @@ optional FlexRadio backend. WinKeyer protocol by Steve K1EL; K3ng keyer
 original.
 
 **Hardware (decided 2026-08-26):** bench and likely final board is a classic
-**ESP32-D0WD-V3** devkit behind a CP2102 (`env:esp32-winkeyer`, board
+**ESP32-D0WD-V3** devkit behind a CP2102 (`env:esp32-vukeyer`, board
 `esp32dev`) — dual core, WiFi + BT Classic. An **ESP32-S3** env
-(`env:esp32s3-winkeyer`) is the upgrade path: native USB CDC with a custom
+(`env:esp32s3-vukeyer`) is the upgrade path: native USB CDC with a custom
 descriptor would fix the CP2102 `usbserial-0001` port-identity problem for
 wired use. A friend of Manoj's is building one too, on a 38-pin DevKitC
 clone — same chip family, same firmware, no changes needed.
@@ -129,14 +153,14 @@ Seven modules, each transport- or backend-agnostic so they compose:
   manual PTT hold, prosign merge (suppresses the inter-character gap),
   paddle break-in, 256-char queue, speed pot with WinKeyer override
   semantics (host speed rules until the pot moves).
-- **`src/winkeyer.cpp`** — K1EL host protocol, reports **version 23
+- **`src/hostlink.cpp`** — K1EL host protocol, reports **version 23
   (WK 2.3)**. Every logger supports WK2; claiming WK3 buys nothing and
   narrows compatibility. Implements the command set loggers actually use;
   unknown commands still have their parameters consumed from a table, so
   an unrecognised command can never desync the stream. Emits unsolicited
   status (0xC0|flags) and pot (0x80|value) bytes on change.
 - **`src/net.cpp`** — WinKeyer byte stream over TCP 8088, mDNS
-  `winkeyer.local` (`_winkeyer._tcp`). One client at a time; a new
+  `vukeyer.local` (`_vukeyer._tcp`). One client at a time; a new
   connection displaces the old one and resets the host session.
 - **`src/flex.cpp`** — FlexRadio discovery + SmartSDR command API.
 - **`src/settings.cpp`** — validation + NVS (namespace `wk`), the single
@@ -362,7 +386,7 @@ so do not subscribe to it.
 ## Testing
 
 `tools/wk-test.py` acts as a WinKeyer host over TCP or serial;
-`tools/wk-bridge.py` creates a PTY (default `/tmp/winkeyer`) bridged to
+`tools/wk-bridge.py` creates a PTY (default `/tmp/vukeyer`) bridged to
 the keyer's TCP port so logging software sees a serial device.
 
 **`tools/flex-check.py` — run this first when the Flex will not key.**
@@ -445,7 +469,7 @@ exact:
   element count of that text.** Nothing dropped, nothing duplicated.
 
 Confirmed over **wired serial** and over **WiFi TCP**, by IP and by
-`winkeyer.local`.
+`vukeyer.local`.
 
 **When checking status output, timestamp it.** Counting status bytes in
 fixed drain windows gave a false negative once: a delayed burst landed
@@ -464,7 +488,7 @@ Cause was **not** the RF link, despite appearances. `PubSubClient::
 connect()` blocks, its default socket timeout is **15 s**, and it was
 being retried every 5 s against a broker that refuses the credentials.
 While it blocked, `loop()` did not run, so neither `Net::poll()` nor
-`WinKeyer::poll()` serviced the host link. A blocked MQTT reconnect was
+`HostLink::poll()` serviced the host link. A blocked MQTT reconnect was
 stalling CW status reporting.
 
 Fixed 2026-09-10 by: never attempting MQTT while `Keyer::busy()` or a WK
@@ -761,7 +785,7 @@ makes the keyer feel slow.
     After: 738 polls over 150 s, zero timeouts, worst 73 ms. `secrets.h`
     now sets the real `MQTT_HOST` (local only — never commit it; this repo
     is public); `[MQTT] connected` as `iot`.
-    The broker ACL needed `topic write shack/esp32-winkeyer/#` under
+    The broker ACL needed `topic write shack/esp32-vukeyer/#` under
     `iot` — `iot` cannot write `shack/` by default and the broker drops
     such publishes silently. Publish flow not yet confirmed from a reader.
   - **A dead keyer leaves the Flex in TX, indefinitely.** Twice this
@@ -849,7 +873,7 @@ makes the keyer feel slow.
   - **How to catch it again:** `/baud 115200` (web page or
     `POST /api/set?k=baud&v=115200`), hold the FTDI port with a capture
     script, reproduce, then decode with
-    `xtensa-esp32-elf-addr2line -pfiaC -e .pio/build/esp32-winkeyer/firmware.elf <addrs>`.
+    `xtensa-esp32-elf-addr2line -pfiaC -e .pio/build/esp32-vukeyer/firmware.elf <addrs>`.
     At 1200 baud the panic never finishes printing — we got the assert
     line and no backtrace, twice. A logger holding the port hides it
     entirely.
@@ -967,7 +991,7 @@ makes the keyer feel slow.
 
     Where to look, in order:
 
-    - `WinKeyer::pumpEcho()` releases echoes as
+    - `HostLink::pumpEcho()` releases echoes as
       `echoCount() - Flex::pending()`. `pending()` changed twice today —
       it no longer clears early, and it is now zeroed when the radio stops
       transmitting — so the echo release is paced by a counter with new
@@ -1096,7 +1120,7 @@ makes the keyer feel slow.
       by the 1 Hz poll with an optimistic flip on click. The page's STOP
       used to call `/api/tune?v=off` and could not stop a message or a
       memory at all. It now posts `/api/send?stop=1` → new
-      `WinKeyer::abort()` (the internals of host command 0x0A: local buffer,
+      `HostLink::abort()` (the internals of host command 0x0A: local buffer,
       keyer queue, and on Flex the radio's buffer, echo and monitor) plus
       tune off.
     - `tools/web-preview.py` had no `txpower` in its stub, so the WiFi power
@@ -1133,7 +1157,7 @@ makes the keyer feel slow.
     no host, and went to **1000 the moment the session opened**. That is
     RUMlogNG sending N=4 — a perfectly legal 1000 Hz, not a bug in the
     parse and not the clamp. **The host's sidetone command is now parsed and
-    ignored** (`case 0x01`, `winkeyer.cpp`): the pitch is the one setting
+    ignored** (`case 0x01`, `hostlink.cpp`): the pitch is the one setting
     here that only the operator hears — not timing, never on the air, never
     read back by the logger — so a logger does not get to take it. The
     earlier NVS 2000 is explained by the same override plus a slider click
@@ -1162,7 +1186,7 @@ makes the keyer feel slow.
     Everything else a logger sets still applies for its session and is
     restored from NVS on close — speed, Farnsworth, weighting, mode register.
     To hand either of these back to the host, restore the setters named in
-    the comments on `case 0x01` and `case 0x04` in `winkeyer.cpp`.
+    the comments on `case 0x01` and `case 0x04` in `hostlink.cpp`.
 
     Verified on the board: boot 50/400/600 with no host, unchanged through a
     RUMlogNG session open. **Note the side effect:** his station now runs
@@ -1377,7 +1401,7 @@ makes the keyer feel slow.
   - **HANDOVER's wiring note was stale** (FTDI "TX/RX/GND"): the FTDI is now
     RX-only console and flashing is on the USB-C `usbserial-0001` — top of
     file corrected.
-  - **`esp32s3-winkeyer` builds again.** With `ARDUINO_USB_CDC_ON_BOOT`
+  - **`esp32s3-vukeyer` builds again.** With `ARDUINO_USB_CDC_ON_BOOT`
     `Serial` is `HWCDC`, whose `begin()` takes a baud rate but no
     `SerialConfig`, so the 1200 8N2 call in `setup()` and the `/baud`
     handler would not compile (broken since the core 3.3.11 move). Both now
@@ -1427,7 +1451,7 @@ makes the keyer feel slow.
   then parked: it does not fit this board's heap.**
   - **Built:** `include/bt.h` + `src/bt.cpp` (grown from the probe). Keys are
     decoded in the HID task, queued, and acted on in `loop()` — text →
-    `WinKeyer::sendText()` per character, F1–F6 → `Memories::play()`, Esc →
+    `HostLink::sendText()` per character, F1–F6 → `Memories::play()`, Esc →
     abort + tune off, PgUp/PgDn/Up/Down → `Settings::apply("wpm")`.
     `esp_hidh_dev_open()` runs in its own task (`btopen`) because it blocks
     for seconds. One keyboard kept, other bonds pruned on connect; a
@@ -1457,7 +1481,7 @@ makes the keyer feel slow.
     setting may be able to take the keyer off the network.**
 
 - **2026-09-13 (night)** — **3D-printable enclosure: `enclosure/`.**
-  Parametric OpenSCAD (`winkeyer-case.scad`), STLs, README with renders.
+  Parametric OpenSCAD (`vukeyer-case.scad`), STLs, README with renders.
   Two parts, no supports, ~145 × 89 × 45 mm. Front: OLED window, 3 mm KEY
   LED (GPIO2, parallel to the onboard LED), WPM pot. Back: PDL, K1, P1, K2,
   P2, FSK 3.5 mm jacks, 5 V DC jack (VIN — 5 V only), USB-C. Lid: piezo
@@ -1629,7 +1653,7 @@ makes the keyer feel slow.
     memory after a **GUI client change** (Maestro takeover), with real
     paddle keys in between. Script and log:
     `~/projects/MSHV-Mac/user-reports/2026-09-17-cw-gone/repro.py`, `repro.log`.
-  `Flex::clear(why)` and `WinKeyer::abort(why)` now take a reason, written
+  `Flex::clear(why)` and `HostLink::abort(why)` now take a reason, written
   as a `#` line: `web STOP`, `paddle break-in (dit|dah|element)` (from the new
   `Keyer::paddleSessionCause()`), `host 0x0A clear buffer`,
   `Bluetooth keyboard Esc`, and the three backstops in `flex.cpp`. Both envs
@@ -1676,7 +1700,7 @@ makes the keyer feel slow.
   after the last character (`TXT_RECENT_MS`), or once keying and PTT are
   both idle. 20x4 row 3 and 16x2 row 2 do the same with 20/16 characters.
   Source: a 32-character ring in `display.cpp` fed by `Display::pushText()`
-  from `winkeyer.cpp`, from the paddle decoder (`decodedRead`) and from
+  from `hostlink.cpp`, from the paddle decoder (`decodedRead`) and from
   buffered text as the local keyer finishes each character (`sentRead`, the
   sidetone copy, so on the Flex it is held back to match the air). It is
   written on core 1 and read by the display task on core 0 under a portMUX,
@@ -1768,10 +1792,10 @@ makes the keyer feel slow.
     - `cfgPractice` gates the KEY GPIOs in `keyDown()`, the hook
       (`hookWanted()`), `monUnits` (`monitorOnly()`) and the lead-in.
       `pttAssert()` also refuses while practice is requested.
-    - In `winkeyer.cpp`, every `backend == WK_BACKEND_FLEX` test is now
+    - In `hostlink.cpp`, every `backend == WK_BACKEND_FLEX` test is now
       `flexOn()`, which is false in practice. Text therefore takes the
       local path, with local echo and busy.
-    - `Settings::apply("practice")` calls `WinKeyer::abort()` (in the old
+    - `Settings::apply("practice")` calls `HostLink::abort()` (in the old
       mode, so a Flex buffer is cleared with cause `clear: practice on`)
       and `Fsk::abort()` before switching. `Fsk::send()` refuses, and so
       do `/api/fsk` (409) and `/fsk`.
@@ -1826,7 +1850,7 @@ makes the keyer feel slow.
     `0D 19`, `04 00 00`, `11 00`, `17 32`, `07`, `15`, `02 00`.
   - **Speed mismatch** (RUMlogNG 12, keyer 16): RUMlogNG asks for the pot
     (0x82 → 10+2 = 12), then sends `02 00`. On a K1EL, speed 0 means use
-    the pot. `winkeyer.cpp` ignored a 0, so the keyer kept a speed set
+    the pot. `hostlink.cpp` ignored a 0, so the keyer kept a speed set
     elsewhere (web, radio, an earlier session) until the knob was touched.
     Now `0x02 00`, and a 0 speed in load defaults (`0x0F`), call
     `Keyer::usePotSpeed()`. That re-reads the knob and adopts it on the next
@@ -1876,7 +1900,7 @@ makes the keyer feel slow.
     - Needs a second point: when auto reads clearly different (140+), find
       the right manual value by ear.
     - **Built on Manoj's request (21:45): `monextra`**, extra ms added to
-      the measured latency in auto only. `WinKeyer::setMonitorExtraMs()`,
+      the measured latency in auto only. `HostLink::setMonitorExtraMs()`,
       NVS `monextra` 0–1000 (default 0), `/monextra N`, `monextra` in
       `/api/state`, and a `+ [ ] ms` box in the Sidetone delay row that is
       greyed out unless auto is ticked. Both envs build and it is flashed;
@@ -1967,7 +1991,7 @@ segment.
 
 Measured rather than assumed:
 
-- **mDNS crosses the segments here.** `winkeyer.local` resolved from the
+- **mDNS crosses the segments here.** `vukeyer.local` resolved from the
   Mac even when the keyer was on a different subnet, so something on the
   network reflects mDNS. (An earlier note in this file claimed it would
   not — that was wrong for this LAN.)
@@ -1992,7 +2016,7 @@ against exposing it beyond one.
    as `iot`. `secrets.h` also needed **MQTT_HOST**, which was missing, so
    the build had been using the public placeholder `192.168.1.10` all
    along; that dead address is what blocked `loop()` once a minute. The
-   broker ACL needed `topic write shack/esp32-winkeyer/#` under `iot`.
+   broker ACL needed `topic write shack/esp32-vukeyer/#` under `iot`.
    **Not yet confirmed:** that the published topic actually arrives — read
    it in Node-RED or MQTT Explorer.
 2. **WiFi link is mediocre but no longer limiting** — 131 ms average,
@@ -2052,7 +2076,7 @@ against exposing it beyond one.
    ideally the back wall as a test strip first, and report what did not fit.
    The OLED is held by a glass pocket + hot glue — its hole spacing was never
    measured, so `oled_posts` stays off.
-8. **Repo is PUBLIC** since 2026-09-11 — github.com/vu2cpl/esp32-winkeyer.
+8. **Repo is PUBLIC** since 2026-09-11 — github.com/vu2cpl/vukeyer.
    Manoj's friend can clone it directly; no invite needed.
 
    **Before publishing, the git history was rewritten** to scrub real shack
@@ -2112,7 +2136,7 @@ against exposing it beyond one.
     and the PSRAM size at boot; measure length and both USB-C positions.
     Port work: full pin remap (no GPIO 32/33/34 on the S3; speed pot to
     ADC1 = GPIO 1–10; avoid 35–37 octal PSRAM, 19/20 native USB, 0/3/45/46
-    strapping), the `esp32s3-winkeyer` env's native-USB CDC as the WinKeyer
+    strapping), the `esp32s3-vukeyer` env's native-USB CDC as the WinKeyer
     port, a NimBLE transport for `bt.cpp` or USB host for the dongle, and the
     enclosure resized (currently modelled on the esp32dev 55.3 × 28.3 with one
     USB-C cutout). **OTRSP/SO2R is not
@@ -2363,7 +2387,7 @@ against exposing it beyond one.
       feature withholds buffered elements from the key hook, so on the
       Flex backend a direct send makes sidetone and no RF. The web SEND
       box was silently broken this way until memories needed the same
-      path. Everything now goes through `WinKeyer::sendText()`.
+      path. Everything now goes through `HostLink::sendText()`.
     - **A failing `nvs_open` takes ~630 ms.** Memories were read from NVS
       on every `/api/state`, which is polled once a second: seven opens
       of a namespace that did not exist yet made the endpoint take four

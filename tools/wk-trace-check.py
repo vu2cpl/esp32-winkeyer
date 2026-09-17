@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """wk-trace-check.py — did the keyer echo every character the logger sent?
 
-    tools/wk-trace-check.py                          # winkeyer.local
+    tools/wk-trace-check.py                          # vukeyer.local
     tools/wk-trace-check.py http://192.168.10.20/api/wktrace
     tools/wk-trace-check.py saved-trace.txt
 
@@ -16,7 +16,7 @@ raw bytes around it.
 import sys, urllib.request
 IMM = [0,1,1,1,2,3,1,0,0,1,0,1,1,1,1,15,1,1,1,0,1,0,1,1,1,1,1,2,1,1,0,0]
 ADM = {0x04:1, 0x0D:256, 0x0E:1, 0x0F:1, 0x13:2, 0x16:1, 0x19:1}
-src = sys.argv[1] if len(sys.argv) > 1 else "http://winkeyer.local/api/wktrace"
+src = sys.argv[1] if len(sys.argv) > 1 else "http://vukeyer.local/api/wktrace"
 txt = open(src).read() if not src.startswith("http") else urllib.request.urlopen(src, timeout=5).read().decode()
 pass
 ents = []

@@ -9,7 +9,7 @@ ours-probeN.log so it can be diffed against the K1EL's.
 """
 import socket, sys, types, re
 
-HOST = sys.argv[2] if len(sys.argv) > 2 else "winkeyer.local"
+HOST = sys.argv[2] if len(sys.argv) > 2 else "vukeyer.local"
 PORT = 8088
 
 class TcpSerial:

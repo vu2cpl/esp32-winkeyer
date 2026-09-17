@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — config
+//  VUKEYER — config
 //  Non-secret build config. Real credentials live in secrets.h
 //  (git-ignored) — see secrets.h.example.
 // ============================================================
@@ -14,10 +14,10 @@
 
 // ── WiFi onboarding (WiFiManager captive portal) ──────────
 // No compile-time SSID/password. First boot — or whenever the saved network is
-// unreachable — the node opens AP vu2cpl-esp32-winkeyer-setup. Join it, pick your network,
+// unreachable — the node opens AP vu2cpl-vukeyer-setup. Join it, pick your network,
 // enter its password; creds persist in NVS.
 #ifndef WIFI_AP_NAME
-#define WIFI_AP_NAME           "vu2cpl-esp32-winkeyer-setup"
+#define WIFI_AP_NAME           "vu2cpl-vukeyer-setup"
 #endif
 #ifndef WIFI_AP_PASS
 #define WIFI_AP_PASS           "vu2cpl1234"
@@ -46,9 +46,9 @@
 
 // ── WinKeyer transport ────────────────────────────────────
 // Raw WinKeyer byte stream over TCP; the host-side bridge in tools/
-// maps it to a serial port. Advertised as _winkeyer._tcp over mDNS.
+// maps it to a serial port. Advertised as _vukeyer._tcp over mDNS.
 #ifndef MDNS_HOSTNAME
-#define MDNS_HOSTNAME   "winkeyer"
+#define MDNS_HOSTNAME   "vukeyer"
 #endif
 #ifndef WK_TCP_PORT
 #define WK_TCP_PORT     8088
@@ -72,11 +72,11 @@
 #define MQTT_PORT       1883
 #endif
 #ifndef MQTT_CLIENT_ID
-#define MQTT_CLIENT_ID  "esp32-winkeyer"
+#define MQTT_CLIENT_ID  "esp32-vukeyer"
 #endif
 
 // ── Topics (shack/<service>/...) ──────────────────────────
 #ifndef T_STATUS
-#define T_STATUS   "shack/esp32-winkeyer/status"   // retained; LWT publishes {"event":"offline"}
+#define T_STATUS   "shack/vukeyer/status"   // retained; LWT publishes {"event":"offline"}
 #endif
 

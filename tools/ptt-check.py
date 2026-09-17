@@ -54,7 +54,7 @@ def span(rows, field=1):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ip", default="winkeyer.local",
+    ap.add_argument("--ip", default="vukeyer.local",
                     help="keyer address; prefer the IP, mDNS has resolved stale here")
     ap.add_argument("--idle", type=float, default=15.0,
                     help="seconds to wait before the lead-in check (must exceed "

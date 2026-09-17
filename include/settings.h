@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — persisted operator settings
+//  VUKEYER — persisted operator settings
 //
 //  One place that owns validation and NVS, so the serial CLI and
 //  the web page cannot drift apart on what a setting is called,

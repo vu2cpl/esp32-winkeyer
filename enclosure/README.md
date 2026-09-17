@@ -2,7 +2,7 @@
 
 A two-part FDM case for the keyer: **tray** (floor + walls) and **lid**,
 both printable without supports. Parametric OpenSCAD source in
-[`winkeyer-case.scad`](winkeyer-case.scad); STLs in [`stl/`](stl/).
+[`vukeyer-case.scad`](vukeyer-case.scad); STLs in [`stl/`](stl/).
 
 Outside about **145 × 89 × 45 mm**.
 
@@ -53,8 +53,8 @@ test strip, and try the jacks and USB plug in it.
 
 ```bash
 cd enclosure
-openscad -o stl/tray.stl -D 'part="tray"' --backend Manifold winkeyer-case.scad
-openscad -o stl/lid.stl  -D 'part="lid"'  --backend Manifold winkeyer-case.scad
+openscad -o stl/tray.stl -D 'part="tray"' --backend Manifold vukeyer-case.scad
+openscad -o stl/lid.stl  -D 'part="lid"'  --backend Manifold vukeyer-case.scad
 ```
 
 ## Fit checks — run these after changing any dimension
@@ -66,7 +66,7 @@ empty** — OpenSCAD prints `Current top level object is empty.`:
 
 ```bash
 for c in check_tray_lid check_parts_tray check_parts_lid; do
-  openscad -o /tmp/$c.stl -D "part=\"$c\"" --backend Manifold winkeyer-case.scad 2>&1 | grep -E "empty|Vertices"
+  openscad -o /tmp/$c.stl -D "part=\"$c\"" --backend Manifold vukeyer-case.scad 2>&1 | grep -E "empty|Vertices"
 done
 ```
 

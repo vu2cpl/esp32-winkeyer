@@ -8,7 +8,7 @@ send looks like it keyed one element. Timestamps distinguish "not sent"
 from "reported late" immediately — compare the BUSY span against the
 text's expected duration.
 
-    ./wk-timing.py                            # winkeyer.local
+    ./wk-timing.py                            # vukeyer.local
     ./wk-timing.py --host 192.168.10.20 --wpm 25 --text "CQ TEST"
 
 A correct run shows NO KEYDOWN bytes — a genuine K1EL reports KEYDOWN for
@@ -45,7 +45,7 @@ def expected(text):
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--host", default="winkeyer.local")
+    ap.add_argument("--host", default="vukeyer.local")
     ap.add_argument("--port", type=int, default=8088)
     ap.add_argument("--wpm", type=int, default=25)
     ap.add_argument("--text", default="TEST")

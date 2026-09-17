@@ -9,7 +9,7 @@ redistributed here — fetch it from k1elsystems.com (`WK3_Datasheet_v1.3.pdf`).
 Every item below was measured on the hardware AND agrees with the datasheet
 unless marked otherwise.
 
-## Firmware defects found (src/winkeyer.cpp)
+## Firmware defects found (src/hostlink.cpp)
 
 1. **Status flags are all one bit too high** (`ST_*`, lines 33-37).
    Real: XOFF 0x01, BREAKIN 0x02, BUSY 0x04, KEYDOWN 0x08 (WK1 mode; in WK2

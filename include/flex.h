@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — FlexRadio (SmartSDR) backend
+//  VUKEYER — FlexRadio (SmartSDR) backend
 //
 //  Finds a 6000/8000-series radio on the LAN via its discovery
 //  broadcast, opens the SmartSDR command API on TCP 4992, and

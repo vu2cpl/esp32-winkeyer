@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — message memories
+//  VUKEYER — message memories
 //
 //  Six slots of canned text in NVS, played through whichever
 //  backend is current. No GPIO cost: they are triggered from the

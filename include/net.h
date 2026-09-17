@@ -1,10 +1,10 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — WiFi transport
+//  VUKEYER — WiFi transport
 //
 //  Raw TCP server carrying the WinKeyer byte stream, advertised
-//  over mDNS as winkeyer.local. A host-side bridge turns the
+//  over mDNS as vukeyer.local. A host-side bridge turns the
 //  socket into a serial port the logging software can open.
 // ============================================================
 

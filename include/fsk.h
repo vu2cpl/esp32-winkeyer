@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — RTTY FSK keying line
+//  VUKEYER — RTTY FSK keying line
 //
 //  Drives a rig's FSK input with Baudot (ITA2) at 45.45 baud:
 //  1 start bit (space), 5 data bits LSB first, 1.5 stop bits

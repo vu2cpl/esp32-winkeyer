@@ -1,5 +1,5 @@
 #include "memories.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "keyer.h"
 #include "log.h"
 #include <Preferences.h>
@@ -93,7 +93,7 @@ bool play(uint8_t slot) {
   String out = expand(raw, call());
   // Through the backend router, never straight to the keyer: on the Flex
   // path the radio generates the CW and a direct send would be silent.
-  WinKeyer::sendText(out.c_str());
+  HostLink::sendText(out.c_str());
   Log::printf("[MEM] %u > %s\n", slot, out.c_str());
   return true;
 }

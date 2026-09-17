@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 848" width="1100" height="848" font-family="ui-monospace,Menlo,Consolas,monospace">
   <rect width="1100" height="848" fill="#ffffff"/>
 
-  <text x="30" y="38" font-size="20" font-weight="bold" fill="#111">ESP32 WinKeyer — wiring, including the debug console</text>
+  <text x="30" y="38" font-size="20" font-weight="bold" fill="#111">VUKEYER — wiring, including the debug console</text>
   <text x="30" y="60" font-size="12" fill="#555">VU2CPL · classic ESP32 devkit (ESP-WROOM-32, CP2102, USB-C) · pins from include/pins.h</text>
 
   <!-- ================= ESP32 ================= -->
@@ -30,7 +30,7 @@
   <text x="688" y="430" font-size="12" text-anchor="end" fill="#111">5V / VIN</text>
   <text x="688" y="448" font-size="12" text-anchor="end" fill="#111">GND</text>
   <text x="550" y="500" font-size="12" text-anchor="middle" fill="#0a7">WiFi</text>
-  <text x="550" y="520" font-size="11" text-anchor="middle" fill="#666">winkeyer.local</text>
+  <text x="550" y="520" font-size="11" text-anchor="middle" fill="#666">vukeyer.local</text>
 
   <!-- ================= paddle ================= -->
   <rect x="60" y="170" width="210" height="70" rx="8" fill="#fff" stroke="#333"/>

@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — 128x64 OLED status display (SH1106 / SSD1306)
+//  VUKEYER — 128x64 OLED status display (SH1106 / SSD1306)
 //
 //  One screen, refreshed at 5 Hz from a dedicated task:
 //
@@ -19,7 +19,7 @@
 #include "pins.h"
 #include "config.h"
 #include "keyer.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "net.h"
 #include "flex.h"
 #include <Wire.h>
@@ -124,8 +124,8 @@ uint32_t stateSig() {
   mix(Keyer::tuning());
   mix(Keyer::getRadio());
   mix(Keyer::getPttTailMs());
-  mix(WinKeyer::getBackend());
-  mix(WinKeyer::hostOpen());
+  mix(HostLink::getBackend());
+  mix(HostLink::hostOpen());
   mix(Net::clientConnected());
   mix(Flex::connected());
   mix(Flex::sliceReady());
@@ -264,7 +264,7 @@ const char* radioTag() {
 void drawMainLcd() {
   char l[24];
   const char* be = "LOCAL";
-  if (WinKeyer::getBackend() == WK_BACKEND_FLEX)
+  if (HostLink::getBackend() == WK_BACKEND_FLEX)
     be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
   // PTT is held for the whole over; the key only during elements. Showing
   // both makes the lead-in and tail visible as PTT-without-KEY either side
@@ -285,7 +285,7 @@ void drawMainLcd() {
     snprintf(bere, sizeof bere, "%s%s", be, radioTag());
     snprintf(l, sizeof l, "%-6s %c %s%s", bere,
              Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
-             WinKeyer::hostOpen() ? "HOST" : "----",
+             HostLink::hostOpen() ? "HOST" : "----",
              Net::clientConnected() ? "+NET" : "");
     lcdLine(1, l);
     if (txtSending())
@@ -335,7 +335,7 @@ void drawMainLcd() {
 void drawSplash() {
   if (kind == KIND_LCD) {
     lcd->clear();
-    lcdLine(0, "VU2CPL WinKeyer");
+    lcdLine(0, "VU2CPL VUKEYER");
     lcdLine(1, "K1EL WK3 protocol");
     return;
   }
@@ -343,7 +343,7 @@ void drawSplash() {
   oled->setFont(u8g2_font_ncenB14_tr);
   oled->drawStr(24, 26, "VU2CPL");
   oled->setFont(u8g2_font_6x10_tf);
-  oled->drawStr(16, 44, "ESP32 WinKeyer");
+  oled->drawStr(16, 44, "VUKEYER");
   oled->setFont(u8g2_font_5x7_tf);
   oled->drawStr(20, 58, "K1EL WK3 protocol");
   oled->sendBuffer();
@@ -360,7 +360,7 @@ void drawMain() {
   // sends nothing and says nothing, and FLX! below is easy to miss.
   char warn[24];
   warning(warn, sizeof warn, Flex::WARN_SHORT);
-  oled->drawStr(0, 6, warn[0] ? warn : "WinKeyer");
+  oled->drawStr(0, 6, warn[0] ? warn : "VUKEYER");
   if (WiFi.status() == WL_CONNECTED) snprintf(buf, sizeof buf, "%ddBm", (int)WiFi.RSSI());
   else                               snprintf(buf, sizeof buf, "no wifi");
   oled->drawStr(128 - oled->getStrWidth(buf), 6, buf);
@@ -403,7 +403,7 @@ void drawMain() {
     oled->setFont(u8g2_font_5x7_tf);
   } else {
     const char* be = "LOCAL";
-    if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
+    if (HostLink::getBackend() == WK_BACKEND_FLEX) {
       // One glyph carries the whole Flex story: '?' not connected,
       // '!' connected but the radio has no CW slice to key.
       be = !Flex::connected() ? "FLX?" : (Flex::sliceReady() ? "FLX" : "FLX!");
@@ -412,7 +412,7 @@ void drawMain() {
     snprintf(bere, sizeof bere, "%s%s", be, radioTag());
     snprintf(buf, sizeof buf, "%-6s %c %s%s", bere,
              Keyer::getMode() == KEYER_IAMBIC_A ? 'A' : 'B',
-             WinKeyer::hostOpen() ? "HOST" : "----",
+             HostLink::hostOpen() ? "HOST" : "----",
              Net::clientConnected() ? "+NET" : "");
     oled->drawStr(0, 51, buf);
 

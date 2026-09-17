@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — 128x64 OLED status display (optional hardware)
+//  VUKEYER — 128x64 OLED status display (optional hardware)
 //
 //  128x64 OLED on I²C (GPIO21/22). The panel is optional: begin()
 //  probes the bus and quietly stays off if nothing answers, so the

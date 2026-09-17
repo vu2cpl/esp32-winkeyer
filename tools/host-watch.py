@@ -29,7 +29,7 @@ FIELDS = ["host", "wpm", "farns", "weight", "ratio", "mode", "swap",
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ip", default="winkeyer.local",
+    ap.add_argument("--ip", default="vukeyer.local",
                     help="keyer address; prefer the IP, mDNS has resolved stale here")
     ap.add_argument("--seconds", type=float, default=600)
     ap.add_argument("--interval", type=float, default=1.0)

@@ -1,13 +1,13 @@
 // ============================================================
-//  ESP32 WinKeyer — 3D-printable enclosure (FDM)
+//  VUKEYER — 3D-printable enclosure (FDM)
 //
 //  Two parts, no supports:
 //    tray  — floor + four walls, prints open side up
 //    lid   — prints OUTSIDE FACE DOWN (lip, piezo ring, hold-down post up)
 //
 //  Render:
-//    openscad -o stl/tray.stl -D 'part="tray"' --backend Manifold winkeyer-case.scad
-//    openscad -o stl/lid.stl  -D 'part="lid"'  --backend Manifold winkeyer-case.scad
+//    openscad -o stl/tray.stl -D 'part="tray"' --backend Manifold vukeyer-case.scad
+//    openscad -o stl/lid.stl  -D 'part="lid"'  --backend Manifold vukeyer-case.scad
 //  Preview everything assembled:  part="assembly"   exploded: part="exploded"
 //
 //  Coordinates: x = left→right seen from the FRONT, y = front (0) → back,

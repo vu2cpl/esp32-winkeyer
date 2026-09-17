@@ -15,7 +15,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ENV="${ENV:-esp32-winkeyer}"
+ENV="${ENV:-esp32-vukeyer}"
 TARGET="${1:-upload}"      # upload | uploadfs
 
 # ── enumerate serial ports (macOS + Linux) ────────────────

@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — WiFi transport
+//  VUKEYER — WiFi transport
 //
 //  One client at a time: a keyer with two hosts sending CW at
 //  once has no sane behaviour, so a new connection displaces
@@ -8,7 +8,7 @@
 
 #include "net.h"
 #include "log.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "config.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -34,7 +34,7 @@ void poll() {
   if (WiFi.status() != WL_CONNECTED) {
     if (started) {                      // network dropped — tear the session down
       if (client) { client.stop(); }
-      WinKeyer::closeHost();
+      HostLink::closeHost();
       server.end();
       started = false;
       mdnsUp = false;
@@ -46,12 +46,12 @@ void poll() {
     server.begin();
     server.setNoDelay(true);
     started = true;
-    Log::printf("[NET] WinKeyer TCP server on port %d\n", WK_TCP_PORT);
+    Log::printf("[NET] logger TCP server on port %d\n", WK_TCP_PORT);
   }
 
   if (!mdnsUp) {
     if (MDNS.begin(MDNS_HOSTNAME)) {
-      MDNS.addService("winkeyer", "tcp", WK_TCP_PORT);
+      MDNS.addService("vukeyer", "tcp", WK_TCP_PORT);
       MDNS.addService("http", "tcp", 80);   // the settings page (src/web.cpp)
       mdnsUp = true;
       Log::printf("[NET] mDNS: %s.local\n", MDNS_HOSTNAME);
@@ -63,7 +63,7 @@ void poll() {
     if (client && client.connected()) {
       Log::println("[NET] new client — dropping the previous one");
       client.stop();
-      WinKeyer::closeHost();
+      HostLink::closeHost();
     }
     client = incoming;
     client.setNoDelay(true);
@@ -73,7 +73,7 @@ void poll() {
   if (client && !client.connected()) {
     Log::println("[NET] client disconnected");
     client.stop();
-    WinKeyer::closeHost();
+    HostLink::closeHost();
   }
 
   // Block reads, not byte-at-a-time: see the comment on Flex::pollSocket().
@@ -84,7 +84,7 @@ void poll() {
     if (avail <= 0) break;
     int n = client.read(buf, avail < (int)sizeof buf ? avail : (int)sizeof buf);
     if (n <= 0) break;
-    for (int i = 0; i < n; i++) WinKeyer::feed(buf[i], tcpSink);
+    for (int i = 0; i < n; i++) HostLink::feed(buf[i], tcpSink);
   }
 }
 

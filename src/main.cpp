@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer
+//  VUKEYER
 //  WinKeyer (K1EL WK protocol) clone on ESP32 — WiFi TCP bridge,
 //  FlexRadio backend, iambic paddle keying, sidetone, speed pot.
 //
@@ -22,7 +22,7 @@
 //    anything else is sent as CW.
 //
 //  Operator settings persist in NVS (see settings.cpp) and are also
-//  editable from the web page at http://winkeyer.local/ — CLI and web
+//  editable from the web page at http://vukeyer.local/ — CLI and web
 //  both go through Settings::apply(), so they cannot disagree.
 // ============================================================
 
@@ -39,7 +39,7 @@
 #include "log.h"
 #include "pins.h"
 #include "keyer.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "flex.h"
 #include "net.h"
 #include "display.h"
@@ -124,11 +124,11 @@ void printStatus() {
                 (unsigned)Settings::hostBaud(),
                 Settings::hostBaud() == 1200 ? "8N2" : "8N1",
                 Settings::hostBaud() == 1200
-                  ? "WinKeyer standard, loggers open the port this way"
-                  : "console rate; a logger expecting a WinKeyer needs 1200");
+                  ? "logger standard, loggers open the port this way"
+                  : "console rate; a logger needs 1200");
   Log::printf("[WK]    backend=%s host=%s\n",
-                WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
-                WinKeyer::hostOpen() ? "open" : "closed");
+                HostLink::getBackend() == WK_BACKEND_FLEX ? "flex" : "local",
+                HostLink::hostOpen() ? "open" : "closed");
   Log::printf("[FLEX]  %s radio=%s %s\n",
                 Flex::enabled() ? "enabled" : "disabled",
                 Flex::radioIp().length() ? Flex::radioIp().c_str() : "(not found)",
@@ -359,7 +359,7 @@ void handleLine(char* line) {
     return;
   }
   // Plain text → CW
-  WinKeyer::sendText(line);
+  HostLink::sendText(line);
   Log::printf("[CW] > %s\n", line);
 }
 
@@ -371,8 +371,8 @@ void pollSerial() {
     if (c < 0) return;
 
     if (serialWkMode) {
-      WinKeyer::feed((uint8_t)c, serialSink);
-      if (!WinKeyer::hostOpen()) {      // host closed — hand the port back to the CLI
+      HostLink::feed((uint8_t)c, serialSink);
+      if (!HostLink::hostOpen()) {      // host closed — hand the port back to the CLI
         serialWkMode = false;
         len = 0;
         // NOT unconditionally on: the logger usually still holds the port
@@ -390,14 +390,14 @@ void pollSerial() {
     // spewing status bytes. So feed the 0x00 plus its sub-command, and only
     // commit to binary mode if that actually opened a host session.
     if (c == 0x00) {
-      WinKeyer::feed(0x00, serialSink);
+      HostLink::feed(0x00, serialSink);
       unsigned long deadline = millis() + 50;
       int sub = -1;
       while (millis() < deadline) {
         if (Serial.available()) { sub = Serial.read(); break; }
       }
-      if (sub >= 0) WinKeyer::feed((uint8_t)sub, serialSink);
-      if (WinKeyer::hostOpen()) {
+      if (sub >= 0) HostLink::feed((uint8_t)sub, serialSink);
+      if (HostLink::hostOpen()) {
         serialWkMode = true;
         len = 0;
         // From here every byte on this wire is protocol. A console line
@@ -405,7 +405,7 @@ void pollSerial() {
         // so the console goes quiet until the host closes.
         Log::setMuted(true);
       } else {
-        WinKeyer::closeHost();   // discard the partial command, stay on the CLI
+        HostLink::closeHost();   // discard the partial command, stay on the CLI
       }
       continue;
     }
@@ -447,11 +447,11 @@ void setup() {
   if (quiet) {
     // Every character here is one the host waits through before its
     // handshake is answered. One line, then silence.
-    Log::printf("\n[BOOT] ESP32 WinKeyer @ %u 8N2 (quiet — use the web page)\n",
+    Log::printf("\n[BOOT] VUKEYER @ %u 8N2 (quiet — use the web page)\n",
                   (unsigned)baud);
     wm.setDebugOutput(false);
   } else {
-    Log::printf("\n[BOOT] ESP32 WinKeyer @ %u baud\n", (unsigned)baud);
+    Log::printf("\n[BOOT] VUKEYER @ %u baud\n", (unsigned)baud);
   }
   // Why the board restarted. Printed even when the boot log is otherwise
   // trimmed: after a hang this is the only evidence left, and without it a
@@ -481,7 +481,7 @@ void setup() {
 
   // Keyer first — it must work with no WiFi at all.
   Keyer::begin();
-  WinKeyer::begin();
+  HostLink::begin();
   Display::begin(Settings::displayEnabled());   // skips the bus when off
   Fsk::begin();
   Memories::begin();
@@ -579,7 +579,7 @@ void loop() {
   // progressively longer on long overs. Polled here rather than hooked
   // because the pot updates from the 1 kHz task, which must not do network
   // work.
-  if (WinKeyer::getBackend() == WK_BACKEND_FLEX) {
+  if (HostLink::getBackend() == WK_BACKEND_FLEX) {
     static uint8_t lastWpmToRadio = 0;
     if (!Flex::connected()) {
       // Flex::setWpm() drops the command when the link is down. Caching it
@@ -650,7 +650,7 @@ void loop() {
 
   Net::poll();
   Web::poll();
-  WinKeyer::poll();
+  HostLink::poll();
   Flex::poll();
   Bt::poll();
 
@@ -667,7 +667,7 @@ void loop() {
       static unsigned long lastTry = 0;
       static uint32_t      backoff = 5000;
       bool quiet = !Keyer::busy() && !Keyer::pttIsOn() &&
-                   !Flex::transmitting() && !WinKeyer::hostOpen();
+                   !Flex::transmitting() && !HostLink::hostOpen();
       if (quiet && millis() - lastTry > backoff) {
         lastTry = millis();
         if (mqttConnect()) backoff = 5000;
@@ -685,8 +685,8 @@ void loop() {
     doc["rssi"]     = WiFi.RSSI();
     doc["wpm"]      = Keyer::getWpm();
     doc["busy"]     = Keyer::busy();
-    doc["backend"]  = WinKeyer::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
-    doc["wk_host"]  = WinKeyer::hostOpen();
+    doc["backend"]  = HostLink::getBackend() == WK_BACKEND_FLEX ? "flex" : "local";
+    doc["wk_host"]  = HostLink::hostOpen();
     doc["tcp"]      = Net::clientConnected();
     if (Flex::enabled()) doc["flex"] = Flex::connected();
     char buf[256];

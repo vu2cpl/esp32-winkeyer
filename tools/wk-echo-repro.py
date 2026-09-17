@@ -11,7 +11,7 @@ directory. It KEYS THE RADIO on the Flex backend, and a logger holding the
 serial port loses its session to it — close the logger first.
 """
 import socket, time, sys
-import os; H = os.environ.get("KEYER", "winkeyer.local"); MSG = os.environ.get("MSG", "cq cq vu2cpl vu2cpl k")
+import os; H = os.environ.get("KEYER", "vukeyer.local"); MSG = os.environ.get("MSG", "cq cq vu2cpl vu2cpl k")
 T0 = time.monotonic(); log = open("echo-repro-web.log", "w")
 def note(s):
     line = f"{time.monotonic()-T0:8.3f}  {s}"; log.write(line + "\n"); log.flush()

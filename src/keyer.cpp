@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — keyer core
+//  VUKEYER — keyer core
 //
 //  Iambic A/B state machine, paddle inputs, key/PTT outputs,
 //  LEDC sidetone, speed pot. Ticks at 1 kHz in its own FreeRTOS

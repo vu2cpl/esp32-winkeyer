@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""ESP32 WinKeyer — installer.
+"""VUKEYER — installer.
 
 Bootstraps the toolchain (PlatformIO) on macOS or Raspberry Pi / Linux, then
 builds the firmware to verify the environment. WiFi + MQTT creds are NOT set
-here — WiFi is onboarded via the WiFiManager captive portal (vu2cpl-esp32-winkeyer-setup); MQTT
+here — WiFi is onboarded via the WiFiManager captive portal (vu2cpl-vukeyer-setup); MQTT
 role/password go in include/secrets.h (copied from secrets.h.example).
 
 Shack rule: install scripts must support both macOS (daily driver) and the Pi
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ENV = "esp32-winkeyer"
+ENV = "esp32-vukeyer"
 
 
 def detect():
@@ -186,8 +186,8 @@ SETTINGS = [
     ("MQTT_HOST",      "MQTT broker IP (blank = no broker)", "192.168.1.10", False),
     ("MQTT_USER",      "MQTT username",                      "iot",          False),
     ("MQTT_PASS",      "MQTT password",                      "",             True),
-    ("MDNS_HOSTNAME",  "mDNS name (-> <name>.local)",         "winkeyer",     False),
-    ("WIFI_AP_NAME",   "Setup AP name shown on first boot",  "vu2cpl-esp32-winkeyer-setup", False),
+    ("MDNS_HOSTNAME",  "mDNS name (-> <name>.local)",         "vukeyer",      False),
+    ("WIFI_AP_NAME",   "Setup AP name shown on first boot",  "vu2cpl-vukeyer-setup", False),
     ("WIFI_AP_PASS",   "Setup AP password (8+ chars)",       "vu2cpl1234",   False),
 ]
 
@@ -309,7 +309,7 @@ def main():
         if cmd == "monitor":
             return do_monitor(sys.argv[2] if len(sys.argv) > 2 else 1200)
         if cmd in ("-h", "--help", "help"):
-            print("ESP32 WinKeyer installer\n"
+            print("VUKEYER installer\n"
                   "  python3 install.py              set up the toolchain and verify the build\n"
                   "  python3 install.py flash        build + upload (picks the serial port)\n"
                   "  python3 install.py monitor [b]  serial monitor, default 1200 baud\n"
@@ -355,7 +355,7 @@ def main():
     print("\nBuilding firmware to verify the toolchain…")
     print("  (the first build downloads the Arduino 3.x platform and its")
     print("   toolchain — a few hundred MB, several minutes)")
-    r = subprocess.run([pio, "run", "-e", "esp32-winkeyer"], cwd=HERE)
+    r = subprocess.run([pio, "run", "-e", "esp32-vukeyer"], cwd=HERE)
     if r.returncode == 0:
         print("\n✓ Build OK.")
         if host == "windows":
@@ -363,12 +363,12 @@ def main():
             print("  1. python install.py flash   build + upload (picks the port)")
         else:
             print("  1. ./flash.sh        build + upload (picks the serial port)")
-        print("  2. join WiFi AP 'vu2cpl-esp32-winkeyer-setup' (pw vu2cpl1234)")
+        print("  2. join WiFi AP 'vu2cpl-vukeyer-setup' (pw vu2cpl1234)")
         print("     and pick your network in the captive portal")
-        print("  3. http://winkeyer.local/  for settings")
+        print("  3. http://vukeyer.local/  for settings")
         print()
         print("  Note: the serial console runs at 1200 baud 8N2 by default —")
-        print("  that is the WinKeyer standard, and what a logger expects. So")
+        print("  that is the logger standard, and what a logger expects. So")
         print("  the boot log is one line; use the web page for status.")
         if host == "windows":
             print("  python install.py monitor         1200 baud (default)")
@@ -387,7 +387,7 @@ def main():
         print("     a half-installed platform never repairs itself")
         print("  3. use Python from python.org, not the Microsoft Store build")
         print("  4. check antivirus/proxy: the step is a pip install into a venv")
-        print("  5. re-run with more detail:  pio run -e esp32-winkeyer -v")
+        print("  5. re-run with more detail:  pio run -e esp32-vukeyer -v")
         sys.exit(r.returncode)
 
 

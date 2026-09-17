@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-wk-bridge.py — expose the ESP32 WinKeyer's TCP port as a local serial port.
+wk-bridge.py — expose the VUKEYER's TCP port as a local serial port.
 
 Logging software wants a serial device, not a socket. This creates a PTY,
 symlinks it to a stable path, and shuttles bytes to the keyer over WiFi.
 Point N1MM/RUMlogNG/fldigi at the symlink and set the port to WinKeyer.
 
-    ./wk-bridge.py                      # find winkeyer.local, link /tmp/winkeyer
+    ./wk-bridge.py                      # find vukeyer.local, link /tmp/vukeyer
     ./wk-bridge.py --host 192.168.1.77  # fixed address
-    ./wk-bridge.py --link ~/winkeyer    # choose where the symlink lands
+    ./wk-bridge.py --link ~/vukeyer    # choose where the symlink lands
 
 macOS and Linux. On Windows use com0com + a TCP client, or run this in WSL.
 Byte timing is not critical on this link: the keyer generates the CW itself,
@@ -24,9 +24,9 @@ import socket
 import sys
 import time
 
-DEFAULT_HOST = "winkeyer.local"
+DEFAULT_HOST = "vukeyer.local"
 DEFAULT_PORT = 8088
-DEFAULT_LINK = "/tmp/winkeyer"
+DEFAULT_LINK = "/tmp/vukeyer"
 
 
 def log(msg):

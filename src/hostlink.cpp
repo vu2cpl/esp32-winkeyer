@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — K1EL WinKeyer protocol engine
+//  VUKEYER — K1EL WinKeyer protocol engine
 //
 //  Implements the WK2-compatible host command set that logging
 //  software actually exercises (N1MM+, DXLog, RUMlogNG,
@@ -16,7 +16,7 @@
 //  (Anthony Good K3NG) consulted for host-mode behaviour.
 // ============================================================
 
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "display.h"
 #include "keyer.h"
 #include "flex.h"
@@ -138,7 +138,7 @@ void bufBackspace() {
 }
 
 // ── Engine state ──────────────────────────────────────────
-WinKeyer::WriteFn sink = nullptr;
+HostLink::WriteFn sink = nullptr;
 bool     hostIsOpen = false;
 uint8_t  lastStatus = 0;
 uint8_t  lastPot    = 0xFF;
@@ -595,7 +595,7 @@ void pump() {
 }  // namespace
 
 // ── Public API ────────────────────────────────────────────
-namespace WinKeyer {
+namespace HostLink {
 
 void begin() {
   bufReset();
@@ -795,4 +795,4 @@ void closeHost() {
 void      setBackend(WkBackend b) { flushFlex(); backend = b; }
 WkBackend getBackend()            { return backend; }
 
-}  // namespace WinKeyer
+}  // namespace HostLink

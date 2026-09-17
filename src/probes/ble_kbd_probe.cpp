@@ -299,7 +299,7 @@ static void forgetBonds() {
 void setup() {
   Serial.begin(115200);
   delay(300);
-  Serial.println("\n=== BLE keyboard probe (esp32-winkeyer) ===");
+  Serial.println("\n=== BLE keyboard probe (esp32-vukeyer) ===");
 
   // Uses the WiFi credentials the keyer's WiFiManager already saved.
   WiFi.mode(WIFI_STA);

@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — settings web server
+//  VUKEYER — settings web server
 //
 //  Synchronous WebServer on port 80. Serviced from loop(), never
 //  from the keyer task: serving the page takes a few ms of socket
@@ -27,7 +27,7 @@
 #include "keyer.h"
 #include "fsk.h"
 #include "memories.h"
-#include "winkeyer.h"
+#include "hostlink.h"
 #include "flex.h"
 #include "bt.h"
 #include <WebServer.h>
@@ -47,7 +47,7 @@ bool started = false;
 const char PAGE[] PROGMEM = R"HTML(<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WinKeyer — Settings</title><style>
+<title>VUKEYER — Settings</title><style>
 :root{--chassis:#2d2d30;--dark:#1a1a1c;--bezel:#0a0a0b;--label:#d8cfb8;
 --dim:#8a8275;--amber:#ffaa22;--green:#2aff5a;--red:#ff2a1a;--off:#3a1a18}
 *{box-sizing:border-box}
@@ -72,11 +72,10 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 @media(min-width:760px) {.rig{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1150px){.rig{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:1680px){.rig{grid-template-columns:repeat(4,minmax(0,1fr))}}
-/* Two columns: KEYER is the tall one, so TIMING and SPEED POT stack beside
-   it instead of TIMING leaving a gap under itself. */
-@media(min-width:760px) and (max-width:1149px){.keyer{grid-row:span 2}}
 @media(min-width:1150px){
   .wide{grid-column:span 2}
+  /* BACKEND needs two columns; let a later card fill the hole it leaves. */
+  .rig{grid-auto-flow:row dense}
   /* Lamps and the speed readout share one line instead of taking two. */
   .rig>.leds{grid-column:1/-2}
   .rig>.speed{grid-column:-2/-1;margin-bottom:0}
@@ -120,6 +119,11 @@ min-width:0}   /* min-width:0 or a long row stretches its grid column */
 fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));
 gap:2px 14px;align-content:start}
 fieldset>legend{grid-column:1/-1}
+/* A merged card keeps its old panels as sections under a small heading. */
+.sub{grid-column:1/-1;margin:8px 0 0;padding-top:6px;border-top:1px dashed #44444a;
+color:var(--amber);font-size:10px;letter-spacing:2px;opacity:.8}
+.sub.first{margin-top:0;padding-top:0;border-top:0}
+.sub[title]{cursor:help}
 /* Anything with a slider, a free-text field or its own buttons wants the
    full width of its panel; :has covers the sliders without marking each. */
 .row.full,.row:has(input[type=range]),.row:has(input[type=text]):not(.mem){grid-column:1/-1}
@@ -165,7 +169,7 @@ button.hot{color:var(--red);border-color:#5a2420}
    slider beside it on every drag. */
 .unit{color:var(--amber);font-size:13px;white-space:nowrap}
 /* A <select> is as wide as its longest option and will not shrink below
-   it, so "1200 8N2 - WinKeyer standard" hung out past the panel border. */
+   it, so "1200 8N2 - ... standard" hung out past the panel border. */
 select{max-width:100%}
 /* Memories: six rows that must each stay on ONE line, or the panel becomes
    the tallest thing on the page and nothing else fits beside it. */
@@ -177,7 +181,7 @@ legend[title]{cursor:help}
 #msg.err{color:var(--red)}
 .foot{margin-top:4px;font-size:11px;color:var(--dim);text-align:center}
 </style></head><body><div class="rig">
-<div class="brand"><b>WINKEYER</b><span>VU2CPL &middot; ESP32 &middot; K1EL WK3</span></div>
+<div class="brand"><b>VUKEYER</b><span>VU2CPL &middot; ESP32</span></div>
 
 <div class="leds">
 <div class="led" id="l-host"><i></i>HOST</div>
@@ -194,12 +198,12 @@ legend[title]{cursor:help}
 
 <div class="speed"><b id="wpmBig">--</b><span>WPM</span><span id="src"></span></div>
 
-<fieldset class="keyer"><legend>KEYER</legend>
+<fieldset><legend>KEYER</legend>
 <div class="row"><label title="Sidetone only: paddle, memories, typed text, a logger's text and TUNE all sound in your ear, but no KEY or PTT line is driven, nothing is sent to the radio, and RTTY is refused. Turning it on or off stops whatever is being sent. Not saved: the keyer always boots ready to transmit.">Practice</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="practice"> sidetone only, no TX</label></div>
-<div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A WinKeyer host or the speed pot can override this; only what you set here is saved.">Speed</label>
+<div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A logger or the speed pot can override this; only what you set here is saved.">Speed</label>
   <input type="range" id="wpm" min="5" max="60"><span class="val" id="wpmV"></span></div>
-<div class="row"><label title="Echo of characters you send on the PADDLE, so a logger can capture hand-sent text. This is WinKeyer mode register bit 6, separate from character echo of buffered text. Auto follows what the host asks for — but RUMlogNG sets 0x07 and never requests it, so force it On if you want hand-sent text logged.">Paddle echo</label>
+<div class="row"><label title="Echo of characters you send on the PADDLE, so a logger can capture hand-sent text. This is mode register bit 6 of the logger protocol, separate from character echo of buffered text. Auto follows what the host asks for — but RUMlogNG sets 0x07 and never requests it, so force it On if you want hand-sent text logged.">Paddle echo</label>
   <select id="pecho"><option value="auto">Auto (follow host)</option>
   <option value="on">On</option><option value="off">Off</option></select>
   <span class="val" id="pechoState"></span></div>
@@ -208,29 +212,39 @@ legend[title]{cursor:help}
   <label style="flex:0 0 auto"><input type="checkbox" id="swap"> swap paddles</label></div>
 <div class="row"><label title="Monitor tone pitch in Hz, 300-1000, default 600. Local only — it never reaches the air. A logger can ask for another pitch over the host link (the command sends 4000/N); that lasts its session and is clamped to this range.">Sidetone</label>
   <input type="range" id="sthz" min="300" max="1000" step="10"><span class="val" id="sthzV"></span></div>
-</fieldset>
-
-<fieldset><legend>TIMING</legend>
+<div class="sub">TIMING</div>
 <div class="row"><label title="Mark/space balance, 10-90, nominal 50. Higher makes elements longer and gaps shorter WITHOUT changing the WPM. Raise it a little if your fist sounds clipped on the air.">Weight</label>
   <input type="range" id="weight" min="10" max="90"><span class="val" id="weightV"></span></div>
 <div class="row"><label title="Dah length relative to a dit, 33-66, nominal 50 = the standard 3 dits. Away from 50 the CW stops being standard-weight, so move it only to match a fist you already like.">Dah ratio</label>
   <input type="range" id="ratio" min="33" max="66"><span class="val" id="ratioV"></span></div>
 <div class="row"><label title="0 = off. Otherwise characters stay at the Speed above while the GAPS stretch to this slower WPM — the standard way to learn at speed. Must be 0 or 5-60; 1-4 is not a legal value.">Farnsworth</label>
   <input type="number" id="farns" min="0" max="60"><span class="unit">WPM</span></div>
-</fieldset>
-
-<fieldset><legend>SPEED POT</legend>
+<div class="sub">SPEED POT</div>
 <div class="row"><label title="10k linear pot on GPIO34, wiper to the pin, 100nF to GND. Leave this OFF until one is actually wired: the pin floats and noise will drive your speed. The knob overrides a host-set speed the moment you turn it.">Knob</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="pot"> enabled</label></div>
 <div class="row full"><label title="WPM at each end of the knob travel. Expect a small dead zone at the top: the ESP32 ADC saturates near 3.1 V rather than 3.3 V.">Range</label>
   <input type="number" id="potmin" min="5" max="59"><span class="unit">to</span>
   <input type="number" id="potmax" min="6" max="60"><span class="unit">WPM</span></div>
+<div class="sub" id="legPtt" title="">PTT</div>
+<div class="row"><label title="The PTT line itself: GPIO32, and GPIO19 for radio 2. Unticked, PTT is never asserted at all. It stays live on both backends, for an amp or a sequencer.">PTT line</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label></div>
+<div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
+<div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
+  <input type="number" id="lead" min="0" max="2000"><span class="unit">ms</span></div>
+<div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
+  <input type="number" id="tail" min="0" max="2000"><span class="unit">ms</span></div>
 </fieldset>
 
-<fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
+<fieldset><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
 <div class="row"><label title="Expands wherever %C appears in a memory.">Callsign</label>
   <input type="text" id="call" style="width:120px" placeholder="VU2CPL"></div>
 <div id="mems"></div>
+<div class="sub" title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</div>
+<div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
+  <button id="sendBtn" onclick="sendOrStop()">SEND</button>
+  <button id="tuneBtn" onclick="tuneOrStop()">TUNE</button></div>
+<div id="msg"></div>
 </fieldset>
 
 <fieldset class="wide stretch"><legend>BACKEND</legend>
@@ -269,18 +283,7 @@ legend[title]{cursor:help}
 </details>
 </fieldset>
 
-<fieldset><legend id="legPtt" title="">PTT</legend>
-<div class="row"><label title="The PTT line itself: GPIO32, and GPIO19 for radio 2. Unticked, PTT is never asserted at all. It stays live on both backends, for an amp or a sequencer.">PTT line</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label></div>
-<div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
-<div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
-  <input type="number" id="lead" min="0" max="2000"><span class="unit">ms</span></div>
-<div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
-  <input type="number" id="tail" min="0" max="2000"><span class="unit">ms</span></div>
-</fieldset>
-
-<fieldset><legend>DISPLAY</legend>
+<fieldset><legend>SYSTEM</legend><div class="sub first">DISPLAY</div>
 <div class="row"><label title="Any I2C panel on 21/22, probed at boot. The FAMILY is auto-detected — OLEDs answer at 0x3C/0x3D, HD44780 LCD backpacks at 0x27/0x3F — so one firmware runs whichever is plugged in, and Auto-detect gets you back to the OLED after trying an LCD. What cannot be detected: SH1106 vs SSD1306 (same address; wrong choice shifts the image 2px right with a garbage left edge) and 16x2 vs 20x4 (same chip; wrong choice just truncates). Run /i2c to scan the bus.">Panel</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="disp"> enabled</label>
   <select id="dispctl">
@@ -290,9 +293,7 @@ legend[title]{cursor:help}
     <option value="lcd20x4">LCD 20x4 (I&sup2;C)</option>
     <option value="lcd16x2">LCD 16x2 (I&sup2;C)</option>
   </select></div>
-</fieldset>
-
-<fieldset class="stretch"><legend id="legSerial" title="">USB / WIFI</legend>
+<div class="sub" id="legSerial" title="">USB / WIFI</div>
 <div class="row full"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
   <select id="txpower">
     <option value="19">19 dBm (full)</option>
@@ -305,18 +306,16 @@ legend[title]{cursor:help}
     <option value="2">2 dBm (minimum)</option>
   </select>
   <span class="val" id="rssiVal"></span></div>
-<div class="row full"><label title="1200 8N2 is the K1EL WinKeyer standard and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
+<div class="row full"><label title="1200 8N2 is the standard rate and what loggers open the port with — at any other rate the handshake arrives as noise and the keyer looks dead. The console shares this port, so at 1200 the boot log is trimmed to one line. This page is unaffected by the serial rate, so it is the way back if you pick a rate you cannot monitor at.">Host baud</label>
   <select id="baud">
-    <option value="1200">1200 8N2 &mdash; WinKeyer</option>
+    <option value="1200">1200 8N2 &mdash; loggers</option>
     <option value="9600">9600 8N1</option>
     <option value="19200">19200 8N1</option>
     <option value="38400">38400 8N1</option>
     <option value="57600">57600 8N1</option>
     <option value="115200">115200 8N1 &mdash; console</option>
   </select></div>
-</fieldset>
-
-<fieldset><legend title="Type CW on a Bluetooth LE keyboard. Letters, digits and punctuation go out as you type; F1-F6 play the memories (hold Fn if the top row is media keys); Esc stops everything; PgUp/PgDn or the arrow keys change speed. BLE only: a keyboard that speaks only Classic Bluetooth will not show up.">BT KEYBOARD</legend>
+<div class="sub" title="Type CW on a Bluetooth LE keyboard. Letters, digits and punctuation go out as you type; F1-F6 play the memories (hold Fn if the top row is media keys); Esc stops everything; PgUp/PgDn or the arrow keys change speed. BLE only: a keyboard that speaks only Classic Bluetooth will not show up.">BT KEYBOARD</div>
 <div class="row full"><label title="Off by default, and changing it takes a restart. While Bluetooth runs, ESP-IDF forces WiFi modem sleep on, which measured about 85 ms average latency with spikes past 200 ms — typed text does not mind, but listen to your paddle through the Flex before relying on it. Off costs nothing: the Bluetooth memory is not even kept.">Bluetooth</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="bt"> enabled</label>
   <span class="val" id="btState"></span>
@@ -331,7 +330,7 @@ legend[title]{cursor:help}
 <div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
 </fieldset>
 
-<fieldset class="stretch"><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
+<fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
 <div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
   <button id="fskBtn" onclick="fskSendOrStop()">SEND</button></div>
 <div class="row full"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
@@ -347,14 +346,7 @@ legend[title]{cursor:help}
   <label style="flex:0 0 auto"><input type="checkbox" id="fskdid"> diddle</label></div>
 </fieldset>
 
-<fieldset class="stretch"><legend title="Type text and press Enter or SEND to transmit it. The SEND button turns into STOP while anything is going out — a message, a memory or tune — and ends it, clearing the radio's buffer as well as the keyer's. TUNE keys continuously for tuning an amp. Number boxes on this page step with the arrow keys, Shift for 10.">SEND</legend>
-<div class="row"><input type="text" id="txt" style="flex:1;width:auto" placeholder="CQ TEST VU2CPL">
-  <button id="sendBtn" onclick="sendOrStop()">SEND</button>
-  <button id="tuneBtn" onclick="tuneOrStop()">TUNE</button></div>
-<div id="msg"></div>
-</fieldset>
-
-<div class="foot" id="foot">winkeyer.local &middot; settings persist in NVS</div>
+<div class="foot" id="foot">vukeyer.local &middot; settings persist in NVS</div>
 </div><script>
 const $=i=>document.getElementById(i);
 let editing=null,pend=null;
@@ -506,12 +498,12 @@ async function refresh(){
     const u = s.uptime|0;
     const t = u < 90 ? u + 's' : u < 5400 ? Math.round(u/60) + 'm'
                                           : (u/3600).toFixed(1) + 'h';
-    $('foot').textContent = 'winkeyer.local \u00b7 up ' + t
+    $('foot').textContent = 'vukeyer.local \u00b7 up ' + t
       + ' \u00b7 last reset: ' + (s.resetreason || '?');
   }
   $('legSerial').title = s.baud==1200
-    ? 'Ready for a logger: 1200 8N2 is what a WinKeyer host expects.'
-    : 'Console rate. A logger looking for a WinKeyer will NOT talk to the port '
+    ? 'Ready for a logger: 1200 8N2 is what loggers expect.'
+    : 'Console rate. A logger will NOT talk to the port '
       +'at this setting.';
   $('legPtt').title = s.backend==='flex'
     ? 'FlexRadio backend: Tail releases both the local PTT line and the radio '
@@ -642,7 +634,7 @@ void handleSend() {
   // too, not just the local one, and drop tune — the button is the only way
   // out of any of them now.
   if (server.hasArg("stop")) {
-    WinKeyer::abort("clear: web STOP");
+    HostLink::abort("clear: web STOP");
     Keyer::tune(false);
     Log::println("[WEB] stop");
     server.send(200, "text/plain", "stopped");
@@ -650,7 +642,7 @@ void handleSend() {
   }
   String t = server.arg("t");
   if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
-  WinKeyer::sendText(t.c_str());
+  HostLink::sendText(t.c_str());
   Log::printf("[WEB] > %s\n", t.c_str());
   server.send(200, "text/plain", String("sent: ") + t);
 }
@@ -803,12 +795,12 @@ void begin() {
   // page polls every second.
   server.on("/api/wktrace", HTTP_GET, []() {
     if (server.hasArg("clear")) {
-      WinKeyer::traceClear();
+      HostLink::traceClear();
       server.send(200, "text/plain", "cleared\n");
       return;
     }
     String out;
-    WinKeyer::traceDump(out);
+    HostLink::traceDump(out);
     server.send(200, "text/plain", out);
   });
   // Radio traffic trace — ?clear=1 empties it. Streamed in chunks: the full

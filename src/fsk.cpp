@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — RTTY FSK keying line
+//  VUKEYER — RTTY FSK keying line
 //
 //  Baudot/ITA2 on GPIO27. The shift state (LTRS vs FIGS) is the
 //  part that bites: the code for "Q" and the code for "1" are the

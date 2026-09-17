@@ -1,7 +1,7 @@
 #pragma once
 
 // ============================================================
-//  ESP32 WinKeyer — keyer core API
+//  VUKEYER — keyer core API
 //
 //  Iambic keyer engine running as a 1 kHz FreeRTOS task pinned to
 //  core 1 at high priority, so CW timing is independent of WiFi,

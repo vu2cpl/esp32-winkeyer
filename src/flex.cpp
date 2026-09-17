@@ -1,5 +1,5 @@
 // ============================================================
-//  ESP32 WinKeyer — FlexRadio (SmartSDR) backend
+//  VUKEYER — FlexRadio (SmartSDR) backend
 //
 //  Discovery: the radio broadcasts an ASCII key=value payload.
 //  Firmware after v1.1.3 wraps it in a VITA-49 packet on UDP
