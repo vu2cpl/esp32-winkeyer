@@ -1601,6 +1601,15 @@ makes the keyer feel slow.
     found. Paddle-then-memory played fine at 14:41, so it is intermittent.
     The new `# clear:` line will say `paddle break-in (element)` if this is
     right.
+  - **Repro attempt, 14:56–14:59, dummy load: 0 of 9.** Five cycles of a
+    Tune pulse (a keyed element not from a message; the trace confirmed
+    `xmit 1` + `cw key 1/0`), 15 s idle, then memory 5 (`qrl?`), plus four
+    memory-only cycles. Every run gave 1 `cwx send`, 4 `cwx sent=`, no
+    erase and no clear. That weakens the stale-`curIsAuto` theory. The
+    condition not yet reproduced is the one present at 14:44: the first
+    memory after a **GUI client change** (Maestro takeover), with real
+    paddle keys in between. Script and log:
+    `~/projects/MSHV-Mac/user-reports/2026-09-17-cw-gone/repro.py`, `repro.log`.
   `Flex::clear(why)` and `WinKeyer::abort(why)` now take a reason, written
   as a `#` line: `web STOP`, `paddle break-in (dit|dah|element)` (from the new
   `Keyer::paddleSessionCause()`), `host 0x0A clear buffer`,
