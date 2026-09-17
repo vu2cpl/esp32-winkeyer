@@ -1926,6 +1926,18 @@ makes the keyer feel slow.
       label: "1200 8N2 — WinKeyer". At 1024 px: MEMORIES|BACKEND 369 px
       tall each, then USB|FSK, then SEND. At 1300 px: MEMORIES|BACKEND (2
       columns), then USB|FSK|SEND. No overflow. Flashed.
+    - Next round (Manoj, still at ~1024 px), to close the gap under
+      TIMING: panel order is now KEYER, TIMING, SPEED POT, MEMORIES,
+      BACKEND, PTT, DISPLAY, USB / WIFI, BT KEYBOARD, FSK / RTTY, SEND.
+      - At two columns `.keyer{grid-row:span 2}` (760–1149 px only), so
+        TIMING and SPEED POT stack beside KEYER: 135 + 6 + 102 = KEYER's
+        243 px.
+      - Every panel is `align-self:stretch`, so rows end level.
+      - Two columns: KEYER | TIMING/SPEED POT, MEMORIES | BACKEND,
+        PTT | DISPLAY, USB / WIFI | BT KEYBOARD, FSK / RTTY | SEND.
+      - Three columns: KEYER|TIMING|SPEED POT, MEMORIES|BACKEND(2),
+        PTT|DISPLAY|USB, BT|FSK|SEND.
+      - No overflow at 375, 1024 or 1300 px. Flashed.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**

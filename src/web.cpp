@@ -72,6 +72,9 @@ box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.7),0 2
 @media(min-width:760px) {.rig{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1150px){.rig{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:1680px){.rig{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Two columns: KEYER is the tall one, so TIMING and SPEED POT stack beside
+   it instead of TIMING leaving a gap under itself. */
+@media(min-width:760px) and (max-width:1149px){.keyer{grid-row:span 2}}
 @media(min-width:1150px){
   .wide{grid-column:span 2}
   /* Lamps and the speed readout share one line instead of taking two. */
@@ -87,6 +90,8 @@ input[type=range]{max-width:340px}
    .rig is align-items:start, so the card stopped at its content and the two
    ended at different heights. */
 .stretch{align-self:stretch}
+/* Every panel ends level with the ones it shares a row with. */
+.rig>fieldset{align-self:stretch}
 /* The six memories are wrapped in one div, so they were living in a single
    inner column. Give that div the full card and tile inside it. */
 #mems{grid-column:1/-1;display:grid;
@@ -189,7 +194,7 @@ legend[title]{cursor:help}
 
 <div class="speed"><b id="wpmBig">--</b><span>WPM</span><span id="src"></span></div>
 
-<fieldset><legend>KEYER</legend>
+<fieldset class="keyer"><legend>KEYER</legend>
 <div class="row"><label title="Sidetone only: paddle, memories, typed text, a logger's text and TUNE all sound in your ear, but no KEY or PTT line is driven, nothing is sent to the radio, and RTTY is refused. Turning it on or off stops whatever is being sent. Not saved: the keyer always boots ready to transmit.">Practice</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="practice"> sidetone only, no TX</label></div>
 <div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A WinKeyer host or the speed pot can override this; only what you set here is saved.">Speed</label>
@@ -214,50 +219,12 @@ legend[title]{cursor:help}
   <input type="number" id="farns" min="0" max="60"><span class="unit">WPM</span></div>
 </fieldset>
 
-<fieldset><legend id="legPtt" title="">PTT</legend>
-<div class="row"><label title="The PTT line itself: GPIO32, and GPIO19 for radio 2. Unticked, PTT is never asserted at all. It stays live on both backends, for an amp or a sequencer.">PTT line</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label></div>
-<div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
-<div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
-  <input type="number" id="lead" min="0" max="2000"><span class="unit">ms</span></div>
-<div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
-  <input type="number" id="tail" min="0" max="2000"><span class="unit">ms</span></div>
-</fieldset>
-
 <fieldset><legend>SPEED POT</legend>
 <div class="row"><label title="10k linear pot on GPIO34, wiper to the pin, 100nF to GND. Leave this OFF until one is actually wired: the pin floats and noise will drive your speed. The knob overrides a host-set speed the moment you turn it.">Knob</label>
   <label style="flex:0 0 auto"><input type="checkbox" id="pot"> enabled</label></div>
 <div class="row full"><label title="WPM at each end of the knob travel. Expect a small dead zone at the top: the ESP32 ADC saturates near 3.1 V rather than 3.3 V.">Range</label>
   <input type="number" id="potmin" min="5" max="59"><span class="unit">to</span>
   <input type="number" id="potmax" min="6" max="60"><span class="unit">WPM</span></div>
-</fieldset>
-
-<fieldset><legend>DISPLAY</legend>
-<div class="row"><label title="Any I2C panel on 21/22, probed at boot. The FAMILY is auto-detected — OLEDs answer at 0x3C/0x3D, HD44780 LCD backpacks at 0x27/0x3F — so one firmware runs whichever is plugged in, and Auto-detect gets you back to the OLED after trying an LCD. What cannot be detected: SH1106 vs SSD1306 (same address; wrong choice shifts the image 2px right with a garbage left edge) and 16x2 vs 20x4 (same chip; wrong choice just truncates). Run /i2c to scan the bus.">Panel</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="disp"> enabled</label>
-  <select id="dispctl">
-    <option value="auto">Auto-detect</option>
-    <option value="sh1106">OLED SH1106 (1.3")</option>
-    <option value="ssd1306">OLED SSD1306 (0.96")</option>
-    <option value="lcd20x4">LCD 20x4 (I&sup2;C)</option>
-    <option value="lcd16x2">LCD 16x2 (I&sup2;C)</option>
-  </select></div>
-</fieldset>
-
-<fieldset><legend title="Type CW on a Bluetooth LE keyboard. Letters, digits and punctuation go out as you type; F1-F6 play the memories (hold Fn if the top row is media keys); Esc stops everything; PgUp/PgDn or the arrow keys change speed. BLE only: a keyboard that speaks only Classic Bluetooth will not show up.">BT KEYBOARD</legend>
-<div class="row full"><label title="Off by default, and changing it takes a restart. While Bluetooth runs, ESP-IDF forces WiFi modem sleep on, which measured about 85 ms average latency with spikes past 200 ms — typed text does not mind, but listen to your paddle through the Flex before relying on it. Off costs nothing: the Bluetooth memory is not even kept.">Bluetooth</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="bt"> enabled</label>
-  <span class="val" id="btState"></span>
-  <button id="btRestart" onclick="btRestart()" hidden>RESTART</button></div>
-<div class="row full btonly"><label title="Only one keyboard is kept; pairing another replaces it. A paired keyboard reconnects by itself when it wakes — press a key.">Keyboard</label>
-  <span class="val" id="btName"></span>
-  <button id="btForget" onclick="btForget()">FORGET</button></div>
-<div class="row full btonly"><label title="Put the keyboard in Bluetooth pairing mode first (not its USB-dongle mode), then SCAN. It takes 10 seconds; click the keyboard in the list to pair.">Pair</label>
-  <button onclick="btScan()">SCAN</button>
-  <span class="val" id="btScanState"></span>
-  <span id="btHits"></span></div>
-<div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
 </fieldset>
 
 <fieldset class="stretch"><legend title="Six canned messages kept in flash, played through whichever backend is current. %C in the text expands to your callsign, so a memory survives a contest call change. No GPIO cost — front-panel buttons can be wired to these later.">MEMORIES</legend>
@@ -302,6 +269,29 @@ legend[title]{cursor:help}
 </details>
 </fieldset>
 
+<fieldset><legend id="legPtt" title="">PTT</legend>
+<div class="row"><label title="The PTT line itself: GPIO32, and GPIO19 for radio 2. Unticked, PTT is never asserted at all. It stays live on both backends, for an amp or a sequencer.">PTT line</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="ptt"> enabled</label></div>
+<div class="row"><label title="Master on/off for the tone in your ear, from the piezo on GPIO4. Off means silence regardless of anything else.">Audio</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="st"> sidetone</label></div>
+<div class="row"><label title="Delay in ms between asserting PTT and the first element, so a relay or amp has time to switch. Applies to the local GPIO32 line; the Flex radio does its own T/R.">Lead-in</label>
+  <input type="number" id="lead" min="0" max="2000"><span class="unit">ms</span></div>
+<div class="row"><label title="How long PTT is held after the last element, in ms. Releases BOTH the local line and, on the Flex backend, the radio. A useful reference: one word gap is 7 dits = 8400/WPM ms, so 400 ms is exactly one word space at 21 WPM.">Tail</label>
+  <input type="number" id="tail" min="0" max="2000"><span class="unit">ms</span></div>
+</fieldset>
+
+<fieldset><legend>DISPLAY</legend>
+<div class="row"><label title="Any I2C panel on 21/22, probed at boot. The FAMILY is auto-detected — OLEDs answer at 0x3C/0x3D, HD44780 LCD backpacks at 0x27/0x3F — so one firmware runs whichever is plugged in, and Auto-detect gets you back to the OLED after trying an LCD. What cannot be detected: SH1106 vs SSD1306 (same address; wrong choice shifts the image 2px right with a garbage left edge) and 16x2 vs 20x4 (same chip; wrong choice just truncates). Run /i2c to scan the bus.">Panel</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="disp"> enabled</label>
+  <select id="dispctl">
+    <option value="auto">Auto-detect</option>
+    <option value="sh1106">OLED SH1106 (1.3")</option>
+    <option value="ssd1306">OLED SSD1306 (0.96")</option>
+    <option value="lcd20x4">LCD 20x4 (I&sup2;C)</option>
+    <option value="lcd16x2">LCD 16x2 (I&sup2;C)</option>
+  </select></div>
+</fieldset>
+
 <fieldset class="stretch"><legend id="legSerial" title="">USB / WIFI</legend>
 <div class="row full"><label title="WiFi transmit power. Lower draws less current in each transmit burst, which is what browns out a board on a marginal USB supply — paddle keying sends a packet per key edge, about twenty bursts a second, and this board reset within two characters at full power. Lower also means less range: it does not affect how well you hear the AP, only how well it hears you. 11 dBm was enough to stop the resets here. The real fix is a 470-1000uF capacitor across 3V3 at the board, after which full power can come back.">WiFi power</label>
   <select id="txpower">
@@ -324,6 +314,21 @@ legend[title]{cursor:help}
     <option value="57600">57600 8N1</option>
     <option value="115200">115200 8N1 &mdash; console</option>
   </select></div>
+</fieldset>
+
+<fieldset><legend title="Type CW on a Bluetooth LE keyboard. Letters, digits and punctuation go out as you type; F1-F6 play the memories (hold Fn if the top row is media keys); Esc stops everything; PgUp/PgDn or the arrow keys change speed. BLE only: a keyboard that speaks only Classic Bluetooth will not show up.">BT KEYBOARD</legend>
+<div class="row full"><label title="Off by default, and changing it takes a restart. While Bluetooth runs, ESP-IDF forces WiFi modem sleep on, which measured about 85 ms average latency with spikes past 200 ms — typed text does not mind, but listen to your paddle through the Flex before relying on it. Off costs nothing: the Bluetooth memory is not even kept.">Bluetooth</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="bt"> enabled</label>
+  <span class="val" id="btState"></span>
+  <button id="btRestart" onclick="btRestart()" hidden>RESTART</button></div>
+<div class="row full btonly"><label title="Only one keyboard is kept; pairing another replaces it. A paired keyboard reconnects by itself when it wakes — press a key.">Keyboard</label>
+  <span class="val" id="btName"></span>
+  <button id="btForget" onclick="btForget()">FORGET</button></div>
+<div class="row full btonly"><label title="Put the keyboard in Bluetooth pairing mode first (not its USB-dongle mode), then SCAN. It takes 10 seconds; click the keyboard in the list to pair.">Pair</label>
+  <button onclick="btScan()">SCAN</button>
+  <span class="val" id="btScanState"></span>
+  <span id="btHits"></span></div>
+<div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
 </fieldset>
 
 <fieldset class="stretch"><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
