@@ -10,7 +10,9 @@ hardware.
 **Read this first if you are picking the project up after 2026-09-12:**
 
 - **OPEN BUG 2026-09-17, start here: on the Flex backend, CW keying dies after
-  every paddle key.** The paddle transmits with no CW element at 0 W; the
+  every paddle key.** *(Cause found the same afternoon: two faults, a stale
+  GUI client handle and `client bind` wedging the radio's CW generator. See
+  item 13, test (f), for the proposed fix. Workaround: `flexbind` off.)* The paddle transmits with no CW element at 0 W; the
   first memory after it transmits at 0 W with the radio's CWX queue frozen;
   stop and replay recovers it. Measured on the radio's own meter, 40
   transmissions. Open item 13 has the data, the lead to test first (the GUI
@@ -2220,6 +2222,34 @@ against exposing it beyond one.
     restart AetherSDR, `flexbind off` again (to refresh the handle), then a
     keyer memory first, with no CW from AetherSDR. Then a paddle key, also
     unbound.
+
+    **(f) 14:34, clean: `client bind` is the trigger for failure B.**
+    AetherSDR was restarted (`0x4BBEFA80`) and sent no CW itself. The
+    keyer's handle was refreshed with `flexbind off`, and no `client bind`
+    was sent. A keyer memory first ran normally (`cwx sent=1402…1418`,
+    11.9 s, 4.47 W), then a paddle key worked (33 `cw key`, all replies 0,
+    `SW,SWCW`, 4.52 W).
+
+    | new GUI client, keyer… | first CW | result |
+    |---|---|---|
+    | bound, STOP first (b, 14:24) | paddle | 0 W |
+    | bound (c, 14:26) | memory | stalled 17 s, 0 W |
+    | not bound (d, 14:29) | AetherSDR's own CWX | 4.47 W |
+    | not bound (f, 14:34) | keyer memory, then paddle | 4.47 / 4.52 W |
+
+    The samples are small (2 bound, 2 unbound), but the split is clean.
+    **Proposed fix, not implemented yet:** (1) stop sending `client bind`,
+    by defaulting `flexbind` to off or removing it, because the radio
+    accepts both `cwx send` and `cw key … client_handle=` from an unbound
+    client; (2) follow the GUI client: on its `disconnected` status, clear
+    `boundClientId` and `guiHandle` and take the next GUI client that
+    connects, and clear `guiHandle` on reconnect so the connect key-up never
+    goes out under a stale handle; (3) tighten the `indexOf("connected")`
+    test, which also matches "disconnected"; (4) correct the comments in
+    `flex.cpp`/`flex.h` that say an unbound client's CWX is refused.
+    Untested: paddle key FIRST, unbound, on a fresh client. Manoj's board is
+    running with `flexbind` OFF in NVS since 14:28, which is the workaround
+    until the fix lands.
 
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
