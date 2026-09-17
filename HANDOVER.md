@@ -1832,9 +1832,8 @@ makes the keyer feel slow.
     reading (≤ 50 ms, `potAdopt`). Cancel-buffered-speed (`0x1E`) no longer
     pushes a speed of 0.
   - Verified by script on the USB port: set 30 → 30, then pot range 10+30,
-    get pot, `02 00` → **20, the knob's speed**. Not yet seen from RUMlogNG
-    itself: its one attempt after the flash overlapped the script and never
-    got past host-open.
+    get pot, `02 00` → **20, the knob's speed**. Then from RUMlogNG itself
+    (K3NG type), opened without touching the knob: **both at 22** (Manoj).
   - Seen, not changed: host close restores the operator's saved speed
     (`restoreKeyer()`, 15 here) even though the knob sits elsewhere, so the
     keyer and the knob disagree after a logger disconnects until the knob
