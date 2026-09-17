@@ -151,6 +151,7 @@ const uint8_t  CW_WPM_MIN = 5, CW_WPM_MAX = 50;
 const uint8_t  CW_N = CW_WPM_MAX - CW_WPM_MIN + 1;
 const int16_t  CW_EXTRA_DEFAULT = 700; // µs a unit, until anything is learned
 int16_t  cwExtra[CW_N];                // µs a unit, per WPM
+int16_t  cwExtraSaved[CW_N];           // as last written to NVS
 uint8_t  cwRuns[CW_N];                 // clean runs learned at that WPM (saturates)
 bool     cwDirty = false;
 uint32_t cwSavedMs = 0;
@@ -299,7 +300,11 @@ void rateFinish() {
       int16_t old = cwExtra[i];
       cwExtra[i] = cwRuns[i] ? (int16_t)((old * 3 + extra) / 4) : (int16_t)extra;
       if (cwRuns[i] < 255) cwRuns[i]++;
-      if (cwRuns[i] == 1 || abs(cwExtra[i] - old) > 50) cwDirty = true;
+      // Against what is in flash, not the previous value: smoothing moves an
+      // entry in small steps, and 872 -> 774 µs in steps under 50 was never
+      // written, so every reboot (and opening RUMlogNG reboots the keyer)
+      // brought back 872 and the drift (2026-09-17).
+      if (cwRuns[i] == 1 || abs(cwExtra[i] - cwExtraSaved[i]) > 50) cwDirty = true;
       Log::printf("[FLEX] radio CW at %u WPM: %d us/unit extra (%u units in %u ms), table %d\n",
                   rateWpm, (int)extra, (unsigned)rateUnits, (unsigned)ms, cwExtra[i]);
     }
@@ -311,6 +316,7 @@ void cwLoad() {
   for (int i = 0; i < CW_N; i++) { cwExtra[i] = CW_EXTRA_DEFAULT; cwRuns[i] = 0; }
   if (prefs.isKey("cwx")) prefs.getBytes("cwx", cwExtra, sizeof cwExtra);
   if (prefs.isKey("cwn")) prefs.getBytes("cwn", cwRuns, sizeof cwRuns);
+  memcpy(cwExtraSaved, cwExtra, sizeof cwExtra);
   // isKey() first, as for "ip": a missing key is not an error on a fresh board.
   latSaved = prefs.isKey("lat") ? prefs.getUShort("lat", 0) : 0;
   startLatency = latSaved;
@@ -326,6 +332,7 @@ void cwSaveIfDue() {
   if (cwDirty) {
     prefs.putBytes("cwx", cwExtra, sizeof cwExtra);
     prefs.putBytes("cwn", cwRuns, sizeof cwRuns);
+    memcpy(cwExtraSaved, cwExtra, sizeof cwExtra);
     cwDirty = false;
   }
   if (latDue) { prefs.putUShort("lat", startLatency); latSaved = startLatency; }
@@ -675,6 +682,7 @@ void cwTableJson(JsonArray a) {
 }
 void cwTableReset() {
   for (int i = 0; i < CW_N; i++) { cwExtra[i] = CW_EXTRA_DEFAULT; cwRuns[i] = 0; }
+  memcpy(cwExtraSaved, cwExtra, sizeof cwExtra);
   prefs.begin("flex", false);
   prefs.remove("cwx"); prefs.remove("cwn"); prefs.remove("lat");
   prefs.end();
