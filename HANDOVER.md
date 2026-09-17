@@ -1986,6 +1986,16 @@ against exposing it beyond one.
     unexplained; see `sendKeyUp()`: *"xmit 0" does NOT clear a key the
     radio still believes is down*.
 
+    **Stale handle ruled out (later on 09-17).** After a reboot the keyer
+    and the radio agreed on the handle: `flex.guihandle` was `0x7E7FD26E`
+    and `sub client all` listed only the Maestro, on the same handle.
+    Manoj then used the paddle and it was **still dead**. A second check
+    after that test still matched. The keyer had not reset (uptime 121 s),
+    the Flex session was connected, the slice was in CW and there was no
+    slice warning. So a wrong `client_handle` does not explain the paddle
+    fault. Steps 1, 3 and 5 below are answered, and step 2 (the exact
+    `cw key` lines and their `index`) is next.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
