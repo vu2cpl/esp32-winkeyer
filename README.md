@@ -746,7 +746,7 @@ sidetone back as audio (AetherSDR here) adds its own network and audio delay
 on top, which the keyer cannot measure. Matching that by ear took a manual
 245 ms here, against 87 ms measured. To keep following the measurement and
 still cover the client, leave it on auto and add an **extra** (`/monextra N`,
-0–1000 ms, the `+` box on the web page, saved): about 160 for AetherSDR
+0–1000 ms, **Delay extra** on the web page, saved): about 160 for AetherSDR
 here. The extra is ignored for a manual value.
 
 **The sidetone copy also follows the radio's real timing, per speed.** A

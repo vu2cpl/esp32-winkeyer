@@ -122,7 +122,9 @@ legend{color:var(--amber);font-size:11px;letter-spacing:2px;padding:0 6px}
 /* An author rule beats the hidden attribute's default display:none, so
    .row{display:flex} kept "hidden" rows on screen. */
 .row[hidden]{display:none!important}
-details.adv{grid-column:1/-1;margin:6px 0 0;border-top:1px dashed #44444a;padding-top:4px}
+/* Closed, it is one tile beside Radio and Keying; open, it takes the width. */
+details.adv{margin:4px 0;align-self:center}
+details.adv[open]{grid-column:1/-1;margin-top:6px;border-top:1px dashed #44444a;padding-top:4px}
 details.adv[hidden]{display:none!important}
 details.adv summary{cursor:pointer;color:var(--dim);font-size:12px}
 .advwarn{margin:6px 0;padding:6px 9px;border-radius:6px;font-size:12px;
@@ -296,9 +298,9 @@ legend[title]{cursor:help}
 <div class="row flexonly"><label title="The radio starts sending a few hundred ms after it is handed the text — network, then its own CW start — while the local sidetone copy starts at once, so the sidetone runs AHEAD of the air. This holds the copy back to match. Auto uses the delay the keyer measures from cwx send to the radio actually transmitting; set a number to override, 0 to disable.">Sidetone delay</label>
   <input type="number" id="mondelay" min="0" max="2000" placeholder="auto">
   <label style="flex:0 0 auto"><input type="checkbox" id="mondelayauto"> auto</label>
-  <label style="flex:0 0 auto" title="Added to the measured delay while auto is ticked; ignored for a manual value. Auto lines the sidetone up with the radio, but a client that plays the radio's sidetone back as audio (AetherSDR, SmartSDR) adds its own network and audio delay that the keyer cannot measure. Tune by ear: AetherSDR needed about 160.">+</label>
-  <input type="number" id="monextra" min="0" max="1000" style="width:60px"><span class="unit">ms</span>
   <span class="val" id="mondelayNow"></span></div>
+<div class="row flexonly"><label title="Added to the measured delay while auto is ticked; ignored for a manual value. Auto lines the sidetone up with the radio, but a client that plays the radio's sidetone back as audio (AetherSDR, SmartSDR) adds its own network and audio delay that the keyer cannot measure. Tune by ear: AetherSDR needed about 140-160.">Delay extra</label>
+  <input type="number" id="monextra" min="0" max="1000"><span class="unit">ms</span></div>
 <div class="row"><label title="Which KEY/PTT pair the keyer drives. Radio 1 is GPIO33/32, radio 2 is GPIO18/19. Both keys them together — intended for a rig plus an amp or monitor, but it does mean two transmitters key at once.">Radio</label>
   <select id="radio"><option value="1">Radio 1</option>
   <option value="2">Radio 2</option><option value="both">Both</option></select></div>
@@ -528,7 +530,7 @@ async function refresh(){
    if(editing!=='mondelay') $('mondelay').value=auto_?'':s.mondelay;
    $('monextra').disabled=!auto_;
    if(editing!=='monextra') $('monextra').value=s.monextra||0;
-   $('mondelayNow').textContent='= '+(s.mondelaynow||0)+' ms'+
+   $('mondelayNow').textContent=(s.mondelaynow||0)+' ms'+
      (auto_?' (measured '+(s.flexlatency||0)+')':'');}
   $('pechoState').textContent = s.pechoon ? 'active' : 'inactive';
   $('rssiVal').textContent = s.rssi + ' dBm rx';

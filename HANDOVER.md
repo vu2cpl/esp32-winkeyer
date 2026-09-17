@@ -1898,6 +1898,19 @@ makes the keyer feel slow.
   - Toggling bind only drops and remakes the radio connection
     (`setBind()`). No `client bind` went out, and the link came back ready
     on the same GUI handle.
+  - **Layout fix (22:15), after Manoj's screenshot: "gui has been upset".**
+    BACKEND tiles its rows three to a line. The `+ extra` box made the
+    Sidetone delay tile wrap to three lines, and moving Key verb out left
+    Keying alone on a line. BACKEND grew, the page grid stretched its
+    neighbours, and that left a gap under SERIAL/USB and pushed MEMORIES
+    down.
+    - The extra is now its own **Delay extra** tile, where Key verb was.
+    - A closed `details.adv` is an ordinary tile beside Radio/Keying; only
+      `[open]` spans the width.
+    - Compared in `tools/web-preview.py` against the pre-change page
+      (67ae0c3, port 8792): MEMORIES starts at the same height again.
+    - No overflow at 1200, 900 or 375 px, open or closed. Flashed, and the
+      real page checked.
 
 - **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
   first open after a FLASH.**
