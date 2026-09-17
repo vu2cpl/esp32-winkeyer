@@ -1664,6 +1664,19 @@ makes the keyer feel slow.
   and repeated spaces collapse to one. Both envs build. Flashed; Manoj:
   "new display is fine, will keep it".
 
+- **2026-09-17 (15:37)** — **No Maestro sidetone for paddle keying; not
+  fixable from the keyer.** Manoj hears keyer memories on the Maestro, but
+  not the paddle. Memories are CWX, and the Maestro plays CWX sidetone
+  locally from the text (community reports; the radio's `cwx sent=` status
+  carries the Maestro's handle). Paddle edges arrive as `cw key` from the
+  network, and the Maestro makes local sidetone only for its own paddle
+  input and built-in keyer (FlexRadio staff, 2016). Tried `flexcmd=ptt`
+  (`cw ptt` instead of `cw key`), metered: the radio went into TX under the
+  Maestro with **no CW at 0.00 W** and no sidetone. It is back on `key`,
+  and a paddle letter after that made 10.31 W. Options left: the keyer's
+  own sidetone (current), or wire the keyer's KEY output into the Maestro's
+  key jack on the local backend (hardware, not tried).
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
