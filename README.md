@@ -657,7 +657,10 @@ set-up. With K1EL, RUMlogNG keeps repeating host-open and ignores the
 keyer's version-23 reply for 18 s to 2 minutes. At 1200 baud the queued
 opens take that long to drain, and the keyer has to answer every one.
 K3NG's keyer also reports 23, and with that setting the session opens at
-once (measured 2026-09-17).
+once (measured 2026-09-17). The one exception is the **first open after
+flashing the keyer**: even on K3NG, RUMlogNG floods host-open and then
+shows the wrong speed. Close and reopen the port once after a flash. A
+power cycle or restart does not cause it.
 
 For **N1MM+ in a VM**, map the VM's COM port to the host TCP socket with
 the VM's serial-over-TCP option instead of using the bridge.

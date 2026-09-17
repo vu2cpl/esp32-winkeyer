@@ -30,7 +30,8 @@ hardware.
   1168 µs at 25 WPM (real ~760) and drifted behind the radio. See What
   changed 19:00. **RUMlogNG: use keyer type K3NG.** With K1EL it takes 18 s
   to ~2 min to open a session (it floods admin-open); with K3NG it opens at
-  once (What changed 20:00). WK set-speed 0 now follows the knob.
+  once (What changed 20:00), **except the first open after a flash: reopen
+  the port once** (What changed 21:20). WK set-speed 0 now follows the knob.
 - **New 2026-09-17 evening:** practice mode (sidetone only, no TX, not
   saved), `/practice on|off` or the web checkbox. Verified on hardware.
 - **New 2026-09-17:** the sent CW scrolls on the display's bottom band while
@@ -1858,6 +1859,24 @@ makes the keyer feel slow.
   - Flashed. The reboot came back with **852 µs / 32 runs**, not the stale
     872 / 7, which confirms the 19:35 save fix. The weighting itself is
     **not yet verified on air.**
+
+- **2026-09-17 (21:20–21:30)** — **RUMlogNG floods host-open only on the
+  first open after a FLASH.**
+  - After the 21:1x flash, RUMlogNG (still on K3NG) took ~25 s to connect
+    and showed 10 WPM while the keyer was at 25. The trace showed ~1400
+    `00 02` / `17` rounds, then the normal set-up and `02 00`. The keyer
+    reported the knob correctly (0x8F → 25), but RUMlogNG was left reading
+    its pile of version replies. Reopening the port without a flash came up
+    at once at 25.
+  - Suspected boot-message garbage waiting in the USB chip: **ruled out.**
+    A script opened the port with the keyer running, and again after a
+    restart (`/api/bt?restart=1`) with the port closed. Both times 0 bytes
+    were waiting and one `00 02` got `17`.
+  - Restart without a flash, then RUMlogNG opening the port: **one open,
+    clean set-up, 25 WPM at once** (trace 14.8 s).
+  - So the flood follows a flash only: esptool's RTS reset and baud change,
+    or RUMlogNG having lost the port mid-flash. **Workaround: close and
+    reopen the port once after flashing.** Not investigated further.
 
 ## Network placement (measured 2026-09-10)
 
