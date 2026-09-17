@@ -98,7 +98,7 @@ bool          xmitOn = false;     // do we currently hold the transmitter?
 bool          keyIsDown = false;
 bool          cfgUseXmit = true;  // assert PTT around keying (see setUseXmit)
 uint16_t      keyIndex = 0;       // 16-bit sequence counter for cw key
-bool          cfgBind = true;     // issue "client bind" to the GUI client
+bool          cfgBind = false;    // issue "client bind" to the GUI client
 // "key" is what actually produces RF on a 6600 running SmartSDR 4.2.20.
 // The FlexRadio wiki documents "cw ptt" for keying and the radio accepts
 // it without error, but it did not key here. Switchable via /flex cmd.
@@ -344,38 +344,65 @@ void onLine(const String& line) {
       }
     }
 
-    // A non-GUI client cannot transmit in its own right — the radio only
+    // A non-GUI client cannot transmit in its own right: the radio only
     // allows TX in a GUI client's context (with none connected it reports
-    // tx_allowed=0, and CWX from an unbound client is refused as though
-    // someone else held the transmitter). So bind to the first GUI client
-    // we see and send CW on its behalf.
-    if (boundClientId.length() == 0 && body.startsWith("client ")) {
-      int idPos = body.indexOf("client_id=");
-      if (idPos >= 0 && body.indexOf("connected") >= 0) {
-        int s = idPos + 10, e2 = s;
-        while (e2 < (int)body.length() && body[e2] > ' ') e2++;
-        String id = body.substring(s, e2);
-        // Skip ourselves: our own handle came back on connect.
-        if (id.length() > 8 && !body.startsWith("client 0x" + radioHandle)) {
-          boundClientId = id;
-          // The handle sits right after "client " and is needed verbatim on
-          // every keying command — binding alone is not enough, and without
-          // it the radio accepts cw key but produces no RF.
-          int hs = body.indexOf("0x");
-          if (hs >= 0) {
-            int he = hs;
-            while (he < (int)body.length() && body[he] > ' ') he++;
-            guiHandle = body.substring(hs, he);
-          }
-          if (cfgBind) {
-            sendCmd("client bind client_id=" + id);
-            Log::printf("[FLEX] bound to GUI client %s (handle %s)\n",
-                          id.c_str(), guiHandle.c_str());
-          } else {
-            Log::printf("[FLEX] GUI client %s (handle %s) — not binding\n",
-                          id.c_str(), guiHandle.c_str());
-          }
+    // tx_allowed=0). So key on behalf of a GUI client, by putting its handle
+    // on every "cw key". The radio accepts "cwx send" and "cw key" from us
+    // WITHOUT "client bind" (measured 2026-09-17, HANDOVER item 13).
+    //
+    // The client has to be FOLLOWED, not captured once. A GUI client that
+    // restarts comes back with a new handle, and the radio answers a cw key
+    // under the old one with 0 and drops it: PTT, no CW, no error.
+    //   client 0x7D62C96C connected local_ptt=1 client_id=9BC7… program=…
+    //   client 0x7D62C96C disconnected forced=0 … duplicate_client_id=0
+    // The state word is matched exactly: "disconnected" contains
+    // "connected", and the disconnect line carries a "duplicate_client_id=".
+    if (body.startsWith("client 0x")) {
+      int hs = 7;                                   // at "0x"
+      int he = body.indexOf(' ', hs);
+      if (he < 0) return;
+      String handle = body.substring(hs, he);
+      int ws = he + 1, we = body.indexOf(' ', ws);
+      String state = body.substring(ws, we < 0 ? body.length() : we);
+
+      if (state == "disconnected") {
+        if (handle == guiHandle) {
+          Log::printf("[FLEX] GUI client %s (handle %s) left\n",
+                      boundClientId.c_str(), guiHandle.c_str());
+          boundClientId = "";
+          guiHandle = "";
+          // Another GUI client may already be connected, and the radio only
+          // reports a client when it changes; ask for the current list.
+          sendCmd("sub client all");
         }
+        return;
+      }
+      if (state != "connected") return;
+
+      String id;
+      if (!kv(body, "client_id", id) || id.length() <= 8) return;   // not a GUI client
+      if (handle == "0x" + radioHandle) return;                      // ourselves
+
+      // A new GUI client when we have none, or ours again under a new
+      // handle (the disconnect may not have been seen, e.g. across our own
+      // reconnect). A second GUI client never displaces the first.
+      bool adopt   = boundClientId.length() == 0;
+      bool rehandle = !adopt && id == boundClientId && handle != guiHandle;
+      if (!adopt && !rehandle) return;
+
+      boundClientId = id;
+      guiHandle = handle;
+      if (cfgBind) {
+        // Off by default: binding to a GUI client that has just connected
+        // left the radio's CW generator wedged, so paddle keying and CWX
+        // both transmitted at 0 W until a stalled "cwx clear" released it.
+        // Kept as a switch so it can be tested again.
+        sendCmd("client bind client_id=" + id);
+        Log::printf("[FLEX] bound to GUI client %s (handle %s)\n",
+                    id.c_str(), guiHandle.c_str());
+      } else {
+        Log::printf("[FLEX] keying for GUI client %s (handle %s)\n",
+                    id.c_str(), guiHandle.c_str());
       }
     }
   }
@@ -435,6 +462,10 @@ void tryConnect() {
   keyIsDown = false;
   xmitOn    = false;
   Flex::sendKeyUp();
+  // That key-up went under the last handle on purpose: it is the one a
+  // stuck key was sent under. From here the GUI client is re-learned from
+  // "sub client all", so no keying goes out under a handle that may be gone.
+  guiHandle = "";
 }
 
 }  // namespace
@@ -529,6 +560,7 @@ void sliceWarning(char* out, size_t n, WarnForm form) {
 void setBind(bool on) {
   cfgBind = on;
   boundClientId = "";        // force re-evaluation on the next client status
+  guiHandle = "";
   if (tcp.connected()) tcp.stop();
 }
 bool bindEnabled() { return cfgBind; }

@@ -51,15 +51,16 @@ bool     transmitting();
 void setUseXmit(bool on);
 bool useXmit();
 
-// Whether to issue "client bind" to the GUI client. Binding is documented
-// as required, but it also makes us a distinct client the radio may treat
-// as competing for the transmitter — switchable so it can be tested.
+// Whether to issue "client bind" to the GUI client. Default OFF: binding to a
+// GUI client that had just connected wedged the radio's CW generator, and
+// paddle keying and CWX both went out at 0 W (HANDOVER item 13). The radio
+// keys fine unbound. Kept switchable so that can be tested again.
 void setBind(bool on);
 bool bindEnabled();
 
 // Handle of the GUI client every cw key is sent on behalf of, e.g.
-// "0x3CF2DCF6"; "" until one is seen. Captured once per radio session, so
-// compare it with "sub client all" when keying goes quiet.
+// "0x3CF2DCF6"; "" until one is seen. Followed across that client leaving,
+// restarting under a new handle, and our own reconnect.
 String guiClientHandle();
 
 // Last 128 lines to and from the radio with millisecond stamps: every

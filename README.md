@@ -18,7 +18,7 @@ as a behavioural reference; the implementation here is original.
 | Speed pot on GPIO 34 | working, wired and tracking on hardware |
 | WinKeyer protocol engine (WK 2.3 host mode) | working with RUMlogNG; **audited against a genuine K1EL WK3.1 on 2026-09-13; status byte, load-defaults order, admin table and pot byte fixed and re-verified the same night; echo now paced per letter on both backends, within ~60 ms (local) / ~150 ms (Flex) of the K1EL**; admin 0 (Calibrate) argument byte fixed the following morning — it had desynced RUMlogNG's session setup ([findings](docs/k1el-probe-2026-09-13/README.md)) |
 | WiFi TCP transport + mDNS `winkeyer.local` | working, verified over WiFi |
-| FlexRadio backend — **paddle keying over the network** | working, verified on a 6600. **Known bug, 2026-09-17, under investigation:** after a paddle key, paddle keying sends no RF, and neither does the first memory after it; stopping and replaying a memory recovers it |
+| FlexRadio backend — **paddle keying over the network** | working, verified on a 6600. **Fixed 2026-09-17:** CW went out at 0 W after a GUI client (SmartSDR/Maestro/AetherSDR) restarted or changed; the keyer now follows the GUI client and no longer sends `client bind` |
 | RUMlogNG over USB serial (1200 8N2) | working — memories, typed text, echo |
 | Host bridge (`tools/wk-bridge.py`) | implemented, never driven by a real logger; macOS will not let a PTY appear as `/dev/cu.*`, so a logger cannot select it there |
 | OLED status panel (SH1106/SSD1306 128x64) | working, SH1106 at 0x3C on hardware |
@@ -658,6 +658,21 @@ output is disabled in this mode so the rig is not keyed twice.
 - SmartSDR (a GUI client) must be connected — with none the radio reports
   `tx_allowed=0` and nothing may transmit at all.
 
+**The keyer keys on behalf of that GUI client** by putting the client's
+handle on every `cw key`. It follows the client: when SmartSDR, Maestro or
+AetherSDR restarts it comes back under a new handle, and the keyer picks
+that up by itself (`flex.guihandle` in `/api/state` shows the one in use).
+A `cw key` under a handle that has gone is accepted with no error and
+silently dropped, so that is the first thing to compare when paddle keying
+raises PTT but makes no power.
+
+**`client bind` is off by default** (`/flex bind on|off`, web page "bind
+GUI"). On a 6600 in September 2026, binding to a GUI client that had just
+connected left the radio's CW generator stuck: paddle keying and memories
+both keyed the transmitter at 0 W until a stalled `cwx clear` released it.
+Unbound, both work. If a keyer upgraded from an older build still has bind
+switched on in its saved settings, switch it off.
+
 **Sidetone delay (`/mondelay`, default auto).** The radio generates
 buffered CW itself, so it starts a few hundred ms after being handed the
 text — the network hop plus its own CW start — while the local monitor copy
@@ -682,7 +697,8 @@ sets it back (at most every 2 s; never mid-message, where a logger's
 buffered speed change is allowed to differ).
 
 Tuning knobs, should keying misbehave on a different radio or firmware:
-`/flex cmd key|ptt` (which keying command), `/flex bind on|off`,
+`/flex cmd key|ptt` (which keying command), `/flex bind on|off` (default
+off, see above),
 `/flex ptt on|off` (whether we assert `xmit`). Defaults are what works on
 a 6600 running SmartSDR 4.2.20.
 

@@ -9,14 +9,14 @@ hardware.
 
 **Read this first if you are picking the project up after 2026-09-12:**
 
-- **OPEN BUG 2026-09-17, start here: on the Flex backend, CW keying dies after
-  every paddle key.** *(Cause found the same afternoon: two faults, a stale
-  GUI client handle and `client bind` wedging the radio's CW generator. See
-  item 13, test (f), for the proposed fix. Workaround: `flexbind` off.)* The paddle transmits with no CW element at 0 W; the
-  first memory after it transmits at 0 W with the radio's CWX queue frozen;
-  stop and replay recovers it. Measured on the radio's own meter, 40
-  transmissions. Open item 13 has the data, the lead to test first (the GUI
-  handle is bound once and never refreshed) and the next steps in order.
+- **FIXED 2026-09-17: on the Flex backend, CW went out at 0 W after a GUI
+  client restarted or changed.** There were two faults: the keyer kept a stale
+  GUI client handle, and `client bind` wedged the radio's CW generator. The
+  keyer now follows the GUI client, and `flexbind` defaults to off. Verified
+  on hardware with an AetherSDR restart and no command: paddle first, then a
+  memory, both 4.47 W. Open item 13 has the full investigation; the method
+  (`/api/flextrace` + a meter watcher, one variable per test) is worth
+  reusing.
 
 - **Arduino core 3.3.11 / IDF 5.5.5** via the pioarduino platform, and
   **PlatformIO must run on Python 3.10+** — the Mac's system one is 3.9 and
@@ -1538,6 +1538,24 @@ makes the keyer feel slow.
   static RAM (RAM 29.9%). Both envs build. Flashed, and read on hardware
   straight after boot.
 
+- **2026-09-17 (14:40)** — **Fixed: Flex CW at 0 W after a GUI client
+  restart (open item 13).** `flex.cpp` now follows the GUI client instead of
+  capturing it once per radio session. On `client <h> disconnected` for the
+  client in use, it forgets the handle and re-sends `sub client all`. On
+  `client <h> connected` it adopts a GUI client if it has none, and takes a
+  new handle when the same `client_id` comes back. The state word is matched
+  exactly; `indexOf("connected")` also matched "disconnected". `guiHandle`
+  is also cleared after the reconnect key-up and in `setBind()`.
+  **`flexbind` now defaults to off** (`cfgBind` and the NVS default), and the
+  comments claiming the radio refuses CWX from an unbound client are
+  corrected: measured, it accepts both `cwx send` and `cw key`. Both envs
+  build. Flashed and verified: AetherSDR restarted with no command, the
+  keyer followed to `0x105F4906`, then a paddle key first (13 `cw key`, 4.47
+  W) and a memory (`cwx sent=1440…1444`, 4.47 W). Not yet exercised: a
+  second GUI client already connected when the first one leaves, the
+  Maestro, and the new NVS default on a keyer that never saved `flexbind`
+  (Manoj's board had it saved as off).
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -1952,8 +1970,11 @@ against exposing it beyond one.
       are cached in RAM and written through; the namespace is created
       read-write at boot.
 
-13. **OPEN 2026-09-17 — Flex backend: CW keying dies after every paddle
-    key.** Handover for the next session.
+13. **RESOLVED 2026-09-17 (14:40) — Flex backend: CW keying dies after
+    every paddle key.** Fixed by following the GUI client and not binding;
+    see What changed, 14:40. The investigation below is kept as it ran,
+    including leads that turned out wrong. Still to exercise: a second GUI
+    client present when the first leaves, and a Maestro restart.
 
     **Measured.** 40 transmissions, 13:15–13:27 IST, read-only from the Mac:
     `flex_status_lines.py` and `flex_meters_watch.py` from
@@ -2251,7 +2272,15 @@ against exposing it beyond one.
     running with `flexbind` OFF in NVS since 14:28, which is the workaround
     until the fix lands.
 
-    **Next session, in order.**
+    **(g) 14:36–14:42: paddle first unbound, then the fix.** On a fresh
+    AetherSDR with the keyer unbound, a paddle key first made 4.47 W (51
+    `cw key`, all replies 0) and a memory after it ran normally (4.47 W).
+    With the fix flashed, AetherSDR was restarted with **no command**: the
+    keyer followed to the new handle `0x105F4906` by itself, and a paddle
+    key first (4.47 W) and then a memory (4.47 W) both transmitted.
+
+    **Next session, in order** *(written before the cause was found; kept
+    for the record)*.
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
        (`sub client all` from any API session). It is the handle every

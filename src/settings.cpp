@@ -202,7 +202,7 @@ void begin() {
   // Flex keying details. These were CLI-only and unpersisted, so they had
   // to be re-entered after every reflash or board swap.
   { String v = loadStr("flexcmd"); if (v.length()) Flex::setKeyVerb(v.c_str()); }
-  Flex::setBind(loadU32("flexbind", 1));
+  Flex::setBind(loadU32("flexbind", 0));   // off: binding wedged CW (item 13)
   Flex::setUseXmit(loadU32("flexxmit", 1));
   Fsk::setBaud(loadU32("fskbaud", 4545) / 100.0f);
   Fsk::setInvert(loadU32("fskinv", 0));

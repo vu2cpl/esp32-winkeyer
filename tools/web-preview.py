@@ -47,7 +47,7 @@ STATE = {
     "call": "VU2CPL",
     "mems": ["CQ CQ %C %C K", "UR 5NN 5NN TU", "73 TU", "", "", ""],
     "flex": {"enabled": True, "connected": True, "ip": "192.168.1.50",
-             "slice": True, "slicewarn": "", "cmd": "key", "bind": True,
+             "slice": True, "slicewarn": "", "cmd": "key", "bind": False,
              "xmit": True, "xmiton": False,
              "guihandle": "0x12345678"},
     "rssi": -62, "txpower": 19, "ip": "192.168.1.20",
