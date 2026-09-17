@@ -210,6 +210,8 @@ void handleLine(char* line) {
     } else if (!strncasecmp(rest, "baud ", 5))   { setting("fskbaud", rest + 5);
     } else if (!strncasecmp(rest, "invert ", 7)) { setting("fskinv", rest + 7);
     } else if (!strncasecmp(rest, "diddle ", 7)) { setting("fskdiddle", rest + 7);
+    } else if (Keyer::practice()) {
+      Log::println("[FSK] practice mode: RTTY is not sent");
     } else if (!Fsk::send(rest)) {
       Log::println("[FSK] buffer full");
     } else {
@@ -249,6 +251,7 @@ void handleLine(char* line) {
     } else if (!strcasecmp(cmd, "radio")  && arg) { setting("radio", arg);
     } else if (!strcasecmp(cmd, "pecho")  && arg) { setting("pecho", arg);
     } else if (!strcasecmp(cmd, "monitor") && arg) { setting("monitor", arg);
+    } else if (!strcasecmp(cmd, "practice") && arg) { setting("practice", arg);
     } else if (!strcasecmp(cmd, "mondelay") && arg) { setting("mondelay", arg);
     } else if (!strcasecmp(cmd, "baud")   && arg) { setting("baud", arg);
     } else if (!strcasecmp(cmd, "weight") && arg) { setting("weight", arg);
@@ -347,6 +350,7 @@ void handleLine(char* line) {
     } else {
       Log::println("[CLI] /wpm /mode /swap /tune /pot /ptt /st /disp /i2c\n"
                      "      /weight /ratio /farns /lead /tail /baud /monitor /mondelay /pecho\n"
+                     "      /practice on|off (sidetone only, no TX)\n"
                      "      /fsk <text> | /fsk baud|invert|diddle|stop\n"
                      "      /radio 1|2|both   /mem N [text]   /call <sign>\n"
                      "      /bt on|off|scan|forget   /backend /flex /wifi /paddle /net /status");

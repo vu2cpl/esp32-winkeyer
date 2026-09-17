@@ -72,6 +72,11 @@ void    setMonitorExtraUs(int16_t us);
 int16_t monitorExtraUs();
 size_t queueDepth();       // characters still queued in the keyer
 void   clearBuffer();      // abort buffered sending immediately (key up)
+// Practice: the keyer makes sidetone for paddle, text and tune, but drives no
+// KEY or PTT line and sends nothing to a network radio. Switching either way
+// stops whatever is being sent. Not saved: every boot is ready to transmit.
+void   setPractice(bool on);
+bool   practice();
 void   tune(bool on);      // continuous key-down (with PTT)
 bool   tuning();
 void   pttManual(bool on); // host-forced PTT (WK 0x18), independent of send activity

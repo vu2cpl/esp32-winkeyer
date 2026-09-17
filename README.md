@@ -27,6 +27,7 @@ as a behavioural reference; the implementation here is original.
 | SEND / STOP as one button on the page | working; per control — text, tune, each memory, FSK |
 | Persisted settings (NVS) | working, verified across a hard reset |
 | Message memories (6) with `%C` expansion | working from the web page and a logger |
+| Practice mode — sidetone only, nothing transmitted | working on hardware (2026-09-17), Flex backend |
 | RTTY FSK on GPIO27 | implemented, polarity unverified on air |
 | MQTT status + heartbeat | working against the shack broker |
 | Arduino core | **3.3.11 / IDF 5.5.5** (pioarduino); 2.0.17 crashes under load |
@@ -265,8 +266,12 @@ there means the decoder read your spacing differently, not a fault in the
 radio. Buffered text appears as the keyer's sidetone copy finishes each
 character, which on the Flex is held back to match the air.
 
+In practice mode the title reads `PRACTICE NO TX`, ahead of any slice
+warning.
+
 **LCD 20x4** carries the same fields as text. Row 3 shows the last 20
-characters sent while sending, and the address otherwise:
+characters sent while sending, and the address otherwise. Row 4 gives way
+to `PRACTICE NO TX` or a slice warning:
 
 ```
 28 WPM POT   KEY
@@ -484,6 +489,27 @@ GPIO33/32, radio 2 on GPIO18/19 — and persists. `both` is deliberate, for a
 rig plus an amp or monitor, but it keys two transmitters at once so it is
 never the default. Switching radios drops every line first, so a
 transmission can never strand the outgoing radio keyed.
+
+## Practice mode
+
+Tick **Practice** at the top of the KEYER box on the web page, or
+`/practice on|off`. The keyer then makes sidetone for everything (paddle,
+memories, typed text, a logger's text, TUNE) but transmits nothing:
+- no KEY or PTT line is driven, and the PTT lead-in is skipped;
+- nothing goes to a FlexRadio, neither `cw key` nor `cwx send`;
+- a logger's PTT command is ignored, and RTTY SEND is refused.
+
+Text plays with your own weighting and Farnsworth, as on the local backend.
+
+An amber banner on the web page says so, and the OLED title, row 4 of the
+20x4 LCD and row 2 of the 16x2 LCD (taking turns with the address) read
+`PRACTICE NO TX`. Switching on or off stops whatever is being sent. The
+keyer task makes the switch between elements, so a key-down sent to the
+radio is always followed by its key-up.
+
+**Practice is not saved.** The keyer always boots ready to transmit, so a
+practice session can't carry through a power cycle into a contest.
+`practice` in `/api/state` shows the current state.
 
 ## Message memories
 
@@ -717,8 +743,8 @@ pause (a run stops where the radio may have waited for typed text), refines that
 speed's entry (smoothed), interpolates for speeds not played yet (700 µs
 before anything is learned), and adds it to each unit of the copy, carrying
 the sub-millisecond remainder. The table and the start delay are kept in
-flash (written when they change, at most once a minute), so they survive a
-reboot. `cwextra` in `/api/state` is the value in use at the current speed.
+flash (written when an entry is first learned or has moved more than 50 µs
+from the saved value, at most once a minute), so they survive a reboot. `cwextra` in `/api/state` is the value in use at the current speed.
 `GET /api/cwtable` lists all 46 speeds (`runs` 0 = interpolated), and
 `POST /api/cwtable?reset=1` forgets it. In step from 10 to 50 WPM on
 hardware.
@@ -802,6 +828,7 @@ tells "not sent" from "reported late".
 `/ptt on|off` `/st N|on|off` (pitch 300-1000 Hz, default 600)
 `/disp on|off` `/disp sh1106|ssd1306`
 `/weight N` `/ratio N` `/farns N` `/lead N` `/tail N`
+`/practice on|off` (sidetone only, no TX; not saved)
 `/backend local|flex` `/flex on|off|ip <addr>|auto` `/wifi [portal|reset]`
 `/bt on|off|scan|forget` (on/off takes a restart) `/i2c` `/net` `/status`.
 Any other line is sent as CW.
@@ -911,7 +938,8 @@ doing nothing because `.row{display:flex}` outranks it, and `hidden` on an
 
 The **operator's** panel settings persist in NVS: speed, mode, swap,
 sidetone, PTT, weighting/ratio/Farnsworth, pot enable and range, display,
-backend. The **host's** session settings do not — a speed N1MM sets over
+backend. **Practice mode is the exception** and is never saved: every boot
+is ready to transmit. The **host's** session settings do not — a speed N1MM sets over
 the WinKeyer protocol is gone at the next boot, so a contest never leaves
 the keyer permanently reconfigured.
 

@@ -28,9 +28,11 @@ hardware.
   working or dead without `flex_meters_watch.py` running.**
 - **Fixed 2026-09-17 evening:** the learned sidetone timing had crept to
   1168 µs at 25 WPM (real ~760) and drifted behind the radio. See What
-  changed 19:00. **Open:** RUMlogNG takes ~2 min to open a session after
-  the port is opened (it repeats admin-open and ignores the replies), to be
-  captured from the start.
+  changed 19:00. **Open:** RUMlogNG takes 18 s to ~2 min to open a session
+  (captured 19:40: a backlog of admin-open commands drains at 1200 baud; see
+  What changed 19:35).
+- **New 2026-09-17 evening:** practice mode (sidetone only, no TX, not
+  saved), `/practice on|off` or the web checkbox. Verified on hardware.
 - **New 2026-09-17:** the sent CW scrolls on the display's bottom band while
   sending. `flexbind` now defaults to off.
 
@@ -1752,6 +1754,48 @@ makes the keyer feel slow.
   rebooted the keyer, and RUMlogNG then sent admin-open (`00 02`) every
   ~18 ms for minutes, ignoring each `0x17` reply, before the session came
   up ~129 s after boot (`/api/wktrace`). A real WinKeyer answers at once.
+
+- **2026-09-17 (19:35–19:50)** — **Practice mode, and the timing table now
+  saves small moves.**
+  - **Practice** (Manoj's request): sidetone for paddle, memories, typed and
+    logger text and TUNE, with nothing transmitted. Manoj's choices: not
+    saved (off at every boot), shown on web and panels, TUNE/PTT/FSK blocked.
+    - `Keyer::setPractice()` sets `practiceReq`. The keyer task applies it
+      between elements: it clears the queue, stops tune, keys up while the
+      old mode still decides the hook, and drops PTT. So the Flex hook can
+      never get a key-down without its key-up.
+    - `cfgPractice` gates the KEY GPIOs in `keyDown()`, the hook
+      (`hookWanted()`), `monUnits` (`monitorOnly()`) and the lead-in.
+      `pttAssert()` also refuses while practice is requested.
+    - In `winkeyer.cpp`, every `backend == WK_BACKEND_FLEX` test is now
+      `flexOn()`, which is false in practice. Text therefore takes the
+      local path, with local echo and busy.
+    - `Settings::apply("practice")` calls `WinKeyer::abort()` (in the old
+      mode, so a Flex buffer is cleared with cause `clear: practice on`)
+      and `Fsk::abort()` before switching. `Fsk::send()` refuses, and so
+      do `/api/fsk` (409) and `/fsk`.
+    - Where it shows: web checkbox at the top of KEYER plus an amber
+      banner; `practice` in `/api/state`; `/practice on|off`; on the panels
+      `PRACTICE NO TX` via `display.cpp` `warning()`, ahead of the slice
+      warning.
+    - Manoj: **works on hardware.**
+  - **Save rule fix:** an entry was marked dirty only when ONE update moved
+    it more than 50 µs. Smoothing walked 25 WPM from 872 to 774 in smaller
+    steps, so flash kept 872. Every reboot brought the drift back, and
+    opening RUMlogNG can reboot the keyer. It now compares against
+    `cwExtraSaved[]`. Flashed; the fix is **not yet seen to write**, since
+    nothing has been learned since the flash.
+  - **RUMlogNG open, recorded from the first byte** (`/api/wktrace` polled
+    every 0.3 s, no keyer reboot this time): `00 02` pairs arrived
+    back-to-back at exactly the 1200-baud wire rate for **18 s**. The keyer
+    answered the first within 1 ms and every one after. RUMlogNG's real
+    set-up (`00 00 02 00 0B 00 0F …`, including its speed) came only after
+    the stream. That is why its speed read 10 until it jumped to 25. The
+    likely cause is that RUMlogNG writes the open faster than 1200 baud can
+    carry it, and the pile in the Mac's serial buffer then takes ~18 s to
+    drain (longer when the open also rebooted the keyer). Not proven.
+    Deciding test: open the port from a script, send one `00 02`, time the
+    reply, and compare RUMlogNG against a real K1EL.
 
 ## Network placement (measured 2026-09-10)
 

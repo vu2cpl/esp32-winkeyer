@@ -179,6 +179,7 @@ float baud() { return cfgBaud; }
 
 bool send(const char* text) {
   if (!text || !*text) return true;
+  if (Keyer::practice()) return false;   // nothing goes on the air in practice
   for (const char* p = text; *p; p++) {
     if (txCount() >= sizeof(txBuf) - 1) return false;
     txBuf[txTail++ % sizeof(txBuf)] = *p;

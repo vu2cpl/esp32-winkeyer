@@ -368,6 +368,21 @@ bool apply(const char* key, const char* val, char* msg, size_t msgLen) {
     WinKeyer::setMonitor(b); saveU32("monitor", b);
     snprintf(msg, msgLen, "sidetone monitor=%s", b ? "on" : "off");
 
+  } else if (!strcasecmp(key, "practice")) {
+    // Sidetone only, nothing on the air. NOT saved: a practice session must
+    // never carry through a reboot into a contest. What is being sent stops
+    // first, while the old mode still decides where it goes (the radio's
+    // buffer on Flex), and RTTY stops too.
+    if (!boolish(val)) return fail("practice: on|off");
+    bool b = truthy(val);
+    if (b != Keyer::practice()) {
+      WinKeyer::abort(b ? "clear: practice on" : "clear: practice off");
+      Fsk::abort();
+      Keyer::setPractice(b);
+    }
+    snprintf(msg, msgLen, "practice=%s%s", b ? "on" : "off",
+             b ? " (sidetone only, nothing transmitted)" : "");
+
   } else if (!strcasecmp(key, "txpower")) {
     // dBm. Lower draws less current in each WiFi transmit burst, which is
     // what browns out a board on a marginal USB supply — paddle keying
@@ -497,6 +512,7 @@ void toJson(JsonDocument& doc) {
   doc["uptime"]      = (uint32_t)(millis() / 1000);
   doc["echo"]    = WinKeyer::echoEnabled();
   doc["monitor"] = WinKeyer::monitor();
+  doc["practice"] = Keyer::practice();
   doc["mondelay"]   = WinKeyer::monitorDelayMs() == 0xFFFF
                         ? -1 : (int)WinKeyer::monitorDelayMs();   // -1 = auto
   doc["mondelaynow"]= WinKeyer::monitorDelayNowMs();

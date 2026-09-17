@@ -131,6 +131,13 @@ void recalc() {
 QueueHandle_t  charQ;
 volatile bool  flagClear    = false;
 volatile bool  flagTune     = false;
+// Practice: sidetone only, nothing transmitted. practiceReq is what was asked
+// for; cfgPractice is what the keyer task has applied. The switch happens in
+// the task, between elements, so an element keyed in one mode is always
+// released in the same mode — a key-down sent to the radio's hook is never
+// left without its key-up. Not saved: every boot is ready to transmit.
+volatile bool  practiceReq  = false;
+bool           cfgPractice  = false;   // keyer task writes, others read
 volatile bool  flagPttHold  = false;
 // WinKeyer BREAKIN is a LEVEL: up from the operator's first element until the
 // paddle hang time runs out (one word space plus a dit after the last
@@ -214,13 +221,15 @@ bool hookPaddleOnly = false;
 
 // The hook mirrors element timing to a network backend. Buffered text keyed
 // locally for sidetone must not reach it — see setHookPaddleOnly().
-inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
+inline bool hookWanted() { return keyHook && !cfgPractice && !(hookPaddleOnly && curIsAuto); }
 
 // True when this element is only a sidetone copy of text the radio is
 // generating — the one case where the operator's weighting and Farnsworth
 // must be ignored, so the sound matches the air. Same condition as
 // hookWanted()'s exclusion, by construction.
-inline bool monitorOnly() { return hookPaddleOnly && curIsAuto; }
+// In practice nothing is on the air to follow, so the operator's own timing
+// applies.
+inline bool monitorOnly() { return !cfgPractice && hookPaddleOnly && curIsAuto; }
 
 // The sidetone copy follows the radio's MEASURED timing, not the nominal one.
 // A Flex at "25 WPM" sends 48.7 ms a unit, not 48.0 (measured 2026-09-17),
@@ -249,7 +258,7 @@ inline uint16_t gapWord()  { return monitorOnly() ? monUnits(4) : tGapWord; }
 void toneOn()  { if (cfgSidetone) ledcWriteTone(PIN_SIDETONE, cfgToneHz); }
 void toneOff() { ledcWriteTone(PIN_SIDETONE, 0); }
 void keyDown() {
-  if (cfgKeyOut) {
+  if (cfgKeyOut && !cfgPractice) {
     if (cfgRadio & 1) digitalWrite(PIN_KEY_OUT,  HIGH);
     if (cfgRadio & 2) digitalWrite(PIN_KEY_OUT2, HIGH);
   }
@@ -274,7 +283,7 @@ void pttAssert() {
   // is disabled — the web page and the panel read it, and showing PTT
   // active while nothing is driven is exactly what misleads someone
   // debugging a dead PTT wire.
-  if (!cfgPtt) return;
+  if (!cfgPtt || cfgPractice || practiceReq) return;
   if (cfgRadio & 1) digitalWrite(PIN_PTT_OUT,  HIGH);
   if (cfgRadio & 2) digitalWrite(PIN_PTT_OUT2, HIGH);
   // Only on the rising edge: a caller that re-asserts an already-up line
@@ -362,7 +371,9 @@ void decideNext() {
 
 // Begin activity out of idle: honour PTT lead-in before the first element.
 void startActivity() {
-  if (cfgPtt && !pttOn && cfgLeadMs) {
+  // No lead-in in practice: there is no PTT to wait for, and it would only
+  // hold back the sidetone.
+  if (cfgPtt && !pttOn && cfgLeadMs && !cfgPractice) {
     if (cfgPttAuto) pttAssert();
     state = ST_LEAD;
     timerMs = cfgLeadMs;
@@ -471,6 +482,23 @@ void keyerTask(void*) {
       paddleIdleMs = 0;
     } else if (paddleSess && ++paddleIdleMs >= (uint32_t)tGapElemP * 8) {
       paddleSess = false;
+    }
+
+    // Practice on or off: everything under way stops first, in the mode it
+    // started in, so nothing queued for sidetone reaches the air afterwards
+    // and nothing keyed on the air is left down.
+    if (practiceReq != cfgPractice) {
+      xQueueReset(charQ);
+      pattern = nullptr;
+      mergeNext = false;
+      spacePending = false;
+      flagTune = false;
+      keyUp();
+      goIdle();
+      flagPttHold = false;
+      digitalWrite(PIN_PTT_OUT, LOW); digitalWrite(PIN_PTT_OUT2, LOW);
+      pttOn = false;
+      cfgPractice = practiceReq;
     }
 
     // Host abort (WK "clear buffer"): stop buffered sending at once.
@@ -663,6 +691,8 @@ bool sendChar(char c) {
 size_t queueDepth() { return charQ ? uxQueueMessagesWaiting(charQ) : 0; }
 
 void clearBuffer() { flagClear = true; }
+void setPractice(bool on) { practiceReq = on; }
+bool practice()           { return practiceReq; }
 void tune(bool on) { flagTune = on; }
 bool tuning()      { return flagTune; }
 

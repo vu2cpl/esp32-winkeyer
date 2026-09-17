@@ -176,10 +176,13 @@ legend[title]{cursor:help}
 <div class="led" id="l-kbd"><i></i>KBD</div>
 </div>
 <div class="slicewarn" id="slicewarn" hidden></div>
+<div class="slicewarn" id="practicewarn" hidden>PRACTICE &mdash; sidetone only, nothing is transmitted</div>
 
 <div class="speed"><b id="wpmBig">--</b><span>WPM</span><span id="src"></span></div>
 
 <fieldset><legend>KEYER</legend>
+<div class="row"><label title="Sidetone only: paddle, memories, typed text, a logger's text and TUNE all sound in your ear, but no KEY or PTT line is driven, nothing is sent to the radio, and RTTY is refused. Turning it on or off stops whatever is being sent. Not saved: the keyer always boots ready to transmit.">Practice</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="practice"> sidetone only, no TX</label></div>
 <div class="row"><label title="Sending speed in words per minute (PARIS timing: dit = 1200/WPM ms). A WinKeyer host or the speed pot can override this; only what you set here is saved.">Speed</label>
   <input type="range" id="wpm" min="5" max="60"><span class="val" id="wpmV"></span></div>
 <div class="row"><label title="Echo of characters you send on the PADDLE, so a logger can capture hand-sent text. This is WinKeyer mode register bit 6, separate from character echo of buffered text. Auto follows what the host asks for — but RUMlogNG sets 0x07 and never requests it, so force it On if you want hand-sent text logged.">Paddle echo</label>
@@ -450,6 +453,7 @@ async function refresh(){
   }
   const w=s.flex.slicewarn||'';
   $('slicewarn').textContent='⚠ '+w; $('slicewarn').hidden=!w;
+  $('practice').checked=!!s.practice; $('practicewarn').hidden=!s.practice;
   $('flexState').textContent = !s.flex.enabled ? 'off'
       : s.flex.connected ? (s.flex.slice ? 'ready' : 'no CW slice')
       : 'searching';
@@ -563,7 +567,7 @@ $('flexip').onfocus=()=>editing='flexip';
 $('flexip').onblur =()=>{editing=null;set('flexip',$('flexip').value)};
 for(const id of ['mode','backend','dispctl','baud','pecho','fskbaud','radio','flexcmd','txpower'])
   $(id).onchange=e=>set(id,e.target.value);
-for(const id of ['swap','pot','disp','ptt','st','monitor','fskinv','fskdid',
+for(const id of ['swap','pot','disp','ptt','st','monitor','practice','fskinv','fskdid',
                  'flex','flexbind','flexxmit','bt'])
   $(id).onchange=e=>set(id,e.target.checked?'on':'off');
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
@@ -652,6 +656,10 @@ void handleFsk() {
   }
   String t = server.arg("t");
   if (!t.length()) { server.send(400, "text/plain", "nothing to send"); return; }
+  if (Keyer::practice()) {
+    server.send(409, "text/plain", "practice mode: RTTY is not sent");
+    return;
+  }
   if (!Fsk::send(t.c_str())) {
     server.send(503, "text/plain", "fsk buffer full");
     return;

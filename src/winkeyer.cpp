@@ -207,6 +207,9 @@ void monPump() {
 
 uint8_t  modeReg    = 0x00;
 WkBackend backend   = WK_BACKEND_LOCAL;
+// The radio generates the CW. Not in practice, where text is sounded by the
+// local keyer as on the local backend, with its key lines held off.
+inline bool flexOn() { return backend == WK_BACKEND_FLEX && !Keyer::practice(); }
 
 // Command parsing
 uint8_t  pendingCmd    = 0;
@@ -258,7 +261,7 @@ void emitStatus(bool force) {
   if (!hostIsOpen) return;
   uint8_t s = ST_BASE;
   const bool paddle = Keyer::paddleSession();
-  bool busy = (backend == WK_BACKEND_FLEX)
+  bool busy = flexOn()
                 ? (Flex::pending() > 0 || !bufEmpty() || flexLen > 0)
                 : (Keyer::busy() || !bufEmpty());
   if (busy || paddle || Keyer::tuning()) s |= ST_BUSY;
@@ -444,7 +447,7 @@ void execImmediate(uint8_t cmd, const uint8_t* p, uint8_t n) {
       bufReset();
       flexLen = 0;
       Keyer::clearBuffer();
-      if (backend == WK_BACKEND_FLEX) { Flex::clear("clear: host 0x0A clear buffer"); Keyer::clearBuffer(); echoReset(); monReset(); }
+      if (flexOn()) { Flex::clear("clear: host 0x0A clear buffer"); Keyer::clearBuffer(); echoReset(); monReset(); }
       break;
     case 0x0B:                        // key immediate
       if (n) Keyer::tune(p[0] != 0);
@@ -531,7 +534,7 @@ void flushFlex() {
 void pump() {
   if (paused) return;
 
-  if (backend == WK_BACKEND_FLEX) {
+  if (flexOn()) {
     // The radio owns element timing, so the buffer can be handed over in
     // batches; only escapes need to be applied in stream order.
     uint8_t b;
@@ -643,7 +646,7 @@ void feed(uint8_t b, WriteFn s) {
 // Flex backstop gives up on a stalled radio and zeroes pending, everything
 // outstanding is flushed rather than stranded.
 void pumpEcho() {
-  if (backend != WK_BACKEND_FLEX) {
+  if (!flexOn()) {
     // Local: release a host character when the keyer reports it finished.
     // Anything else the keyer finishes (web page, memories) has no entry
     // here and is not echoed; a host character the keyer skipped (no Morse
@@ -690,7 +693,7 @@ void poll() {
   if (sess && !paddleSessPrev) {
     bufReset();
     flexLen = 0;
-    if (backend == WK_BACKEND_FLEX && (Flex::pending() > 0 || echoCount())) {
+    if (flexOn() && (Flex::pending() > 0 || echoCount())) {
       char why[48];
       char c = Keyer::paddleSessionCause();
       snprintf(why, sizeof why, "clear: paddle break-in (%s)",
@@ -712,12 +715,12 @@ void abort(const char* why) {
   bufReset();
   flexLen = 0;
   Keyer::clearBuffer();
-  if (backend == WK_BACKEND_FLEX) { Flex::clear(why); echoReset(); monReset(); }
+  if (flexOn()) { Flex::clear(why); echoReset(); monReset(); }
 }
 
 void sendText(const char* text) {
   if (!text || !*text) return;
-  if (backend == WK_BACKEND_FLEX) {
+  if (flexOn()) {
     Flex::send(text);                       // the radio generates the CW
     if (monitorLocal)                       // ...and we make the sidetone
       for (const char* p = text; *p; p++) monPush(*p);

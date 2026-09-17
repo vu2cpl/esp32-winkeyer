@@ -105,6 +105,14 @@ bool txtSending() {
          millis() - txtLastMs < TXT_RECENT_MS;
 }
 
+// The one line of warning each panel has room for. Practice comes first: with
+// nothing transmitted, a slice warning does not matter, and a keyer left in
+// practice must be obvious at the rig. 14 characters, so it fits the 16x2.
+void warning(char* w, size_t n, Flex::WarnForm len) {
+  if (Keyer::practice()) { snprintf(w, n, "PRACTICE NO TX"); return; }
+  Flex::sliceWarning(w, n, len);
+}
+
 uint32_t stateSig() {
   uint32_t h = 2166136261u;
   auto mix = [&](uint32_t v) { h = (h ^ v) * 16777619u; };
@@ -121,7 +129,7 @@ uint32_t stateSig() {
   mix(Net::clientConnected());
   mix(Flex::connected());
   mix(Flex::sliceReady());
-  { char w[24]; Flex::sliceWarning(w, sizeof w, Flex::WARN_SHORT);  // mode can change text
+  { char w[24]; warning(w, sizeof w, Flex::WARN_SHORT);  // mode can change text
     for (const char* p = w; *p; p++) mix((uint8_t)*p);
     // The 16x2 alternates the warning with the IP, so it must redraw on
     // each swap. Only there: the OLED would resend 1 KB for nothing.
@@ -289,7 +297,7 @@ void drawMainLcd() {
     lcdLine(2, l);
     // Row 4 is the least-needed line, so a slice warning takes it over.
     char warn[24];
-    Flex::sliceWarning(warn, sizeof warn, Flex::WARN_SHORT);
+    warning(warn, sizeof warn, Flex::WARN_SHORT);
     if (*warn)
       snprintf(l, sizeof l, "%s", warn);
     else
@@ -309,7 +317,7 @@ void drawMainLcd() {
 
     // A slice warning alternates with the address rather than replacing it.
     char warn[24];
-    Flex::sliceWarning(warn, sizeof warn, Flex::WARN_TINY);
+    warning(warn, sizeof warn, Flex::WARN_TINY);
     if (txtSending())
       txtNewest(l, lcdCols);
     else if (*act)
@@ -351,7 +359,7 @@ void drawMain() {
   // The title gives way to a slice warning: without a CW slice the radio
   // sends nothing and says nothing, and FLX! below is easy to miss.
   char warn[24];
-  Flex::sliceWarning(warn, sizeof warn, Flex::WARN_SHORT);
+  warning(warn, sizeof warn, Flex::WARN_SHORT);
   oled->drawStr(0, 6, warn[0] ? warn : "WinKeyer");
   if (WiFi.status() == WL_CONNECTED) snprintf(buf, sizeof buf, "%ddBm", (int)WiFi.RSSI());
   else                               snprintf(buf, sizeof buf, "no wifi");
