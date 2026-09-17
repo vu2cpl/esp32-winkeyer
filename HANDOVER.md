@@ -2011,6 +2011,17 @@ against exposing it beyond one.
     or Flex reconnect) brings the dead state back, which would reproduce it
     on demand.
 
+    **Stale handle CONFIRMED as a second, separate fault (13:46).** Manoj
+    switched the GUI client from the Maestro to AetherSDR with no keyer
+    reboot, and the paddle went dead again. `sub client all` listed only
+    AetherSDR (`0x0D528C43`); the keyer's `flex.guihandle` still read the
+    Maestro's `0x7E7FD26E` (uptime 516 s, Flex session connected, slice in
+    CW). This is the lead above, now observed. It does NOT explain the
+    13:39–13:41 dead state, when the handles matched. So there are two
+    faults: a stale handle after a GUI client change (keyer bug, fix = step
+    5), and 0 W after a fresh keyer session until a second memory (cause
+    unknown).
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
