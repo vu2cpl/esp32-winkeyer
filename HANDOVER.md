@@ -2111,6 +2111,21 @@ against exposing it beyond one.
     (14:10). Traces: `flextrace-1411-paddle-dead-metered.txt`,
     `flextrace-1413-memory-frozen.txt`, `meters-1411.log`, `lines-1411.log`.
 
+    **Recovery measured, 14:15–14:16.** After that `cwx clear`, the next
+    memory ran normally (`cwx sent=1320…1331`, one per character, peak 4.42 W
+    at RF power 5), and the paddle key after it made 4.47 W with
+    `SW,SWCW`. All 40 replies were 0. The paddle traffic is identical to
+    the dead 14:11 key, so the keyer sends the same thing in both states.
+    The difference is the radio's CW generator.
+
+    **Open question: what wedges it at the start of a session?** Candidates
+    from the keyer's connect sequence: `cw key 0 … client_handle=` sent
+    **before** binding (with `0x0` after boot, or the previous client's
+    handle after a rebind, because `guiHandle` is not cleared), then
+    `client bind` and `cwx wpm`. Or the first paddle key of a session wedges
+    it, not the connect. Test: rebind, then play a memory **before** any
+    paddle key.
+
     **Next session, in order.**
     1. Compare `flex.guihandle` in `/api/state` (added and flashed later on
        09-17) with the Maestro's current handle
