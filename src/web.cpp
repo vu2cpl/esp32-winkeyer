@@ -245,6 +245,20 @@ legend[title]{cursor:help}
   <button id="sendBtn" onclick="sendOrStop()">SEND</button>
   <button id="tuneBtn" onclick="tuneOrStop()">TUNE</button></div>
 <div id="msg"></div>
+<div class="sub" title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</div>
+<div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
+  <button id="fskBtn" onclick="fskSendOrStop()">SEND</button></div>
+<div class="row full"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
+  <select id="fskbaud"><option value="45.45">45.45 (standard)</option>
+  <option value="50">50</option><option value="75">75</option></select>
+  <span class="val" id="fskState"></span></div>
+<!-- The two switches get their own row: a label, a select and two checkboxes
+     on one line overflow this panel at every window width, and the leftover
+     checkbox wrapping alone underneath is the ugliest way to lose that fight.
+     The spacer keeps them lined up with the controls above. -->
+<div class="row full"><span style="flex:0 0 92px"></span>
+  <label style="flex:0 0 auto"><input type="checkbox" id="fskinv"> invert</label>
+  <label style="flex:0 0 auto"><input type="checkbox" id="fskdid"> diddle</label></div>
 </fieldset>
 
 <fieldset class="wide stretch"><legend>BACKEND</legend>
@@ -328,22 +342,6 @@ legend[title]{cursor:help}
   <span class="val" id="btScanState"></span>
   <span id="btHits"></span></div>
 <div class="row full" id="btPass" hidden style="font-size:20px;color:var(--amber);letter-spacing:2px"></div>
-</fieldset>
-
-<fieldset><legend title="RTTY FSK keying line on GPIO27: Baudot at 45.45 baud, 1 start bit, 5 data bits, 1.5 stop bits, mark when idle. Invert if your rig wants mark low — wrong polarity prints as reversed-case gibberish at the far end rather than silence. Diddle sends LTRS while the transmitter is up with nothing to say, keeping the far end synchronised between overs. PTT is held for the whole over, not per character.">FSK / RTTY</legend>
-<div class="row"><input type="text" id="fsktxt" style="flex:1;width:auto" placeholder="RYRYRY DE VU2CPL">
-  <button id="fskBtn" onclick="fskSendOrStop()">SEND</button></div>
-<div class="row full"><label title="45.45 baud is standard amateur RTTY. 75 is used on some commercial circuits.">Baud</label>
-  <select id="fskbaud"><option value="45.45">45.45 (standard)</option>
-  <option value="50">50</option><option value="75">75</option></select>
-  <span class="val" id="fskState"></span></div>
-<!-- The two switches get their own row: a label, a select and two checkboxes
-     on one line overflow this panel at every window width, and the leftover
-     checkbox wrapping alone underneath is the ugliest way to lose that fight.
-     The spacer keeps them lined up with the controls above. -->
-<div class="row full"><span style="flex:0 0 92px"></span>
-  <label style="flex:0 0 auto"><input type="checkbox" id="fskinv"> invert</label>
-  <label style="flex:0 0 auto"><input type="checkbox" id="fskdid"> diddle</label></div>
 </fieldset>
 
 <div class="foot" id="foot">vukeyer.local &middot; settings persist in NVS</div>

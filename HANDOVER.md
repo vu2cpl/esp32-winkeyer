@@ -27,8 +27,10 @@ hardware.
   - History entries below keep the old names where they describe what
     happened then.
 - **Web page merged into cards (22:20):** KEYER (with Timing, Speed pot and
-  PTT sections), MEMORIES (with Send), BACKEND, SYSTEM (Display, USB /
-  WIFI, BT keyboard) and FSK / RTTY. Sections use `.sub` headings, and the
+  PTT sections), MEMORIES (with Send and, since 22:40, FSK / RTTY),
+  BACKEND and SYSTEM (Display, USB / WIFI, BT keyboard). Two columns:
+  KEYER | MEMORIES, then BACKEND | SYSTEM. Three: KEYER | MEMORIES |
+  SYSTEM, then BACKEND. Sections use `.sub` headings, and the
   old legend ids `legPtt` / `legSerial` moved onto them. At 3 columns the
   grid uses `grid-auto-flow: row dense`. Manoj reviewed it in the preview
   at 1024 px; flashed.
