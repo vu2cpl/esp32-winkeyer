@@ -222,16 +222,18 @@ inline bool hookWanted() { return keyHook && !(hookPaddleOnly && curIsAuto); }
 // hookWanted()'s exclusion, by construction.
 inline bool monitorOnly() { return hookPaddleOnly && curIsAuto; }
 
-// The sidetone copy follows the radio's MEASURED rate, not the nominal one.
-// A Flex at "25 WPM" sends about 1.5 % slow (48.7 ms a unit, not 48.0,
-// measured 2026-09-17), and a copy at the exact rate drifts ahead through a
-// long message. The fraction of a millisecond is carried from element to
+// The sidetone copy follows the radio's MEASURED timing, not the nominal one.
+// A Flex at "25 WPM" sends 48.7 ms a unit, not 48.0 (measured 2026-09-17),
+// and a copy at the exact rate drifts ahead through a long message. The
+// extra looks like a fixed ~0.7 ms a unit rather than a percentage, so it is
+// learned per speed (Flex's table) and applied here as microseconds. The fraction of a millisecond is carried from element to
 // element, because rounding each one to whole ms would itself be a 1-2 %
 // rate error at these speeds.
-volatile uint16_t monPermille = 1000;
+volatile int16_t monExtraUs = 0;         // per unit, from the Flex speed table
 uint32_t monCarryUs = 0;                 // keyer task only
 uint16_t monUnits(uint8_t n) {
-  uint32_t unitUs = 1200000UL / (cfgWpm ? cfgWpm : 20) * monPermille / 1000;
+  int32_t unitUs = (int32_t)(1200000UL / (cfgWpm ? cfgWpm : 20)) + monExtraUs;
+  if (unitUs < 5000) unitUs = 5000;
   uint32_t us = unitUs * n + monCarryUs;
   monCarryUs = us % 1000;
   uint16_t ms = (uint16_t)(us / 1000);
@@ -701,8 +703,8 @@ uint8_t charUnits(char c) {
   return u + (n - 1) + 3;
 }
 
-void     setMonitorRate(uint16_t permille) { monPermille = permille; }
-uint16_t monitorRate() { return monPermille; }
+void    setMonitorExtraUs(int16_t us) { monExtraUs = us; }
+int16_t monitorExtraUs() { return monExtraUs; }
 
 void chirp(char c) {
   const char* pat = morseFor(toupper((unsigned char)c));

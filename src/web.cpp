@@ -12,6 +12,7 @@
 //    POST /api/send?t=..       queue text as CW
 //    POST /api/tune?v=on|off   key down for tuning
 //    GET  /api/flextrace       recent lines to/from the radio (?clear=1)
+//    GET  /api/cwtable         radio CW timing per WPM; POST ?reset=1 forgets it
 //    GET  /api/bt              Bluetooth keyboard detail + scan list
 //    POST /api/bt?scan=1 | connect=<addr>&type=<n> | forget=1 | restart=1
 //
@@ -796,6 +797,18 @@ void begin() {
     Flex::traceDump(out);
     out.flush();
     server.sendContent("");
+  });
+  // Radio CW timing table (5-50 WPM). ?reset=1 (POST) forgets it.
+  server.on("/api/cwtable", HTTP_GET, []() {
+    DynamicJsonDocument doc(4096);          // 46 x {wpm, us, runs}
+    Flex::cwTableJson(doc.createNestedArray("table"));
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+  server.on("/api/cwtable", HTTP_POST, []() {
+    if (server.hasArg("reset")) { Flex::cwTableReset(); server.send(200, "text/plain", "cw table reset\n"); return; }
+    server.send(400, "text/plain", "need reset=1\n");
   });
   server.on("/api/set",   HTTP_POST, handleSet);
   server.on("/api/send",  HTTP_POST, handleSend);

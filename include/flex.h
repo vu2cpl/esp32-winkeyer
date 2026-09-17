@@ -10,6 +10,7 @@
 // ============================================================
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 namespace Flex {
 
@@ -83,10 +84,13 @@ bool sliceReady();
 // transmission has been timed. Used to align the local sidetone copy.
 uint16_t startLatencyMs();
 
-// How fast the radio really sends CWX, in permille of nominal 1200/WPM,
-// measured from its "cwx sent=" reports (1000 until a clean run of 40+
-// units). The sidetone copy of radio-generated text plays at this rate.
-uint16_t cwRatePermille();
+// How much longer than 1200/WPM the radio makes each dit unit of CWX, in µs,
+// at this speed: learned per speed from its "cwx sent=" reports, interpolated
+// between learned speeds, 700 until any are. Kept in NVS. The sidetone copy of
+// radio-generated text adds it.
+int16_t cwExtraUs(uint8_t wpm);
+void    cwTableJson(JsonArray a);    // [{wpm, us, runs}] for 5..50 WPM
+void    cwTableReset();              // forget everything learned (and the start delay)
 
 // Operator-facing reason the radio will not transmit CW, or "" when it
 // will (or when not connected — that has its own indicator). Caller's

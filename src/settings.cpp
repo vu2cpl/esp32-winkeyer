@@ -500,7 +500,7 @@ void toJson(JsonDocument& doc) {
   doc["mondelay"]   = WinKeyer::monitorDelayMs() == 0xFFFF
                         ? -1 : (int)WinKeyer::monitorDelayMs();   // -1 = auto
   doc["mondelaynow"]= WinKeyer::monitorDelayNowMs();
-  doc["cwrate"]     = Flex::cwRatePermille();   // radio CW rate, permille of nominal
+  doc["cwextra"]    = Flex::cwExtraUs(Keyer::getWpm());   // µs/unit the radio adds at this speed
   doc["flexlatency"]= Flex::startLatencyMs();
   doc["pecho"]   = WinKeyer::paddleEcho();
   doc["pechoon"] = WinKeyer::paddleEchoActive();

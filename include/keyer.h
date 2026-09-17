@@ -64,11 +64,12 @@ bool   sendChar(char c);   // queue ASCII (space = word gap); false if buffer fu
 // Dit units one character takes on the air, including the 3-unit gap after
 // it: 'E' = 4, 'T' = 6. 0 if it has no Morse. (A space adds 4: 7 in all.)
 uint8_t charUnits(char c);
-// Rate of the sidetone copy of text a network radio is generating, in
-// permille of nominal 1200/WPM: 1014 plays it 1.4 % slower, to stay with a
-// radio that sends slow. Paddle elements and the local backend never scale.
-void     setMonitorRate(uint16_t permille);
-uint16_t monitorRate();
+// Extra microseconds per dit unit for the sidetone copy of text a network
+// radio is generating, so it keeps pace with a radio that sends slow: 700
+// plays each unit 0.7 ms longer than 1200/WPM. Paddle elements and the local
+// backend are never changed.
+void    setMonitorExtraUs(int16_t us);
+int16_t monitorExtraUs();
 size_t queueDepth();       // characters still queued in the keyer
 void   clearBuffer();      // abort buffered sending immediately (key up)
 void   tune(bool on);      // continuous key-down (with PTT)

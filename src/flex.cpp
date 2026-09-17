@@ -127,21 +127,46 @@ uint32_t      lastCwxMs    = 0;
 uint32_t      cwxSendAt    = 0;
 uint16_t      startLatency = 0;
 
-// ── Radio CW rate ──
-// How fast the radio really sends CWX, against nominal 1200/WPM, from the
-// times of its "cwx sent=" reports. It sends about 1.5 % slow, and the
-// sidetone copy is played at this rate so it stays with the air through a
-// long message. Measured only over runs of consecutive characters whose text
-// the keyer queued itself, at one speed, with no clear in between.
+// ── Radio CW timing, per speed ──
+// How much longer than 1200/WPM the radio really makes each dit unit when it
+// sends CWX, from the times of its "cwx sent=" reports: about 700 µs at 22
+// and 25 WPM (2026-09-17). The sidetone copy adds it, so it stays with the air
+// through a long message. It is learned per speed, because one percentage
+// learned at 25 WPM over-corrected at 5-10 WPM, and kept in NVS so a reboot
+// does not start from nothing. Measured only over runs of consecutive
+// characters whose text the keyer queued itself, at one speed, with no clear
+// in between.
 struct IdxChar { long idx; char c; };
 IdxChar  idxText[256];                 // radio buffer index -> character sent
-uint16_t cwRate = 1000;                // permille of nominal
-bool     cwRateMeasured = false;
+const uint8_t  CW_WPM_MIN = 5, CW_WPM_MAX = 50;
+const uint8_t  CW_N = CW_WPM_MAX - CW_WPM_MIN + 1;
+const int16_t  CW_EXTRA_DEFAULT = 700; // µs a unit, until anything is learned
+int16_t  cwExtra[CW_N];                // µs a unit, per WPM
+uint8_t  cwRuns[CW_N];                 // clean runs learned at that WPM (saturates)
+bool     cwDirty = false;
+uint32_t cwSavedMs = 0;
+uint16_t latSaved = 0;                 // start latency as last written to NVS
 bool     rateActive = false, rateOk = false;
 uint32_t rateT0 = 0, rateLastT = 0;
 long     rateLastIdx = 0;
 uint32_t rateUnits = 0;
 uint8_t  rateWpm = 0;
+
+// Extra µs a unit at this speed: learned if it has been, else interpolated
+// between the nearest learned speeds either side, else the default.
+int16_t cwExtraFor(uint8_t wpm) {
+  if (wpm < CW_WPM_MIN) wpm = CW_WPM_MIN;
+  if (wpm > CW_WPM_MAX) wpm = CW_WPM_MAX;
+  int i = wpm - CW_WPM_MIN;
+  if (cwRuns[i]) return cwExtra[i];
+  int lo = -1, hi = -1;
+  for (int k = i - 1; k >= 0; k--)   if (cwRuns[k]) { lo = k; break; }
+  for (int k = i + 1; k < CW_N; k++) if (cwRuns[k]) { hi = k; break; }
+  if (lo < 0 && hi < 0) return CW_EXTRA_DEFAULT;
+  if (lo < 0) return cwExtra[hi];
+  if (hi < 0) return cwExtra[lo];
+  return (int16_t)(cwExtra[lo] + (int32_t)(cwExtra[hi] - cwExtra[lo]) * (i - lo) / (hi - lo));
+}
 bool          forcedThisTx = false;   // one rescue per stuck transmission
 uint32_t      cfgTailMs = 400;    // hold TX this long after the last element
 
@@ -251,17 +276,50 @@ bool kv(const String& body, const char* key, String& out) {
 }
 
 void rateFinish() {
-  if (rateActive && rateOk && rateUnits >= 40 && rateWpm) {
+  if (rateActive && rateOk && rateUnits >= 40 &&
+      rateWpm >= CW_WPM_MIN && rateWpm <= CW_WPM_MAX) {
     uint32_t ms = rateLastT - rateT0;
-    uint32_t m = (uint32_t)((uint64_t)ms * rateWpm * 1000 / ((uint64_t)rateUnits * 1200));
-    if (m >= 950 && m <= 1100) {        // anything else was not a clean run
-      cwRate = cwRateMeasured ? (uint16_t)((cwRate * 3 + m) / 4) : (uint16_t)m;
-      cwRateMeasured = true;
-      Log::printf("[FLEX] radio CW rate %u permille (%u units in %u ms at %u WPM), using %u\n",
-                  (unsigned)m, (unsigned)rateUnits, (unsigned)ms, rateWpm, cwRate);
+    int32_t unitUs = (int32_t)((uint64_t)ms * 1000 / rateUnits);
+    int32_t extra  = unitUs - (int32_t)(1200000UL / rateWpm);
+    // A clean run is within a few percent of nominal; anything else was
+    // interrupted or not what it seemed.
+    int32_t limit = (int32_t)(1200000UL / rateWpm) / 20;          // 5 %
+    if (extra > -limit && extra < limit * 2) {
+      int i = rateWpm - CW_WPM_MIN;
+      int16_t old = cwExtra[i];
+      cwExtra[i] = cwRuns[i] ? (int16_t)((old * 3 + extra) / 4) : (int16_t)extra;
+      if (cwRuns[i] < 255) cwRuns[i]++;
+      if (cwRuns[i] == 1 || abs(cwExtra[i] - old) > 50) cwDirty = true;
+      Log::printf("[FLEX] radio CW at %u WPM: %d us/unit extra (%u units in %u ms), table %d\n",
+                  rateWpm, (int)extra, (unsigned)rateUnits, (unsigned)ms, cwExtra[i]);
     }
   }
   rateActive = false;
+}
+
+void cwLoad() {
+  for (int i = 0; i < CW_N; i++) { cwExtra[i] = CW_EXTRA_DEFAULT; cwRuns[i] = 0; }
+  if (prefs.isKey("cwx")) prefs.getBytes("cwx", cwExtra, sizeof cwExtra);
+  if (prefs.isKey("cwn")) prefs.getBytes("cwn", cwRuns, sizeof cwRuns);
+  // isKey() first, as for "ip": a missing key is not an error on a fresh board.
+  latSaved = prefs.isKey("lat") ? prefs.getUShort("lat", 0) : 0;
+  startLatency = latSaved;
+}
+
+// Rarely: only when something changed enough, and at most once a minute.
+void cwSaveIfDue() {
+  bool latDue = startLatency && abs((int)startLatency - (int)latSaved) > 20;
+  if (!cwDirty && !latDue) return;
+  if (cwSavedMs && millis() - cwSavedMs < 60000) return;
+  cwSavedMs = millis();
+  prefs.begin("flex", false);
+  if (cwDirty) {
+    prefs.putBytes("cwx", cwExtra, sizeof cwExtra);
+    prefs.putBytes("cwn", cwRuns, sizeof cwRuns);
+    cwDirty = false;
+  }
+  if (latDue) { prefs.putUShort("lat", startLatency); latSaved = startLatency; }
+  prefs.end();
 }
 
 // One "cwx sent=" report. Consecutive reports extend the run; each adds the
@@ -536,6 +594,7 @@ void begin() {
   // isKey() first: getString on a missing key logs an error at E level,
   // which looks like a fault on a fresh board when it is just "unset".
   cfgManualIp = prefs.isKey("ip") ? prefs.getString("ip", "") : String("");
+  cwLoad();
   prefs.end();
   Log::printf("[FLEX] backend %s%s\n",
                 cfgEnabled ? "enabled" : "disabled",
@@ -586,7 +645,22 @@ void setKeyVerb(const char* verb) {
 const char* keyVerb()  { return cfgKeyVerb; }
 bool        sliceReady() { return sliceInUse && sliceIsCw; }
 uint16_t    startLatencyMs() { return startLatency; }
-uint16_t    cwRatePermille() { return cwRate; }
+int16_t     cwExtraUs(uint8_t wpm) { return cwExtraFor(wpm); }
+void cwTableJson(JsonArray a) {
+  for (int i = 0; i < CW_N; i++) {
+    JsonObject o = a.createNestedObject();
+    o["wpm"] = CW_WPM_MIN + i;
+    o["us"]  = cwExtraFor(CW_WPM_MIN + i);
+    o["runs"] = cwRuns[i];               // 0 = interpolated or default
+  }
+}
+void cwTableReset() {
+  for (int i = 0; i < CW_N; i++) { cwExtra[i] = CW_EXTRA_DEFAULT; cwRuns[i] = 0; }
+  prefs.begin("flex", false);
+  prefs.remove("cwx"); prefs.remove("cwn"); prefs.remove("lat");
+  prefs.end();
+  latSaved = 0;
+}
 uint8_t     radioWpm() { return radioWpmVal; }
 bool        radioTransmitting() { return radioTx; }
 
@@ -785,7 +859,11 @@ void poll() {
   if (!cfgEnabled || WiFi.status() != WL_CONNECTED) return;
   pumpKeying();
   if (rateActive && millis() - rateLastT > 3000) rateFinish();
-  if (Keyer::monitorRate() != cwRate) Keyer::setMonitorRate(cwRate);
+  {
+    int16_t x = cwExtraFor(Keyer::getWpm());
+    if (Keyer::monitorExtraUs() != x) Keyer::setMonitorExtraUs(x);
+  }
+  cwSaveIfDue();
 
   static bool listening = false;
   if (!listening) {

@@ -1705,6 +1705,24 @@ makes the keyer feel slow.
   of memory 1 and held on the second. Manoj: **in sync from 15 to 50 WPM; at
   5–10 WPM it drifts towards the end of a message, usable.**
 
+- **2026-09-17 (16:20)** — **The radio timing is learned per WPM and kept
+  in NVS** (supersedes the single permille rate from 16:00, and resolves
+  open item 15). Manoj's idea: a table for 5–50 WPM, defaulted, then
+  fine-tuned. `flex.cpp` keeps `cwExtra[46]` (µs added per unit) and
+  `cwRuns[46]`. A clean run of 40+ units sets or smooths (3:1) that speed's
+  entry, accepted within −5 %/+10 % of the nominal unit. Unlearned speeds
+  interpolate between the nearest learned ones (700 µs default).
+  `Keyer::setMonitorExtraUs()` replaces `setMonitorRate()`. NVS namespace
+  `flex`: `cwx`/`cwn` blobs and `lat` (start latency), loaded in
+  `Flex::begin()`. Written from `poll()` only when an entry changes by more
+  than 50 µs, or is first learned, or the latency moves more than 20 ms; at
+  most once a minute. `/api/state` `cwrate` became `cwextra`. New
+  `GET /api/cwtable` and `POST /api/cwtable?reset=1`. **Measured:** 10 WPM
+  735 µs, 35 WPM 779 µs, which confirms a near-fixed offset (0.6 % vs 2.3 %
+  of the unit). Manoj: **10 WPM now in sync.** Reflashed as a reboot test:
+  table and start delay (144 ms) came back. Calibration sweep (a button that
+  sends at several speeds) was offered and declined.
+
 ## Network placement (measured 2026-09-10)
 
 Manoj's LAN is segmented and **routed between segments**. The keyer was
@@ -2474,15 +2492,10 @@ against exposing it beyond one.
       3.5 mm jack beside PDL invites mis-plugging, and the enclosure needs
       a hole.
 
-15. **Sidetone rate at 5–10 WPM (2026-09-17).** The radio's CWX looks slow
-    by a fixed ~0.7 ms per unit (25 WPM: 48.7 vs 48.0; 22 WPM: 55.2 vs 54.5),
-    not by a percentage. `cwRate` is a single permille learned at whatever
-    speed ran last, so at 5–10 WPM it over-corrects and the copy drifts
-    towards the end of a long message. Options: model it as nominal unit +
-    fixed offset (fit ms-per-unit against 1200/WPM across speeds), or learn
-    one rate per speed. Measure at 5, 10 and 40 WPM first to confirm the
-    offset model. Also: `cwRate` and the start delay are re-learned after
-    every reboot, so the first long memory after boot still drifts.
+15. ~~Sidetone rate at 5–10 WPM~~ **RESOLVED 2026-09-17 (16:20)** — learned
+    per WPM and kept in NVS; see What changed. Not yet exercised: speeds
+    below 10 or above 35 learned directly (they interpolate from 10/35 for
+    now).
 
 ## Conventions (see ~/.claude/CLAUDE.md)
 
